@@ -24,8 +24,10 @@ jobs:
       - name: Install required Android SDK packages
         shell: bash
         run: |
+          set -euo pipefail
           sdkmanager --version
-          yes | sdkmanager --licenses
+          # Accept licenses without failing the step because "yes" gets SIGPIPE
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build Debug APK (with logs)
