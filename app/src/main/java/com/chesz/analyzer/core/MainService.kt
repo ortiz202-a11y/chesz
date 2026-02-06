@@ -8,19 +8,24 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
-import android.view.LayoutInflater
-import android.view.View
-import android.view.WindowManager
+import android.view.*
 import com.chesz.analyzer.R
+import kotlin.math.abs
 
 class MainService : Service() {
 
     private var windowManager: WindowManager? = null
     private var floatingView: View? = null
+    private lateinit var params: WindowManager.LayoutParams
+
+    private var initialX = 0
+    private var initialY = 0
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundServiceInternal()
+        startForegroundInternal()
         showFloatingButton()
     }
 
@@ -36,16 +41,17 @@ class MainService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showFloatingButton() {
-        if (windowManager != null || floatingView != null) return
-
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        floatingView = LayoutInflater.from(this).inflate(R.layout.overlay_floating_button, null)
+        floatingView = LayoutInflater.from(this)
+            .inflate(R.layout.overlay_floating_button, null)
 
         val layoutType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else WindowManager.LayoutParams.TYPE_PHONE
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE
 
-        val params = WindowManager.LayoutParams(
+        params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutType,
@@ -54,7 +60,42 @@ class MainService : Service() {
         )
 
         params.x = 0
-        params.y = 200
+        params.y = 300
+
+        val root = floatingView!!.findViewById<View>(R.id.floatingRoot)
+
+        root.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = params.x
+                    initialY = params.y
+                    initialTouchX = event.rawX
+                    initialTouchY = event.rawY
+                    true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    windowManager?.updateViewLayout(floatingView, params)
+                    true
+                }
+
+                MotionEvent.ACTION_UP -> {
+                    val dx = abs(event.rawX - initialTouchX)
+                    val dy = abs(event.rawY - initialTouchY)
+
+                    if (dx < 10 && dy < 10) {
+                        // TAP (por ahora solo feedback visual)
+                        root.alpha = 0.5f
+                        root.postDelayed({ root.alpha = 1f }, 120)
+                    }
+                    true
+                }
+
+                else -> false
+            }
+        }
 
         windowManager?.addView(floatingView, params)
     }
@@ -69,7 +110,7 @@ class MainService : Service() {
         }
     }
 
-    private fun startForegroundServiceInternal() {
+    private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -84,7 +125,7 @@ class MainService : Service() {
 
         val notification: Notification = Notification.Builder(this, channelId)
             .setContentTitle("chesz")
-            .setContentText("Servicio activo")
+            .setContentText("Overlay activo")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .build()
 
