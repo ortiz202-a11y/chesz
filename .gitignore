@@ -12,3 +12,7 @@ local.properties
 
 # OS
 .DS_Store
+
+# Build artifacts / downloaded CI artifacts
+chesz-debug-apk/
+*.apk
