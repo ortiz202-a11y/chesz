@@ -34,10 +34,15 @@ class MainService : Service() {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
+    // Para clamp correcto
     private var screenW = 0
     private var screenH = 0
     private var viewW = 0
     private var viewH = 0
+
+    // Estado actual (solo para saber qué modo está activo)
+    private enum class Mode { W, L }
+    private var mode: Mode = Mode.W
 
     override fun onCreate() {
         super.onCreate()
@@ -165,20 +170,22 @@ class MainService : Service() {
 
         val toggleW = panelView!!.findViewById<Switch>(R.id.toggleW)
         val toggleL = panelView!!.findViewById<Switch>(R.id.toggleL)
-        val resultText = panelView!!.findViewById<TextView>(R.id.resultText)
+
+        // IMPORTANTE: UI limpia => no mostramos "modo", "listo", etc.
+        // Solo mostraremos resultado final cuando exista (más adelante).
+        setResult(null)
 
         // Estado inicial
         toggleW.isChecked = true
         toggleL.isChecked = false
-        resultText.text = "Modo: W (online)\nListo (aún sin análisis)"
+        mode = Mode.W
 
-        // Exclusión W/L
+        // Exclusión W/L (sin imprimir mensajes)
         toggleW.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 if (toggleL.isChecked) toggleL.isChecked = false
-                resultText.text = "Modo: W (online)\nListo (aún sin análisis)"
+                mode = Mode.W
             } else {
-                // Si apagas W y L también está apagado, re-enciende W para evitar “ninguno”
                 if (!toggleL.isChecked) toggleW.isChecked = true
             }
         }
@@ -186,7 +193,7 @@ class MainService : Service() {
         toggleL.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 if (toggleW.isChecked) toggleW.isChecked = false
-                resultText.text = "Modo: L (local)\nListo (aún sin análisis)"
+                mode = Mode.L
             } else {
                 if (!toggleW.isChecked) toggleL.isChecked = true
             }
@@ -208,6 +215,16 @@ class MainService : Service() {
         } finally {
             panelView = null
         }
+    }
+
+    /**
+     * Para futuro: aquí SOLO pondremos resultado FINAL (recomendación / error real).
+     * No se usa para logs intermedios.
+     */
+    private fun setResult(msg: String?) {
+        val pv = panelView ?: return
+        val tv = pv.findViewById<TextView>(R.id.resultText) ?: return
+        tv.text = msg ?: ""
     }
 
     private fun startForegroundInternal() {
