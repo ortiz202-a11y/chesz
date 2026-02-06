@@ -6,8 +6,10 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -68,6 +70,9 @@ class MainService : Service() {
             PixelFormat.TRANSLUCENT
         )
 
+        // Origen (0,0) arriba-izquierda para coordenadas coherentes
+        params.gravity = Gravity.TOP or Gravity.START
+
         params.x = 0
         params.y = 300
 
@@ -76,6 +81,9 @@ class MainService : Service() {
         root.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Recalcular tamaño real en cada drag (rotación/cambios UI)
+                    updateScreenSize()
+
                     initialX = params.x
                     initialY = params.y
                     initialTouchX = event.rawX
@@ -106,6 +114,7 @@ class MainService : Service() {
 
         windowManager?.addView(floatingView, params)
 
+        // Medidas iniciales reales
         updateScreenSize()
         floatingView?.post {
             viewW = floatingView?.width ?: 0
@@ -147,9 +156,21 @@ class MainService : Service() {
     }
 
     private fun updateScreenSize() {
-        val dm = resources.displayMetrics
-        screenW = dm.widthPixels
-        screenH = dm.heightPixels
+        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = wm.currentWindowMetrics.bounds
+            screenW = bounds.width()
+            screenH = bounds.height()
+        } else {
+            @Suppress("DEPRECATION")
+            val display = wm.defaultDisplay
+            val p = Point()
+            @Suppress("DEPRECATION")
+            display.getRealSize(p)
+            screenW = p.x
+            screenH = p.y
+        }
     }
 
     private fun clampAndUpdate() {
