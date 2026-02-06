@@ -5,12 +5,13 @@
     android:layout_height="56dp"
     android:background="@android:color/transparent">
 
-    <TextView
+    <ImageView
         android:id="@+id/btn"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:gravity="center"
-        android:text="🎭"
-        android:textSize="22sp"
-        android:background="@android:color/white" />
+        android:padding="10dp"
+        android:src="@drawable/mask"
+        android:scaleType="fitCenter"
+        android:background="@drawable/floating_bg"
+        android:contentDescription="chesz" />
 </FrameLayout>

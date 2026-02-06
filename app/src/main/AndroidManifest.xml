@@ -8,7 +8,8 @@
 
     <application
         android:label="chesz"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/mask"
+        android:roundIcon="@drawable/mask"
         android:allowBackup="true"
         android:supportsRtl="true">
 
