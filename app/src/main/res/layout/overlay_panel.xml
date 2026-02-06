@@ -5,46 +5,42 @@
     android:layout_height="match_parent"
     android:background="#59000000">
 
-    <!-- Card central -->
+    <!-- Zona grande para mostrar SOLO resultado final (recomendación / error real) -->
+    <TextView
+        android:id="@+id/resultText"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="18dp"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:gravity="top|start" />
+
+    <!-- Barra inferior compacta -->
     <LinearLayout
         android:id="@+id/panelCard"
-        android:layout_width="280dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:orientation="vertical"
-        android:padding="16dp"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:padding="12dp"
         android:background="#CC000000">
 
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="CHESZ"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/subtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Panel overlay (fase 3)"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
+        <!-- W -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="W (online)"
-                android:textColor="#FFFFFF" />
+                android:text="W"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginEnd="8dp" />
 
             <Switch
                 android:id="@+id/toggleW"
@@ -52,18 +48,21 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
+        <!-- L -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical|end">
 
             <TextView
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="L (local)"
-                android:textColor="#FFFFFF" />
+                android:text="L"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginEnd="8dp" />
 
             <Switch
                 android:id="@+id/toggleL"
@@ -71,14 +70,6 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/resultText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="(Aquí irá la mejor jugada / error)"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
     </LinearLayout>
 
 </FrameLayout>
