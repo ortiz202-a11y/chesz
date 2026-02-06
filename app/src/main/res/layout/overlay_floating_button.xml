@@ -10,7 +10,7 @@
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:padding="10dp"
-        android:src="@drawable/mask"
+        android:src="@drawable/btn_overlay"
         android:scaleType="fitCenter"
         android:background="@drawable/floating_bg"
         android:contentDescription="chesz" />

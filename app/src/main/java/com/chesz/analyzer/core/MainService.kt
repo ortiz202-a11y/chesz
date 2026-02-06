@@ -143,7 +143,8 @@ class MainService : Service() {
         if (panelView == null) showPanel() else hidePanel()
     }
 
-    private fun showPanel() {
+    private fun showPanel
+ {
         val wm = windowManager ?: return
         if (panelView != null) return
 
@@ -205,6 +206,32 @@ class MainService : Service() {
         // Evita que el click en el card cierre el panel
         card.setOnClickListener { /* no-op */ }
 
+// Posicionar el CARD cerca del botón (sin depender del XML)
+panelView!!.post {
+    val fx = floatingParams.x
+    val fy = floatingParams.y
+    val bh = floatingView?.height ?: 0
+
+    // Medir card
+    card.measure(
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+    )
+    val cw = card.measuredWidth
+    val ch = card.measuredHeight
+
+    // Asegurar screenW/screenH actualizados
+    updateScreenSize()
+
+    val maxX = (screenW - cw).coerceAtLeast(0)
+    val maxY = (screenH - ch).coerceAtLeast(0)
+
+    val targetX = fx.coerceIn(0, maxX)
+    val targetY = (fy + bh).coerceIn(0, maxY)
+
+    card.x = targetX.toFloat()
+    card.y = targetY.toFloat()
+}
         wm.addView(panelView, panelParams)
     }
 
@@ -224,7 +251,15 @@ class MainService : Service() {
     private fun setResult(msg: String?) {
         val pv = panelView ?: return
         val tv = pv.findViewById<TextView>(R.id.resultText) ?: return
-        tv.text = msg ?: ""
+
+        val clean = msg?.trim().orEmpty()
+        if (clean.isEmpty()) {
+            tv.text = ""
+            tv.visibility = View.GONE
+        } else {
+            tv.text = clean
+            tv.visibility = View.VISIBLE
+        }
     }
 
     private fun startForegroundInternal() {

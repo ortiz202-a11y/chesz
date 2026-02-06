@@ -19,11 +19,11 @@
     <!-- Barra inferior compacta -->
     <LinearLayout
         android:id="@+id/panelCard"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
+        android:layout_gravity="top|start"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:padding="6dp"
         android:background="#CC000000">
 
         <!-- W -->
