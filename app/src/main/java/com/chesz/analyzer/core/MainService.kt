@@ -14,6 +14,8 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.Switch
+import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
 
@@ -102,7 +104,6 @@ class MainService : Service() {
                     val dy = abs(event.rawY - initialTouchY)
 
                     if (dx < 10 && dy < 10) {
-                        // TAP => alterna panel
                         togglePanel()
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
@@ -138,7 +139,8 @@ class MainService : Service() {
     }
 
     private fun showPanel() {
-        if (windowManager == null || panelView != null) return
+        val wm = windowManager ?: return
+        if (panelView != null) return
 
         val layoutType =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -146,7 +148,7 @@ class MainService : Service() {
             else
                 WindowManager.LayoutParams.TYPE_PHONE
 
-        // Panel: debe recibir clicks (para cerrar al tocar fuera del card)
+        // Panel full-screen, clickeable (sin robar foco)
         panelParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -161,13 +163,42 @@ class MainService : Service() {
         val root = panelView!!.findViewById<View>(R.id.panelRoot)
         val card = panelView!!.findViewById<View>(R.id.panelCard)
 
+        val toggleW = panelView!!.findViewById<Switch>(R.id.toggleW)
+        val toggleL = panelView!!.findViewById<Switch>(R.id.toggleL)
+        val resultText = panelView!!.findViewById<TextView>(R.id.resultText)
+
+        // Estado inicial
+        toggleW.isChecked = true
+        toggleL.isChecked = false
+        resultText.text = "Modo: W (online)\nListo (aún sin análisis)"
+
+        // Exclusión W/L
+        toggleW.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (toggleL.isChecked) toggleL.isChecked = false
+                resultText.text = "Modo: W (online)\nListo (aún sin análisis)"
+            } else {
+                // Si apagas W y L también está apagado, re-enciende W para evitar “ninguno”
+                if (!toggleL.isChecked) toggleW.isChecked = true
+            }
+        }
+
+        toggleL.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (toggleW.isChecked) toggleW.isChecked = false
+                resultText.text = "Modo: L (local)\nListo (aún sin análisis)"
+            } else {
+                if (!toggleW.isChecked) toggleL.isChecked = true
+            }
+        }
+
         // Tocar fuera del card => cerrar
         root.setOnClickListener { hidePanel() }
 
         // Evita que el click en el card cierre el panel
         card.setOnClickListener { /* no-op */ }
 
-        windowManager?.addView(panelView, panelParams)
+        wm.addView(panelView, panelParams)
     }
 
     private fun hidePanel() {
