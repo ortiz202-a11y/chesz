@@ -8,7 +8,10 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
-import android.view.*
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.WindowManager
 import com.chesz.analyzer.R
 import kotlin.math.abs
 
@@ -22,6 +25,11 @@ class MainService : Service() {
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
+
+    private var screenW = 0
+    private var screenH = 0
+    private var viewW = 0
+    private var viewH = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -41,9 +49,10 @@ class MainService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showFloatingButton() {
+        if (windowManager != null || floatingView != null) return
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        floatingView = LayoutInflater.from(this)
-            .inflate(R.layout.overlay_floating_button, null)
+        floatingView = LayoutInflater.from(this).inflate(R.layout.overlay_floating_button, null)
 
         val layoutType =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -77,16 +86,14 @@ class MainService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (event.rawX - initialTouchX).toInt()
                     params.y = initialY + (event.rawY - initialTouchY).toInt()
-                    windowManager?.updateViewLayout(floatingView, params)
+                    clampAndUpdate()
                     true
                 }
 
                 MotionEvent.ACTION_UP -> {
                     val dx = abs(event.rawX - initialTouchX)
                     val dy = abs(event.rawY - initialTouchY)
-
                     if (dx < 10 && dy < 10) {
-                        // TAP (por ahora solo feedback visual)
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
                     }
@@ -98,6 +105,13 @@ class MainService : Service() {
         }
 
         windowManager?.addView(floatingView, params)
+
+        updateScreenSize()
+        floatingView?.post {
+            viewW = floatingView?.width ?: 0
+            viewH = floatingView?.height ?: 0
+            clampAndUpdate()
+        }
     }
 
     private fun removeFloatingButton() {
@@ -130,5 +144,27 @@ class MainService : Service() {
             .build()
 
         startForeground(1, notification)
+    }
+
+    private fun updateScreenSize() {
+        val dm = resources.displayMetrics
+        screenW = dm.widthPixels
+        screenH = dm.heightPixels
+    }
+
+    private fun clampAndUpdate() {
+        if (floatingView == null || windowManager == null) return
+        if (screenW <= 0 || screenH <= 0 || viewW <= 0 || viewH <= 0) return
+
+        val maxX = (screenW - viewW).coerceAtLeast(0)
+        val maxY = (screenH - viewH).coerceAtLeast(0)
+
+        params.x = params.x.coerceIn(0, maxX)
+        params.y = params.y.coerceIn(0, maxY)
+
+        try {
+            windowManager?.updateViewLayout(floatingView, params)
+        } catch (_: Throwable) {
+        }
     }
 }
