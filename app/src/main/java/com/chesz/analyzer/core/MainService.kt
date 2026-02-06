@@ -20,8 +20,12 @@ import kotlin.math.abs
 class MainService : Service() {
 
     private var windowManager: WindowManager? = null
+
     private var floatingView: View? = null
-    private lateinit var params: WindowManager.LayoutParams
+    private var panelView: View? = null
+
+    private lateinit var floatingParams: WindowManager.LayoutParams
+    private lateinit var panelParams: WindowManager.LayoutParams
 
     private var initialX = 0
     private var initialY = 0
@@ -39,12 +43,11 @@ class MainService : Service() {
         showFloatingButton()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
         super.onDestroy()
+        hidePanel()
         removeFloatingButton()
     }
 
@@ -62,7 +65,7 @@ class MainService : Service() {
             else
                 WindowManager.LayoutParams.TYPE_PHONE
 
-        params = WindowManager.LayoutParams(
+        floatingParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutType,
@@ -70,30 +73,26 @@ class MainService : Service() {
             PixelFormat.TRANSLUCENT
         )
 
-        // Origen (0,0) arriba-izquierda para coordenadas coherentes
-        params.gravity = Gravity.TOP or Gravity.START
-
-        params.x = 0
-        params.y = 300
+        // Origen arriba-izquierda
+        floatingParams.gravity = Gravity.TOP or Gravity.START
+        floatingParams.x = 0
+        floatingParams.y = 300
 
         val root = floatingView!!.findViewById<View>(R.id.floatingRoot)
 
         root.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    // Recalcular tamaño real en cada drag (rotación/cambios UI)
-                    updateScreenSize()
-
-                    initialX = params.x
-                    initialY = params.y
+                    initialX = floatingParams.x
+                    initialY = floatingParams.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    floatingParams.x = initialX + (event.rawX - initialTouchX).toInt()
+                    floatingParams.y = initialY + (event.rawY - initialTouchY).toInt()
                     clampAndUpdate()
                     true
                 }
@@ -101,7 +100,10 @@ class MainService : Service() {
                 MotionEvent.ACTION_UP -> {
                     val dx = abs(event.rawX - initialTouchX)
                     val dy = abs(event.rawY - initialTouchY)
+
                     if (dx < 10 && dy < 10) {
+                        // TAP => alterna panel
+                        togglePanel()
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
                     }
@@ -112,9 +114,8 @@ class MainService : Service() {
             }
         }
 
-        windowManager?.addView(floatingView, params)
+        windowManager?.addView(floatingView, floatingParams)
 
-        // Medidas iniciales reales
         updateScreenSize()
         floatingView?.post {
             viewW = floatingView?.width ?: 0
@@ -129,7 +130,52 @@ class MainService : Service() {
         } catch (_: Throwable) {
         } finally {
             floatingView = null
-            windowManager = null
+        }
+    }
+
+    private fun togglePanel() {
+        if (panelView == null) showPanel() else hidePanel()
+    }
+
+    private fun showPanel() {
+        if (windowManager == null || panelView != null) return
+
+        val layoutType =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE
+
+        // Panel: debe recibir clicks (para cerrar al tocar fuera del card)
+        panelParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            layoutType,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        )
+        panelParams.gravity = Gravity.TOP or Gravity.START
+
+        panelView = LayoutInflater.from(this).inflate(R.layout.overlay_panel, null)
+
+        val root = panelView!!.findViewById<View>(R.id.panelRoot)
+        val card = panelView!!.findViewById<View>(R.id.panelCard)
+
+        // Tocar fuera del card => cerrar
+        root.setOnClickListener { hidePanel() }
+
+        // Evita que el click en el card cierre el panel
+        card.setOnClickListener { /* no-op */ }
+
+        windowManager?.addView(panelView, panelParams)
+    }
+
+    private fun hidePanel() {
+        try {
+            panelView?.let { windowManager?.removeView(it) }
+        } catch (_: Throwable) {
+        } finally {
+            panelView = null
         }
     }
 
@@ -156,17 +202,15 @@ class MainService : Service() {
     }
 
     private fun updateScreenSize() {
-        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        val wm = windowManager ?: return
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        if (Build.VERSION.SDK_INT >= 30) {
             val bounds = wm.currentWindowMetrics.bounds
             screenW = bounds.width()
             screenH = bounds.height()
         } else {
-            @Suppress("DEPRECATION")
             val display = wm.defaultDisplay
             val p = Point()
-            @Suppress("DEPRECATION")
             display.getRealSize(p)
             screenW = p.x
             screenH = p.y
@@ -180,11 +224,11 @@ class MainService : Service() {
         val maxX = (screenW - viewW).coerceAtLeast(0)
         val maxY = (screenH - viewH).coerceAtLeast(0)
 
-        params.x = params.x.coerceIn(0, maxX)
-        params.y = params.y.coerceIn(0, maxY)
+        floatingParams.x = floatingParams.x.coerceIn(0, maxX)
+        floatingParams.y = floatingParams.y.coerceIn(0, maxY)
 
         try {
-            windowManager?.updateViewLayout(floatingView, params)
+            windowManager?.updateViewLayout(floatingView, floatingParams)
         } catch (_: Throwable) {
         }
     }
