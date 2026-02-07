@@ -174,7 +174,9 @@ class MainService : Service() {
 
         // IMPORTANTE: UI limpia => no mostramos "modo", "listo", etc.
         // Solo mostraremos resultado final cuando exista (más adelante).
-        setResult(null)
+        // Placeholder temporal: mientras NO existe captura/FEN/análisis.
+        // Esto fuerza a que el panel grande sea visible.
+           setResult("CHESZ listo\n\n(Tap fuera para cerrar)\n\nW: online (default)\nL: local (manual)\n\nPaso 3 (captura→FEN) aún NO implementado.")setResult(null)
 
         // Estado inicial
         toggleW.isChecked = true
