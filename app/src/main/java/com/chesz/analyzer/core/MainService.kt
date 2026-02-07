@@ -9,16 +9,15 @@ import android.graphics.PixelFormat
 import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
-import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 class MainService : Service() {
 
@@ -41,7 +40,7 @@ class MainService : Service() {
     private var viewW = 0
     private var viewH = 0
 
-    // Estado actual (solo para saber qué modo está activo)
+    // Estado actual
     private enum class Mode { W, L }
     private var mode: Mode = Mode.W
 
@@ -102,6 +101,11 @@ class MainService : Service() {
                     floatingParams.x = initialX + (event.rawX - initialTouchX).toInt()
                     floatingParams.y = initialY + (event.rawY - initialTouchY).toInt()
                     clampAndUpdate()
+
+                    // Si el panel está abierto, reposicionarlo en vivo
+                    if (panelView != null) {
+                        positionOverlayNextToButton()
+                    }
                     true
                 }
 
@@ -169,106 +173,44 @@ class MainService : Service() {
         val root = panelView!!.findViewById<View>(R.id.panelRoot)
         val card = panelView!!.findViewById<View>(R.id.panelCard)
 
-        // Chips W/L
-        val modeW = panelView!!.findViewById<TextView>(R.id.modeW)
-        val modeL = panelView!!.findViewById<TextView>(R.id.modeL)
+        // Chips W/L (TextView)
+        val modeWView = panelView!!.findViewById<TextView>(R.id.modeW)
+        val modeLView = panelView!!.findViewById<TextView>(R.id.modeL)
 
-        // Overlay limpio (sin mensajes)
+        // Overlay limpio: sin mensajes por defecto
         setResult(null)
 
-        // Estado inicial: W activo
+        // Estado inicial
         mode = Mode.W
-        setChipActive(modeW, true)
-        setChipActive(modeL, false)
+        setChipActive(modeWView, true)
+        setChipActive(modeLView, false)
 
-        // Exclusión W/L por taps
-        modeW.setOnClickListener {
+        // Exclusión por taps
+        modeWView.setOnClickListener {
             if (mode != Mode.W) {
                 mode = Mode.W
-                setChipActive(modeW, true)
-                setChipActive(modeL, false)
+                setChipActive(modeWView, true)
+                setChipActive(modeLView, false)
             }
         }
 
-        modeL.setOnClickListener {
+        modeLView.setOnClickListener {
             if (mode != Mode.L) {
                 mode = Mode.L
-                setChipActive(modeL, true)
-                setChipActive(modeW, false)
+                setChipActive(modeLView, true)
+                setChipActive(modeWView, false)
             }
         }
 
         // Tocar fuera del card => cerrar
         root.setOnClickListener { hidePanel() }
-
-        // Evita que el click en el card cierre el panel
+        // Click dentro no cierra
         card.setOnClickListener { /* no-op */ }
 
-        // Posicionar el CARD cerca del botón usando % de pantalla
-        panelView!!.post {
-            // Asegurar tamaños actualizados
-            updateScreenSize()
-
-            val fv = floatingView
-            val bw = fv?.width ?: viewW
-            val bh = fv?.height ?: viewH
-
-            // Porcentaje fijo acordado
-            val overlayW = (screenW * 0.45f).roundToInt()
-            val overlayH = (screenH * 0.25f).roundToInt()
-
-            // Aplicar tamaño al card
-            val lp = card.layoutParams
-            lp.width = overlayW
-            lp.height = overlayH
-            card.layoutParams = lp
-
-            // Separación entre botón y overlay (dp->px)
-            val gap = dpToPx(10)
-
-            // Base del botón (y) y lado derecho (x)
-            val buttonLeft = floatingParams.x
-            val buttonTop = floatingParams.y
-            val buttonRight = buttonLeft + bw
-            val buttonBottom = buttonTop + bh
-
-            // Overlay: a la derecha del botón, base alineada, crece hacia arriba
-            var targetX = buttonRight + gap
-            var targetY = buttonBottom - overlayH
-
-            // Clamp overlay dentro de pantalla (moviendo conjunto botón+overlay)
-            // 1) Si overlay se sale por la derecha -> mover conjunto a la izquierda
-            val overflowRight = (targetX + overlayW) - screenW
-            if (overflowRight > 0) {
-                floatingParams.x = (floatingParams.x - overflowRight).coerceAtLeast(0)
-                try { wm.updateViewLayout(floatingView, floatingParams) } catch (_: Throwable) {}
-                // recalcular con nuevo botón
-                val newLeft = floatingParams.x
-                val newRight = newLeft + bw
-                targetX = newRight + gap
-            }
-
-            // 2) Si overlay se sale por arriba -> mover conjunto hacia abajo
-            val overflowTop = 0 - targetY
-            if (overflowTop > 0) {
-                floatingParams.y = (floatingParams.y + overflowTop).coerceAtLeast(0)
-                try { wm.updateViewLayout(floatingView, floatingParams) } catch (_: Throwable) {}
-                val newTop = floatingParams.y
-                val newBottom = newTop + bh
-                targetY = newBottom - overlayH
-            }
-
-            // 3) Clamp final por seguridad (por si el botón está muy abajo)
-            val maxX = (screenW - overlayW).coerceAtLeast(0)
-            val maxY = (screenH - overlayH).coerceAtLeast(0)
-            targetX = targetX.coerceIn(0, maxX)
-            targetY = targetY.coerceIn(0, maxY)
-
-            card.x = targetX.toFloat()
-            card.y = targetY.toFloat()
-        }
-
         wm.addView(panelView, panelParams)
+
+        // IMPORTANTE: después de añadir la vista, posicionamos con proporciones
+        panelView!!.post { positionOverlayNextToButton() }
     }
 
     private fun hidePanel() {
@@ -281,8 +223,75 @@ class MainService : Service() {
     }
 
     /**
-     * Para futuro: aquí SOLO pondremos resultado FINAL (recomendación / error real).
-     * No se usa para logs intermedios.
+     * Posiciona el overlay:
+     * - 53% ancho pantalla
+     * - 20% alto pantalla
+     * - a la derecha del botón
+     * - base alineada con la base del botón (crece hacia arriba)
+     * - si se sale, empuja el GRUPO (botón+overlay) para que quepa
+     */
+    private fun positionOverlayNextToButton() {
+        val pv = panelView ?: return
+        val card = pv.findViewById<View>(R.id.panelCard) ?: return
+
+        updateScreenSize()
+        val bw = floatingView?.width ?: viewW
+        val bh = floatingView?.height ?: viewH
+
+        // Tamaño overlay relativo a la pantalla
+        val overlayW = (screenW * 0.53f).toInt().coerceAtLeast(dp(180))
+        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(80))
+
+        // Forzar tamaño del card por código
+        val lp = FrameLayout.LayoutParams(overlayW, overlayH)
+        lp.gravity = Gravity.TOP or Gravity.START
+        card.layoutParams = lp
+
+        val margin = dp(10)
+
+        // Posición deseada (derecha + siempre arriba)
+        fun desiredX(): Int = floatingParams.x + bw + margin
+        fun desiredY(): Int = (floatingParams.y + bh) - overlayH
+
+        var x = desiredX()
+        var y = desiredY()
+
+        // ---- Auto-ajuste moviendo el GRUPO ----
+        // Si se sale por derecha: mover botón a la izquierda
+        val overflowRight = (x + overlayW) - screenW
+        if (overflowRight > 0) {
+            floatingParams.x -= overflowRight
+            clampAndUpdate()
+            x = desiredX()
+            y = desiredY()
+        }
+
+        // Si se sale por arriba: mover botón hacia abajo
+        if (y < 0) {
+            floatingParams.y += -y
+            clampAndUpdate()
+            x = desiredX()
+            y = desiredY()
+        }
+
+        // Seguridad final (por si algo extremo)
+        x = x.coerceIn(0, (screenW - overlayW).coerceAtLeast(0))
+        y = y.coerceIn(0, (screenH - overlayH).coerceAtLeast(0))
+
+        card.x = x.toFloat()
+        card.y = y.toFloat()
+    }
+
+    private fun setChipActive(tv: TextView, active: Boolean) {
+        // Activo: gris un poco más claro. Inactivo: más oscuro.
+        tv.alpha = if (active) 1f else 0.85f
+        tv.setBackgroundColor(if (active) 0xFF2A2A2A.toInt() else 0xFF141414.toInt())
+    }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    /**
+     * Solo resultado final (más adelante).
      */
     private fun setResult(msg: String?) {
         val pv = panelView ?: return
@@ -296,25 +305,6 @@ class MainService : Service() {
             tv.text = clean
             tv.visibility = View.VISIBLE
         }
-    }
-
-    // Visual simple para chips (negro): activo más claro, inactivo más oscuro
-    private fun setChipActive(tv: TextView, active: Boolean) {
-        if (active) {
-            tv.setBackgroundColor(0xFF222222.toInt())
-            tv.alpha = 1f
-        } else {
-            tv.setBackgroundColor(0x99000000.toInt())
-            tv.alpha = 0.8f
-        }
-    }
-
-    private fun dpToPx(dp: Int): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            dp.toFloat(),
-            resources.displayMetrics
-        ).roundToInt()
     }
 
     private fun startForegroundInternal() {

@@ -3,19 +3,19 @@
     android:id="@+id/panelRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#66000000">
+    android:background="#33000000">
 
-    <!-- CARD PRINCIPAL (tamaño se define por código usando % de pantalla) -->
+    <!-- CARD PRINCIPAL (tamaño lo fuerza MainService por % pantalla) -->
     <LinearLayout
         android:id="@+id/panelCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="12dp"
         android:background="#CC000000">
 
-        <!-- Área de RESULTADO (único contenido visible para usuario final) -->
+        <!-- Resultado final (oculto por defecto) -->
         <TextView
             android:id="@+id/resultText"
             android:layout_width="match_parent"
@@ -23,57 +23,58 @@
             android:layout_weight="1"
             android:text=""
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:lineSpacingExtra="4dp" />
+            android:textSize="15sp"
+            android:lineSpacingExtra="3dp"
+            android:visibility="gone" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="12dp" />
-
-        <!-- Selector de MODO (W / L) - estilo chip -->
+        <!-- Barra W/L abajo -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:layout_marginTop="10dp">
 
             <TextView
                 android:id="@+id/modeW"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="34dp"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="W"
                 android:textStyle="bold"
+                android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="#FF222222" />
+                android:background="#FF141414" />
 
             <View
-                android:layout_width="8dp"
+                android:layout_width="10dp"
                 android:layout_height="match_parent" />
 
             <TextView
                 android:id="@+id/modeL"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="34dp"
                 android:layout_weight="1"
                 android:gravity="center"
                 android:text="L"
                 android:textStyle="bold"
+                android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="#99000000" />
+                android:background="#FF141414" />
         </LinearLayout>
 
-        <!-- DEBUG (apagado por defecto) -->
+        <!-- Debug (apagado) -->
         <TextView
             android:id="@+id/debugText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:textSize="12sp"
             android:textColor="#AAFFFFFF"
             android:visibility="gone"
             android:text="" />
+
     </LinearLayout>
 
 </FrameLayout>
