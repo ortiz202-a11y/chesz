@@ -3,7 +3,7 @@
     android:id="@+id/panelRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#33000000">
+    android:background="#22000000">
 
     <!-- CARD PRINCIPAL (tamaño lo fuerza MainService por % pantalla) -->
     <LinearLayout
@@ -12,8 +12,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:orientation="vertical"
-        android:padding="12dp"
-        android:background="#CC000000">
+        android:padding="10dp"
+        android:background="#99000000">
 
         <!-- Resultado final (oculto por defecto) -->
         <TextView
@@ -27,41 +27,40 @@
             android:lineSpacingExtra="3dp"
             android:visibility="gone" />
 
-        <!-- Barra W/L abajo -->
+        <!-- Barra W/L abajo (círculos) -->
         <LinearLayout
+            android:id="@+id/modeRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginTop="10dp">
+            android:layout_marginTop="8dp">
 
             <TextView
                 android:id="@+id/modeW"
-                android:layout_width="0dp"
+                android:layout_width="34dp"
                 android:layout_height="34dp"
-                android:layout_weight="1"
                 android:gravity="center"
                 android:text="W"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="#FF141414" />
+                android:background="@drawable/mode_circle_active" />
 
             <View
-                android:layout_width="10dp"
+                android:layout_width="14dp"
                 android:layout_height="match_parent" />
 
             <TextView
                 android:id="@+id/modeL"
-                android:layout_width="0dp"
+                android:layout_width="34dp"
                 android:layout_height="34dp"
-                android:layout_weight="1"
                 android:gravity="center"
                 android:text="L"
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="#FF141414" />
+                android:background="@drawable/mode_circle_inactive" />
         </LinearLayout>
 
         <!-- Debug (apagado) -->

@@ -209,7 +209,7 @@ class MainService : Service() {
 
         wm.addView(panelView, panelParams)
 
-        // IMPORTANTE: después de añadir la vista, posicionamos con proporciones
+        // Después de añadir la vista, posicionamos con proporciones
         panelView!!.post { positionOverlayNextToButton() }
     }
 
@@ -224,11 +224,12 @@ class MainService : Service() {
 
     /**
      * Posiciona el overlay:
-     * - 53% ancho pantalla
-     * - 20% alto pantalla
+     * - 55% ancho pantalla
+     * - 15% alto pantalla
      * - a la derecha del botón
      * - base alineada con la base del botón (crece hacia arriba)
      * - si se sale, empuja el GRUPO (botón+overlay) para que quepa
+     * - PEGADO al botón (sin margen)
      */
     private fun positionOverlayNextToButton() {
         val pv = panelView ?: return
@@ -239,19 +240,18 @@ class MainService : Service() {
         val bh = floatingView?.height ?: viewH
 
         // Tamaño overlay relativo a la pantalla
-        val overlayW = (screenW * 0.53f).toInt().coerceAtLeast(dp(180))
-        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(80))
+        val overlayW = (screenW * 0.55f).toInt().coerceAtLeast(dp(160))
+        val overlayH = (screenH * 0.15f).toInt().coerceAtLeast(dp(64))
 
         // Forzar tamaño del card por código
         val lp = FrameLayout.LayoutParams(overlayW, overlayH)
         lp.gravity = Gravity.TOP or Gravity.START
         card.layoutParams = lp
 
-        val margin = dp(10)
+        val margin = 0 // PEGADO
 
-        // Posición deseada (derecha + siempre arriba)
         fun desiredX(): Int = floatingParams.x + bw + margin
-        fun desiredY(): Int = (floatingParams.y + bh) - overlayH
+        fun desiredY(): Int = (floatingParams.y + bh) - overlayH // crece hacia arriba
 
         var x = desiredX()
         var y = desiredY()
@@ -274,7 +274,7 @@ class MainService : Service() {
             y = desiredY()
         }
 
-        // Seguridad final (por si algo extremo)
+        // Seguridad final
         x = x.coerceIn(0, (screenW - overlayW).coerceAtLeast(0))
         y = y.coerceIn(0, (screenH - overlayH).coerceAtLeast(0))
 
@@ -283,9 +283,9 @@ class MainService : Service() {
     }
 
     private fun setChipActive(tv: TextView, active: Boolean) {
-        // Activo: gris un poco más claro. Inactivo: más oscuro.
         tv.alpha = if (active) 1f else 0.85f
-        tv.setBackgroundColor(if (active) 0xFF2A2A2A.toInt() else 0xFF141414.toInt())
+        tv.setTextColor(if (active) 0xFFFFFFFF.toInt() else 0xFFBDBDBD.toInt())
+        tv.setBackgroundResource(if (active) R.drawable.mode_circle_active else R.drawable.mode_circle_inactive)
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
