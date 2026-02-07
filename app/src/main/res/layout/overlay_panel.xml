@@ -5,10 +5,10 @@
     android:layout_height="match_parent"
     android:background="#66000000">
 
-    <!-- CARD PRINCIPAL (TODO dentro) -->
+    <!-- CARD PRINCIPAL (tamaño se define por código usando % de pantalla) -->
     <LinearLayout
         android:id="@+id/panelCard"
-        android:layout_width="320dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:orientation="vertical"
@@ -19,13 +19,13 @@
         <TextView
             android:id="@+id/resultText"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:text=""
             android:textColor="#FFFFFF"
             android:textSize="16sp"
             android:lineSpacingExtra="4dp" />
 
-        <!-- Espacio -->
         <View
             android:layout_width="match_parent"
             android:layout_height="12dp" />
@@ -37,7 +37,6 @@
             android:orientation="horizontal"
             android:gravity="center">
 
-            <!-- W (activo por defecto visualmente) -->
             <TextView
                 android:id="@+id/modeW"
                 android:layout_width="0dp"
@@ -49,12 +48,10 @@
                 android:textColor="#FFFFFF"
                 android:background="#FF222222" />
 
-            <!-- Separador -->
             <View
                 android:layout_width="8dp"
                 android:layout_height="match_parent" />
 
-            <!-- L (inactivo visualmente) -->
             <TextView
                 android:id="@+id/modeL"
                 android:layout_width="0dp"
@@ -77,7 +74,6 @@
             android:textColor="#AAFFFFFF"
             android:visibility="gone"
             android:text="" />
-
     </LinearLayout>
 
 </FrameLayout>

@@ -9,6 +9,7 @@ import android.graphics.PixelFormat
 import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -17,6 +18,7 @@ import android.view.WindowManager
 import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class MainService : Service() {
 
@@ -202,28 +204,65 @@ class MainService : Service() {
         // Evita que el click en el card cierre el panel
         card.setOnClickListener { /* no-op */ }
 
-        // Posicionar el CARD cerca del botón (sin depender del XML)
+        // Posicionar el CARD cerca del botón usando % de pantalla
         panelView!!.post {
-            val fx = floatingParams.x
-            val fy = floatingParams.y
-            val bh = floatingView?.height ?: 0
-
-            // Medir card
-            card.measure(
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            )
-            val cw = card.measuredWidth
-            val ch = card.measuredHeight
-
-            // Asegurar screenW/screenH actualizados
+            // Asegurar tamaños actualizados
             updateScreenSize()
 
-            val maxX = (screenW - cw).coerceAtLeast(0)
-            val maxY = (screenH - ch).coerceAtLeast(0)
+            val fv = floatingView
+            val bw = fv?.width ?: viewW
+            val bh = fv?.height ?: viewH
 
-            val targetX = fx.coerceIn(0, maxX)
-            val targetY = (fy + bh).coerceIn(0, maxY)
+            // Porcentaje fijo acordado
+            val overlayW = (screenW * 0.45f).roundToInt()
+            val overlayH = (screenH * 0.25f).roundToInt()
+
+            // Aplicar tamaño al card
+            val lp = card.layoutParams
+            lp.width = overlayW
+            lp.height = overlayH
+            card.layoutParams = lp
+
+            // Separación entre botón y overlay (dp->px)
+            val gap = dpToPx(10)
+
+            // Base del botón (y) y lado derecho (x)
+            val buttonLeft = floatingParams.x
+            val buttonTop = floatingParams.y
+            val buttonRight = buttonLeft + bw
+            val buttonBottom = buttonTop + bh
+
+            // Overlay: a la derecha del botón, base alineada, crece hacia arriba
+            var targetX = buttonRight + gap
+            var targetY = buttonBottom - overlayH
+
+            // Clamp overlay dentro de pantalla (moviendo conjunto botón+overlay)
+            // 1) Si overlay se sale por la derecha -> mover conjunto a la izquierda
+            val overflowRight = (targetX + overlayW) - screenW
+            if (overflowRight > 0) {
+                floatingParams.x = (floatingParams.x - overflowRight).coerceAtLeast(0)
+                try { wm.updateViewLayout(floatingView, floatingParams) } catch (_: Throwable) {}
+                // recalcular con nuevo botón
+                val newLeft = floatingParams.x
+                val newRight = newLeft + bw
+                targetX = newRight + gap
+            }
+
+            // 2) Si overlay se sale por arriba -> mover conjunto hacia abajo
+            val overflowTop = 0 - targetY
+            if (overflowTop > 0) {
+                floatingParams.y = (floatingParams.y + overflowTop).coerceAtLeast(0)
+                try { wm.updateViewLayout(floatingView, floatingParams) } catch (_: Throwable) {}
+                val newTop = floatingParams.y
+                val newBottom = newTop + bh
+                targetY = newBottom - overlayH
+            }
+
+            // 3) Clamp final por seguridad (por si el botón está muy abajo)
+            val maxX = (screenW - overlayW).coerceAtLeast(0)
+            val maxY = (screenH - overlayH).coerceAtLeast(0)
+            targetX = targetX.coerceIn(0, maxX)
+            targetY = targetY.coerceIn(0, maxY)
 
             card.x = targetX.toFloat()
             card.y = targetY.toFloat()
@@ -268,6 +307,14 @@ class MainService : Service() {
             tv.setBackgroundColor(0x99000000.toInt())
             tv.alpha = 0.8f
         }
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp.toFloat(),
+            resources.displayMetrics
+        ).roundToInt()
     }
 
     private fun startForegroundInternal() {
