@@ -14,7 +14,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.Switch
 import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
@@ -168,36 +167,32 @@ class MainService : Service() {
         val root = panelView!!.findViewById<View>(R.id.panelRoot)
         val card = panelView!!.findViewById<View>(R.id.panelCard)
 
-        val toggleW = panelView!!.findViewById<Switch>(R.id.toggleW)
-        val toggleL = panelView!!.findViewById<Switch>(R.id.toggleL)
+        // Chips W/L
+        val modeW = panelView!!.findViewById<TextView>(R.id.modeW)
+        val modeL = panelView!!.findViewById<TextView>(R.id.modeL)
 
-        // Placeholder temporal: mientras NO existe captura/FEN/análisis.
-        // Esto fuerza a que el panel grande sea visible.
-        setResult(
-            "CHESZ listo\n\n(Tap fuera para cerrar)\n\nW: online (default)\nL: local (manual)\n\nPaso 3 (captura→FEN) aún NO implementado."
-        )
+        // Overlay limpio (sin mensajes)
+        setResult(null)
 
-        // Estado inicial
-        toggleW.isChecked = true
-        toggleL.isChecked = false
+        // Estado inicial: W activo
         mode = Mode.W
+        setChipActive(modeW, true)
+        setChipActive(modeL, false)
 
-        // Exclusión W/L (sin imprimir mensajes)
-        toggleW.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                if (toggleL.isChecked) toggleL.isChecked = false
+        // Exclusión W/L por taps
+        modeW.setOnClickListener {
+            if (mode != Mode.W) {
                 mode = Mode.W
-            } else {
-                if (!toggleL.isChecked) toggleW.isChecked = true
+                setChipActive(modeW, true)
+                setChipActive(modeL, false)
             }
         }
 
-        toggleL.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                if (toggleW.isChecked) toggleW.isChecked = false
+        modeL.setOnClickListener {
+            if (mode != Mode.L) {
                 mode = Mode.L
-            } else {
-                if (!toggleW.isChecked) toggleL.isChecked = true
+                setChipActive(modeL, true)
+                setChipActive(modeW, false)
             }
         }
 
@@ -261,6 +256,17 @@ class MainService : Service() {
         } else {
             tv.text = clean
             tv.visibility = View.VISIBLE
+        }
+    }
+
+    // Visual simple para chips (negro): activo más claro, inactivo más oscuro
+    private fun setChipActive(tv: TextView, active: Boolean) {
+        if (active) {
+            tv.setBackgroundColor(0xFF222222.toInt())
+            tv.alpha = 1f
+        } else {
+            tv.setBackgroundColor(0x99000000.toInt())
+            tv.alpha = 0.8f
         }
     }
 
