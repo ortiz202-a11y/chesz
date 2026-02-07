@@ -45,7 +45,7 @@
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="@drawable/chip_mode_inactive"
+                android:background="@drawable/chip_mode_inactive" />
 
             <View
                 android:layout_width="14dp"
@@ -60,7 +60,7 @@
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
-                android:background="@drawable/chip_mode_inactive"
+                android:background="@drawable/chip_mode_inactive" />
         </LinearLayout>
 
         <!-- Debug (apagado) -->
