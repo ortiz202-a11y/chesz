@@ -177,7 +177,7 @@ class MainService : Service() {
         // Placeholder temporal: mientras NO existe captura/FEN/análisis.
         // Esto fuerza a que el panel grande sea visible.
            setResult("CHESZ listo\n\n(Tap fuera para cerrar)\n\nW: online (default)\nL: local (manual)\n\nPaso 3 (captura→FEN) aún NO implementado.")setResult(null)
-
+	yyy
         // Estado inicial
         toggleW.isChecked = true
         toggleL.isChecked = false
@@ -263,8 +263,24 @@ panelView!!.post {
             tv.visibility = View.VISIBLE
         }
     }
+/**
+     * UI limpia: aquí SOLO mostramos el resultado final o placeholder.
+     * Si msg está vacío => ocultamos el TextView.
+     */
+    private fun setResult(msg: String?) {
+        val pv = panelView ?: return
+        val tv = pv.findViewById<TextView>(R.id.resultText) ?: return
 
-    private fun startForegroundInternal() {
+        val clean = msg?.trim().orEmpty()
+        if (clean.isEmpty()) {
+            tv.text = ""
+            tv.visibility = View.GONE
+        } else {
+            tv.text = clean
+            tv.visibility = View.VISIBLE
+        }
+    }
+    private fun startForegrotundInternal() {
         val channelId = "chesz_core_service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
