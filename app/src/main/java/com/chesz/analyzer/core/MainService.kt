@@ -144,7 +144,6 @@ class MainService : Service() {
     }
 
     private fun showPanel() {
-
         val wm = windowManager ?: return
         if (panelView != null) return
 
@@ -172,12 +171,12 @@ class MainService : Service() {
         val toggleW = panelView!!.findViewById<Switch>(R.id.toggleW)
         val toggleL = panelView!!.findViewById<Switch>(R.id.toggleL)
 
-        // IMPORTANTE: UI limpia => no mostramos "modo", "listo", etc.
-        // Solo mostraremos resultado final cuando exista (más adelante).
         // Placeholder temporal: mientras NO existe captura/FEN/análisis.
         // Esto fuerza a que el panel grande sea visible.
-           setResult("CHESZ listo\n\n(Tap fuera para cerrar)\n\nW: online (default)\nL: local (manual)\n\nPaso 3 (captura→FEN) aún NO implementado.")setResult(null)
-	yyy
+        setResult(
+            "CHESZ listo\n\n(Tap fuera para cerrar)\n\nW: online (default)\nL: local (manual)\n\nPaso 3 (captura→FEN) aún NO implementado."
+        )
+
         // Estado inicial
         toggleW.isChecked = true
         toggleL.isChecked = false
@@ -208,32 +207,33 @@ class MainService : Service() {
         // Evita que el click en el card cierre el panel
         card.setOnClickListener { /* no-op */ }
 
-// Posicionar el CARD cerca del botón (sin depender del XML)
-panelView!!.post {
-    val fx = floatingParams.x
-    val fy = floatingParams.y
-    val bh = floatingView?.height ?: 0
+        // Posicionar el CARD cerca del botón (sin depender del XML)
+        panelView!!.post {
+            val fx = floatingParams.x
+            val fy = floatingParams.y
+            val bh = floatingView?.height ?: 0
 
-    // Medir card
-    card.measure(
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-    )
-    val cw = card.measuredWidth
-    val ch = card.measuredHeight
+            // Medir card
+            card.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            val cw = card.measuredWidth
+            val ch = card.measuredHeight
 
-    // Asegurar screenW/screenH actualizados
-    updateScreenSize()
+            // Asegurar screenW/screenH actualizados
+            updateScreenSize()
 
-    val maxX = (screenW - cw).coerceAtLeast(0)
-    val maxY = (screenH - ch).coerceAtLeast(0)
+            val maxX = (screenW - cw).coerceAtLeast(0)
+            val maxY = (screenH - ch).coerceAtLeast(0)
 
-    val targetX = fx.coerceIn(0, maxX)
-    val targetY = (fy + bh).coerceIn(0, maxY)
+            val targetX = fx.coerceIn(0, maxX)
+            val targetY = (fy + bh).coerceIn(0, maxY)
 
-    card.x = targetX.toFloat()
-    card.y = targetY.toFloat()
-}
+            card.x = targetX.toFloat()
+            card.y = targetY.toFloat()
+        }
+
         wm.addView(panelView, panelParams)
     }
 
@@ -263,24 +263,8 @@ panelView!!.post {
             tv.visibility = View.VISIBLE
         }
     }
-/**
-     * UI limpia: aquí SOLO mostramos el resultado final o placeholder.
-     * Si msg está vacío => ocultamos el TextView.
-     */
-    private fun setResult(msg: String?) {
-        val pv = panelView ?: return
-        val tv = pv.findViewById<TextView>(R.id.resultText) ?: return
 
-        val clean = msg?.trim().orEmpty()
-        if (clean.isEmpty()) {
-            tv.text = ""
-            tv.visibility = View.GONE
-        } else {
-            tv.text = clean
-            tv.visibility = View.VISIBLE
-        }
-    }
-    private fun startForegrotundInternal() {
+    private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
