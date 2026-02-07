@@ -3,70 +3,80 @@
     android:id="@+id/panelRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#59000000">
+    android:background="#66000000">
 
-    <!-- Zona grande para mostrar SOLO resultado final (recomendación / error real) -->
-    <TextView
-        android:id="@+id/resultText"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="18dp"
-        android:text=""
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:gravity="top|start" />
-
-    <!-- Barra inferior compacta -->
+    <!-- CARD PRINCIPAL (TODO dentro) -->
     <LinearLayout
         android:id="@+id/panelCard"
-        android:layout_width="wrap_content"
+        android:layout_width="320dp"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:orientation="horizontal"
-        android:padding="6dp"
+        android:orientation="vertical"
+        android:padding="16dp"
         android:background="#CC000000">
 
-        <!-- W -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        <!-- Área de RESULTADO (único contenido visible para usuario final) -->
+        <TextView
+            android:id="@+id/resultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:lineSpacingExtra="4dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="W"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:layout_marginEnd="8dp" />
+        <!-- Espacio -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="12dp" />
 
-            <Switch
-                android:id="@+id/toggleW"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-
-        <!-- L -->
+        <!-- Selector de MODO (W / L) - estilo chip -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical|end">
+            android:gravity="center">
 
+            <!-- W (activo por defecto visualmente) -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="L"
-                android:textColor="#FFFFFF"
+                android:id="@+id/modeW"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="W"
                 android:textStyle="bold"
-                android:layout_marginEnd="8dp" />
+                android:textColor="#FFFFFF"
+                android:background="#FF222222" />
 
-            <Switch
-                android:id="@+id/toggleL"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+            <!-- Separador -->
+            <View
+                android:layout_width="8dp"
+                android:layout_height="match_parent" />
+
+            <!-- L (inactivo visualmente) -->
+            <TextView
+                android:id="@+id/modeL"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="L"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="#99000000" />
         </LinearLayout>
+
+        <!-- DEBUG (apagado por defecto) -->
+        <TextView
+            android:id="@+id/debugText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            android:textColor="#AAFFFFFF"
+            android:visibility="gone"
+            android:text="" />
 
     </LinearLayout>
 
