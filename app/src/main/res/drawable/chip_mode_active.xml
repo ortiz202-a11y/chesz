@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base circular oscura + aro verde medio -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FF0B0B0B"/>
+            <stroke android:width="2dp" android:color="#FF2FAE5A"/>
+            <size android:width="44dp" android:height="44dp"/>
+        </shape>
+    </item>
+
+    <!-- Punto central verde oscuro -->
+    <item android:width="16dp" android:height="16dp" android:gravity="center">
+        <shape android:shape="oval">
+            <solid android:color="#FF1F6B3A"/>
+        </shape>
+    </item>
+
+</layer-list>

@@ -240,8 +240,8 @@ class MainService : Service() {
         val bh = floatingView?.height ?: viewH
 
         // Tamaño overlay relativo a la pantalla
-        val overlayW = (screenW * 0.55f).toInt().coerceAtLeast(dp(160))
-        val overlayH = (screenH * 0.15f).toInt().coerceAtLeast(dp(64))
+        val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
+        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
 
         // Forzar tamaño del card por código
         val lp = FrameLayout.LayoutParams(overlayW, overlayH)
@@ -283,12 +283,11 @@ class MainService : Service() {
     }
 
     private fun setChipActive(tv: TextView, active: Boolean) {
-        tv.alpha = if (active) 1f else 0.85f
-        tv.setTextColor(if (active) 0xFFFFFFFF.toInt() else 0xFFBDBDBD.toInt())
-        tv.setBackgroundResource(if (active) R.drawable.mode_circle_active else R.drawable.mode_circle_inactive)
+        tv.alpha = if (active) 1f else 0.90f
+        tv.setBackgroundResource(if (active) R.drawable.chip_mode_active else R.drawable.chip_mode_inactive)
     }
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     /**
      * Solo resultado final (más adelante).

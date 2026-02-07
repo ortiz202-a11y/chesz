@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:orientation="vertical"
-        android:padding="10dp"
+        android:padding="6dp"
         android:background="#99000000">
 
         <!-- Resultado final (oculto por defecto) -->
@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="0dp">
 
             <TextView
                 android:id="@+id/modeW"
@@ -45,6 +45,7 @@
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
+                android:background="@drawable/chip_mode_inactive"
                 android:background="@drawable/mode_circle_active" />
 
             <View
@@ -60,6 +61,7 @@
                 android:textStyle="bold"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
+                android:background="@drawable/chip_mode_inactive"
                 android:background="@drawable/mode_circle_inactive" />
         </LinearLayout>
 
