@@ -143,8 +143,8 @@ class MainService : Service() {
         if (panelView == null) showPanel() else hidePanel()
     }
 
-    private fun showPanel
- {
+    private fun showPanel() {
+
         val wm = windowManager ?: return
         if (panelView != null) return
 
