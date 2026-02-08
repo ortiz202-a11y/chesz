@@ -108,13 +108,12 @@ class MainService : Service() {
                     }
                     true
                 }
-
-                MotionEvent.ACTION_UP -> {
+                   togglePanel()
                     val dx = abs(event.rawX - initialTouchX)
                     val dy = abs(event.rawY - initialTouchY)
 
                     if (dx < 10 && dy < 10) {
-                        if (panelView == null) showPanel() else positionOverlayNextToButton()
+                        togglePanel()
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
                     }
@@ -134,19 +133,24 @@ class MainService : Service() {
             clampAndUpdate()
         }
     }
-
-    private fun removeFloatingButton() {
-        try {
-            floatingView?.let { windowManager?.removeView(it) }
-        } catch (_: Throwable) {
-        } finally {
-            floatingView = null
-        }
+private fun removeFloatingButton() {
+    try {
+        floatingView?.let { windowManager?.removeView(it) }
+    } catch (_: Throwable) {
+    } finally {
+        floatingView = null
     }
+}
 
-    private fun if (panelView == null) showPanel() else positionOverlayNextToButton() {
-        if (panelView == null) showPanel() else hidePanel()
+private fun togglePanel() {
+    if (panelView == null) {
+        showPanel()
+    } else {
+        hidePanel()
+        // si luego quieres reubicar en vez de cerrar:
+        // positionOverlayNextToButton()
     }
+}
 
     private fun showPanel() {
         val wm = windowManager ?: return
