@@ -158,7 +158,7 @@ class MainService : Service() {
             else
                 WindowManager.LayoutParams.TYPE_PHONE
 
-        // Panel NO fullscreen: tamaño overlay (permite arrastrar el botón con overlay abierto)
+        // Panel NO fullscreen: tamaño overlay (no bloquea arrastrar el botón debajo)
         updateScreenSize()
         val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
         val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
@@ -176,7 +176,7 @@ class MainService : Service() {
 
         panelView = LayoutInflater.from(this).inflate(R.layout.overlay_panel, null)
 
-        // Tap fuera del overlay => cerrar (sin bloquear al botón debajo)
+        // Tap fuera del overlay => cerrar
         panelView!!.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) {
                 hidePanel()
@@ -205,7 +205,6 @@ class MainService : Service() {
                 setChipActive(modeLView, false)
             }
         }
-
         modeLView.setOnClickListener {
             if (mode != Mode.L) {
                 mode = Mode.L
@@ -213,6 +212,7 @@ class MainService : Service() {
                 setChipActive(modeWView, false)
             }
         }
+
         wm.addView(panelView, panelParams)
 
         // Después de añadir la vista, posicionamos con proporciones
