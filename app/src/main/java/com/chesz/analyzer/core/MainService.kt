@@ -114,7 +114,7 @@ class MainService : Service() {
                     val dy = abs(event.rawY - initialTouchY)
 
                     if (dx < 10 && dy < 10) {
-                        togglePanel()
+                        if (panelView == null) showPanel() else positionOverlayNextToButton()
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
                     }
@@ -144,7 +144,7 @@ class MainService : Service() {
         }
     }
 
-    private fun togglePanel() {
+    private fun if (panelView == null) showPanel() else positionOverlayNextToButton() {
         if (panelView == null) showPanel() else hidePanel()
     }
 
@@ -158,20 +158,32 @@ class MainService : Service() {
             else
                 WindowManager.LayoutParams.TYPE_PHONE
 
-        // Panel full-screen, clickeable (sin robar foco)
+        // Panel NO fullscreen: tamaño overlay (permite arrastrar el botón con overlay abierto)
+        updateScreenSize()
+        val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
+        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
+
         panelParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            overlayW,
+            overlayH,
             layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         )
         panelParams.gravity = Gravity.TOP or Gravity.START
 
         panelView = LayoutInflater.from(this).inflate(R.layout.overlay_panel, null)
 
-        val root = panelView!!.findViewById<View>(R.id.panelRoot)
-        val card = panelView!!.findViewById<View>(R.id.panelCard)
+        // Tap fuera del overlay => cerrar (sin bloquear al botón debajo)
+        panelView!!.setOnTouchListener { _, ev ->
+            if (ev.action == MotionEvent.ACTION_OUTSIDE) {
+                hidePanel()
+                return@setOnTouchListener true
+            }
+            false
+        }
 
         // Chips W/L (TextView)
         val modeWView = panelView!!.findViewById<TextView>(R.id.modeW)
@@ -201,12 +213,6 @@ class MainService : Service() {
                 setChipActive(modeWView, false)
             }
         }
-
-        // Tocar fuera del card => cerrar
-        root.setOnClickListener { hidePanel() }
-        // Click dentro no cierra
-        card.setOnClickListener { /* no-op */ }
-
         wm.addView(panelView, panelParams)
 
         // Después de añadir la vista, posicionamos con proporciones

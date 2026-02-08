@@ -10,6 +10,8 @@ import com.chesz.analyzer.core.MainService
 
 class MainActivity : Activity() {
 
+    private val REQ_OVERLAY = 1001
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         checkOverlayPermission()
@@ -17,8 +19,17 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // 🔑 CLAVE: al volver del permiso, re-evaluar
+        // Al volver de Settings, si ya hay permiso, arrancar servicio y cerrar Activity
         if (Settings.canDrawOverlays(this)) {
+            startFloatingService()
+            finish()
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_OVERLAY && Settings.canDrawOverlays(this)) {
             startFloatingService()
             finish()
         }
@@ -30,7 +41,7 @@ class MainActivity : Activity() {
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
-            startActivity(intent)
+            startActivityForResult(intent, REQ_OVERLAY)
         } else {
             startFloatingService()
             finish()
