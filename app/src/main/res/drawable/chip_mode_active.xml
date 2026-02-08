@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Base circular oscura + aro verde medio -->
+    <!-- Base circular oscura + aro verde -->
     <item>
         <shape android:shape="oval">
             <solid android:color="#FF0B0B0B"/>
@@ -10,8 +10,11 @@
         </shape>
     </item>
 
-    <!-- Punto central verde oscuro -->
-    <item android:width="16dp" android:height="16dp" android:gravity="center">
+    <!-- Punto central verde (más grande, casi al aro) -->
+    <item
+        android:width="26dp"
+        android:height="26dp"
+        android:gravity="center">
         <shape android:shape="oval">
             <solid android:color="#FF1F6B3A"/>
         </shape>
