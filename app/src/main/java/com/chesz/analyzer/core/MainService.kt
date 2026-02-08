@@ -87,42 +87,42 @@ class MainService : Service() {
 
         val root = floatingView!!.findViewById<View>(R.id.floatingRoot)
 
-        root.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = floatingParams.x
-                    initialY = floatingParams.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    true
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    floatingParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                    floatingParams.y = initialY + (event.rawY - initialTouchY).toInt()
-                    clampAndUpdate()
-
-                    // Si el panel está abierto, reposicionarlo en vivo
-                    if (panelView != null) {
-                        positionOverlayNextToButton()
-                    }
-                    true
-                }
-                   togglePanel()
-                    val dx = abs(event.rawX - initialTouchX)
-                    val dy = abs(event.rawY - initialTouchY)
-
-                    if (dx < 10 && dy < 10) {
-                        togglePanel()
-                        root.alpha = 0.5f
-                        root.postDelayed({ root.alpha = 1f }, 120)
-                    }
-                    true
-                }
-
-                else -> false
-            }
+root.setOnTouchListener { _, event ->
+    when (event.action) {
+        MotionEvent.ACTION_DOWN -> {
+            initialX = floatingParams.x
+            initialY = floatingParams.y
+            initialTouchX = event.rawX
+            initialTouchY = event.rawY
+            true
         }
+
+        MotionEvent.ACTION_MOVE -> {
+            floatingParams.x = initialX + (event.rawX - initialTouchX).toInt()
+            floatingParams.y = initialY + (event.rawY - initialTouchY).toInt()
+            clampAndUpdate()
+
+            if (panelView != null) {
+                positionOverlayNextToButton()
+            }
+            true
+        }
+
+        MotionEvent.ACTION_UP -> {
+            val dx = abs(event.rawX - initialTouchX)
+            val dy = abs(event.rawY - initialTouchY)
+
+            if (dx < 10 && dy < 10) {
+                togglePanel()
+                root.alpha = 0.5f
+                root.postDelayed({ root.alpha = 1f }, 120)
+            }
+            true
+        }
+
+        else -> false
+    }
+}
 
         windowManager?.addView(floatingView, floatingParams)
 
