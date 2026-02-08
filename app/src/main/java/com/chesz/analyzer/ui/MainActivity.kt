@@ -6,59 +6,43 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import com.chesz.analyzer.core.MainService
 
 class MainActivity : Activity() {
 
-    private val REQ_OVERLAY = 1001
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (!canDrawOverlays()) {
-            Toast.makeText(this, "Activa permiso de superposición (overlay) para chesz", Toast.LENGTH_LONG).show()
-            requestOverlayPermission()
-            return
-        }
-
-        startCoreService()
-        finish()
+        checkOverlayPermission()
     }
 
     override fun onResume() {
         super.onResume()
-        // Cuando vuelves de Settings, revisa otra vez.
-        if (canDrawOverlays()) {
-            startCoreService()
+        // 🔑 CLAVE: al volver del permiso, re-evaluar
+        if (Settings.canDrawOverlays(this)) {
+            startFloatingService()
             finish()
         }
     }
 
-    private fun canDrawOverlays(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(this)
-        } else {
-            true
-        }
-    }
-
-    private fun requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+    private fun checkOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
-            startActivityForResult(intent, REQ_OVERLAY)
+            startActivity(intent)
+        } else {
+            startFloatingService()
+            finish()
         }
     }
 
-    private fun startCoreService() {
-        val i = Intent(this, MainService::class.java)
+    private fun startFloatingService() {
+        val intent = Intent(this, MainService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(i)
+            startForegroundService(intent)
         } else {
-            startService(i)
+            startService(intent)
         }
     }
 }
