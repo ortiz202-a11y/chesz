@@ -342,8 +342,9 @@ class MainService : Service() {
     }
 
     private fun expandToFullscreenKeepingButton() {
-        val root = overlayView ?: return
+val root = overlayView ?: return
         val btn = floatingRoot ?: return
+        btn.visibility = View.INVISIBLE
         // Guardar posición actual de ventana (cuando estaba WRAP)
         val winX = overlayParams.x
         val winY = overlayParams.y
@@ -358,12 +359,15 @@ class MainService : Service() {
         // Mantener botón en la misma posición de pantalla
         btn.x = winX.toFloat()
         btn.y = winY.toFloat()
+        btn.post { btn.visibility = View.VISIBLE }
+
     }
 
     private fun shrinkToWrapKeepingButton() {
-        val root = overlayView ?: return
+val root = overlayView ?: return
         val btn = floatingRoot ?: return
 
+        btn.visibility = View.INVISIBLE
         // Convertir posición del botón (en pantalla) a posición de ventana
         val winX = btn.x.toInt()
         val winY = btn.y.toInt()
@@ -377,6 +381,8 @@ class MainService : Service() {
         overlayParams.x = winX
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
+        btn.post { btn.visibility = View.VISIBLE }
+
     }
 
     private fun startForegroundInternal() {
