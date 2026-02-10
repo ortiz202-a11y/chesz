@@ -49,6 +49,8 @@ class MainService : Service() {
     private var initialTouchY = 0f
     private var startX = 0f
     private var startY = 0f
+    private var startWinX = 0
+    private var startWinY = 0
 
     // Pantalla
     private var screenW = 0
@@ -83,15 +85,15 @@ class MainService : Service() {
 
         // Root full-screen para contener panel y botón en la MISMA ventana (Word)
         overlayParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             layoutType,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         )
         overlayParams.gravity = Gravity.TOP or Gravity.START
         overlayParams.x = 0
-        overlayParams.y = 0
+        overlayParams.y = dp(300)
 
         overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_root, null)
 
@@ -133,7 +135,7 @@ class MainService : Service() {
 
         // Posición inicial del botón
         floatingRoot?.x = 0f
-        floatingRoot?.y = dp(300).toFloat()
+        floatingRoot?.y = 0f
 
         // Touch del botón: drag vs tap
                 val touchListener = View.OnTouchListener { v, event ->
@@ -142,8 +144,10 @@ class MainService : Service() {
                     isDragging = false
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
-                    startX = floatingRoot?.x ?: v.x
-                    startY = floatingRoot?.y ?: v.y
+                    startWinX = overlayParams.x
+                    startWinY = overlayParams.y
+                    startX = (floatingRoot?.x ?: v.x)
+                    startY = (floatingRoot?.y ?: v.y)
                     true
                 }
 
@@ -154,18 +158,34 @@ class MainService : Service() {
                         isDragging = true
                     }
 
-                    val nx = startX + (event.rawX - initialTouchX)
-                    val ny = startY + (event.rawY - initialTouchY)
-
                     updateScreenSize()
-                    val target = floatingRoot ?: v
-                    val vw = target.width.toFloat().coerceAtLeast(1f)
-                    val vh = target.height.toFloat().coerceAtLeast(1f)
-                    target.x = nx.coerceIn(0f, (screenW - vw).coerceAtLeast(0f))
-                    target.y = ny.coerceIn(0f, (screenH - vh).coerceAtLeast(0f))
 
+                    // Si panel está abierto (full-screen), movemos la vista del botón dentro del root.
+                    // Si panel está cerrado (wrap), movemos la ventana (overlayParams) para NO bloquear el teléfono.
                     if (panelRoot?.visibility == View.VISIBLE) {
+                        val nx = startX + (event.rawX - initialTouchX)
+                        val ny = startY + (event.rawY - initialTouchY)
+
+                        val target = floatingRoot ?: v
+                        val vw = target.width.toFloat().coerceAtLeast(1f)
+                        val vh = target.height.toFloat().coerceAtLeast(1f)
+                        target.x = nx.coerceIn(0f, (screenW - vw).coerceAtLeast(0f))
+                        target.y = ny.coerceIn(0f, (screenH - vh).coerceAtLeast(0f))
+
                         positionOverlayNextToButton()
+                    } else {
+                        // mover ventana
+                        val nx = startWinX + (event.rawX - initialTouchX).toInt()
+                        val ny = startWinY + (event.rawY - initialTouchY).toInt()
+
+                        val btnw = (floatingRoot?.width ?: v.width).coerceAtLeast(dp(56)).toFloat()
+                        val btnh = (floatingRoot?.height ?: v.height).coerceAtLeast(dp(56)).toFloat()
+
+                        overlayParams.x = nx.coerceIn(0, (screenW - btnw).toInt().coerceAtLeast(0))
+                        overlayParams.y = ny.coerceIn(0, (screenH - btnh).toInt().coerceAtLeast(0))
+                        overlayParams.width = WindowManager.LayoutParams.WRAP_CONTENT
+                        overlayParams.height = WindowManager.LayoutParams.WRAP_CONTENT
+                        windowManager?.updateViewLayout(overlayView, overlayParams)
                     }
                     true
                 }
@@ -225,12 +245,14 @@ class MainService : Service() {
     }
 
     private fun showPanel() {
+        expandToFullscreenKeepingButton()
         panelRoot?.visibility = View.VISIBLE
         positionOverlayNextToButton()
     }
 
     private fun hidePanel() {
         panelRoot?.visibility = View.GONE
+        shrinkToWrapKeepingButton()
     }
 
     /**
@@ -317,6 +339,44 @@ class MainService : Service() {
             screenW = p.x
             screenH = p.y
         }
+    }
+
+    private fun expandToFullscreenKeepingButton() {
+        val root = overlayView ?: return
+        val btn = floatingRoot ?: return
+        // Guardar posición actual de ventana (cuando estaba WRAP)
+        val winX = overlayParams.x
+        val winY = overlayParams.y
+
+        // Expandir ventana a pantalla completa
+        overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
+        overlayParams.height = WindowManager.LayoutParams.MATCH_PARENT
+        overlayParams.x = 0
+        overlayParams.y = 0
+        windowManager?.updateViewLayout(root, overlayParams)
+
+        // Mantener botón en la misma posición de pantalla
+        btn.x = winX.toFloat()
+        btn.y = winY.toFloat()
+    }
+
+    private fun shrinkToWrapKeepingButton() {
+        val root = overlayView ?: return
+        val btn = floatingRoot ?: return
+
+        // Convertir posición del botón (en pantalla) a posición de ventana
+        val winX = btn.x.toInt()
+        val winY = btn.y.toInt()
+
+        // Reset botón dentro de ventana WRAP (origen 0,0)
+        btn.x = 0f
+        btn.y = 0f
+
+        overlayParams.width = WindowManager.LayoutParams.WRAP_CONTENT
+        overlayParams.height = WindowManager.LayoutParams.WRAP_CONTENT
+        overlayParams.x = winX
+        overlayParams.y = winY
+        windowManager?.updateViewLayout(root, overlayParams)
     }
 
     private fun startForegroundInternal() {
