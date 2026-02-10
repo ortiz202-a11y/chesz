@@ -344,17 +344,25 @@ private fun expandToFullscreenKeepingButton() {
 
         updateScreenSize()
 
-        // WRAP: posición de ventana -> clamp explícito
         val bw = btn.width.coerceAtLeast(dp(56))
         val bh = btn.height.coerceAtLeast(dp(56))
         val maxX = (screenW - bw).coerceAtLeast(0)
         val maxY = (screenH - bh).coerceAtLeast(0)
-        val winX = overlayParams.x.coerceIn(0, maxX)
-        val winY = overlayParams.y.coerceIn(0, maxY)
 
-        // IMPORTANT: fijar posición final del botón ANTES de expandir (evita frame en 0,0)
-        btn.x = winX.toFloat()
-        btn.y = winY.toFloat()
+        // Clamp explícito de la posición WRAP (evita corrección tardía del sistema)
+        val clampedX = overlayParams.x.coerceIn(0, maxX)
+        val clampedY = overlayParams.y.coerceIn(0, maxY)
+
+        // Si está fuera de rango, primero corrige WRAP (antes de expandir)
+        if (clampedX != overlayParams.x || clampedY != overlayParams.y) {
+            overlayParams.x = clampedX
+            overlayParams.y = clampedY
+            windowManager?.updateViewLayout(root, overlayParams)
+        }
+
+        // IMPORTANTE: fijar posición final del botón ANTES de expandir
+        btn.x = overlayParams.x.toFloat()
+        btn.y = overlayParams.y.toFloat()
 
         // Expandir a FULL y fijar ventana en (0,0)
         overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
@@ -378,16 +386,16 @@ private fun shrinkToWrapKeepingButton() {
         val winX = btn.x.toInt().coerceIn(0, maxX)
         val winY = btn.y.toInt().coerceIn(0, maxY)
 
-        // Volver botón al origen dentro de la ventana WRAP
-        btn.x = 0f
-        btn.y = 0f
-
-        // Encoger ventana a WRAP y colocarla donde estaba el botón
+        // 1) Primero: encoger ventana a WRAP y moverla
         overlayParams.width = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.height = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.x = winX
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
+
+        // 2) Después: resetear el botón al origen (ya dentro de la ventana WRAP)
+        btn.x = 0f
+        btn.y = 0f
     }
 
     private fun startForegroundInternal() {
