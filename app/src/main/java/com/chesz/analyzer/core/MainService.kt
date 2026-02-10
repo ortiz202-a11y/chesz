@@ -197,8 +197,6 @@ class MainService : Service() {
                     if (!isDragging && dx < 10 && dy < 10) {
                         togglePanel()
                         val target = floatingRoot ?: v
-                        target.alpha = 0.5f
-                        target.postDelayed({ target.alpha = 1f }, 120)
                     }
                     isDragging = false
                     true
@@ -345,6 +343,7 @@ class MainService : Service() {
     private fun expandToFullscreenKeepingButton() {
 val root = overlayView ?: return
         val btn = floatingRoot ?: return
+        overlayView?.visibility = View.INVISIBLE
         btn.visibility = View.INVISIBLE
         // Guardar posición actual de ventana (cuando estaba WRAP)
         val winX = overlayParams.x
@@ -367,7 +366,7 @@ val root = overlayView ?: return
     private fun shrinkToWrapKeepingButton() {
 val root = overlayView ?: return
         val btn = floatingRoot ?: return
-
+        overlayView?.visibility = View.INVISIBLE
         btn.visibility = View.INVISIBLE
         // Convertir posición del botón (en pantalla) a posición de ventana
         val winX = btn.x.toInt()
@@ -388,7 +387,11 @@ val root = overlayView ?: return
 
     
     private fun showAfterNextDraw(v: View) {
-        val root = overlayView ?: run { v.visibility = View.VISIBLE; return }
+        val root = overlayView
+        if (root == null) {
+            v.visibility = View.VISIBLE
+            return
+        }
         val vto = root.viewTreeObserver
         vto.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
@@ -397,12 +400,12 @@ val root = overlayView ?: return
                         root.viewTreeObserver.removeOnPreDrawListener(this)
                     }
                 } catch (_: Throwable) {}
+                root.visibility = View.VISIBLE
                 v.visibility = View.VISIBLE
                 return true
             }
         })
     }
-
 private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
