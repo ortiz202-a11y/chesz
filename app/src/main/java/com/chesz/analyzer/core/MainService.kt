@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -359,7 +360,7 @@ val root = overlayView ?: return
         // Mantener botón en la misma posición de pantalla
         btn.x = winX.toFloat()
         btn.y = winY.toFloat()
-        btn.post { btn.visibility = View.VISIBLE }
+        showAfterNextDraw(btn)
 
     }
 
@@ -381,11 +382,28 @@ val root = overlayView ?: return
         overlayParams.x = winX
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
-        btn.post { btn.visibility = View.VISIBLE }
+        showAfterNextDraw(btn)
 
     }
 
-    private fun startForegroundInternal() {
+    
+    private fun showAfterNextDraw(v: View) {
+        val root = overlayView ?: run { v.visibility = View.VISIBLE; return }
+        val vto = root.viewTreeObserver
+        vto.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                try {
+                    if (root.viewTreeObserver.isAlive) {
+                        root.viewTreeObserver.removeOnPreDrawListener(this)
+                    }
+                } catch (_: Throwable) {}
+                v.visibility = View.VISIBLE
+                return true
+            }
+        })
+    }
+
+private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
