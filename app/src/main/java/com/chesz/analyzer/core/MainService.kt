@@ -185,6 +185,8 @@ class MainService : Service() {
 
         panelView = LayoutInflater.from(this).inflate(R.layout.overlay_panel, null)
 
+
+        panelView!!.visibility = View.INVISIBLE
         val root = panelView!!.findViewById<View>(R.id.panelRoot)
         val card = panelView!!.findViewById<View>(R.id.panelCard)
 
@@ -225,8 +227,7 @@ class MainService : Service() {
         wm.addView(panelView, panelParams)
 
         // Después de añadir la vista, posicionamos con proporciones
-        panelView!!.post { positionOverlayNextToButton() }
-    }
+        panelView!!.post { positionOverlayNextToButton(); panelView!!.visibility = View.VISIBLE }}
 
     private fun hidePanel() {
         try {
