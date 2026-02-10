@@ -30,6 +30,7 @@ class MainService : Service() {
 
     // Referencias internas (hijos)
     private var floatingRoot: View? = null
+    private var btnView: View? = null
     private var panelRoot: View? = null
     private var panelCard: View? = null
 
@@ -99,6 +100,7 @@ class MainService : Service() {
         panelCard = overlayView!!.findViewById(R.id.panelCard)
         floatingRoot = overlayView!!.findViewById(R.id.floatingRoot)
 
+        btnView = overlayView!!.findViewById(R.id.btn)
         modeWView = overlayView!!.findViewById(R.id.modeW)
         modeLView = overlayView!!.findViewById(R.id.modeL)
 
@@ -134,20 +136,20 @@ class MainService : Service() {
         floatingRoot?.y = dp(300).toFloat()
 
         // Touch del botón: drag vs tap
-        floatingRoot?.setOnTouchListener { v, event ->
+                val touchListener = View.OnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     isDragging = false
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
-                    startX = v.x
-                    startY = v.y
+                    startX = floatingRoot?.x ?: v.x
+                    startY = floatingRoot?.y ?: v.y
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = abs(event.rawX - initialTouchX)
-                    val dy = abs(event.rawY - initialTouchY)
+                    val dx = kotlin.math.abs(event.rawX - initialTouchX)
+                    val dy = kotlin.math.abs(event.rawY - initialTouchY)
                     if (!isDragging && (dx > touchSlop || dy > touchSlop)) {
                         isDragging = true
                     }
@@ -156,11 +158,11 @@ class MainService : Service() {
                     val ny = startY + (event.rawY - initialTouchY)
 
                     updateScreenSize()
-                    // Clamp botón dentro de pantalla
-                    val vw = v.width.toFloat().coerceAtLeast(1f)
-                    val vh = v.height.toFloat().coerceAtLeast(1f)
-                    v.x = nx.coerceIn(0f, (screenW - vw).coerceAtLeast(0f))
-                    v.y = ny.coerceIn(0f, (screenH - vh).coerceAtLeast(0f))
+                    val target = floatingRoot ?: v
+                    val vw = target.width.toFloat().coerceAtLeast(1f)
+                    val vh = target.height.toFloat().coerceAtLeast(1f)
+                    target.x = nx.coerceIn(0f, (screenW - vw).coerceAtLeast(0f))
+                    target.y = ny.coerceIn(0f, (screenH - vh).coerceAtLeast(0f))
 
                     if (panelRoot?.visibility == View.VISIBLE) {
                         positionOverlayNextToButton()
@@ -169,14 +171,13 @@ class MainService : Service() {
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    val dx = abs(event.rawX - initialTouchX)
-                    val dy = abs(event.rawY - initialTouchY)
-
-                    // Tap corto = toggle panel. Drag = nunca toggle.
+                    val dx = kotlin.math.abs(event.rawX - initialTouchX)
+                    val dy = kotlin.math.abs(event.rawY - initialTouchY)
                     if (!isDragging && dx < 10 && dy < 10) {
                         togglePanel()
-                        v.alpha = 0.5f
-                        v.postDelayed({ v.alpha = 1f }, 120)
+                        val target = floatingRoot ?: v
+                        target.alpha = 0.5f
+                        target.postDelayed({ target.alpha = 1f }, 120)
                     }
                     isDragging = false
                     true
@@ -185,6 +186,12 @@ class MainService : Service() {
                 else -> false
             }
         }
+
+        floatingRoot?.isClickable = true
+        btnView?.isClickable = true
+        floatingRoot?.setOnTouchListener(touchListener)
+        btnView?.setOnTouchListener(touchListener)
+
 
         windowManager?.addView(overlayView, overlayParams)
 
