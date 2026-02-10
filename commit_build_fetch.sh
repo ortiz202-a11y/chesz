@@ -35,14 +35,7 @@ rm -f "$APK_LATEST"
 echo "== Git status =="
 git status -sb
 
-echo "== Commit + Push (si hay cambios staged) =="
-# Si no hay nada para commitear, no fallar: solo seguir a build
-if git diff --cached --quiet; then
-  echo "Nada staged para commit. (OK, continúo a build)"
-else
-  git commit -m "Fix: drag no se interpreta como tap (no cierra panel al soltar)"
-  git push
-fi
+echo "== Nota: este script NO hace commit. Solo dispara build y descarga APK =="
 
 SHA="$(git rev-parse HEAD)"
 echo "HEAD SHA=$SHA"
