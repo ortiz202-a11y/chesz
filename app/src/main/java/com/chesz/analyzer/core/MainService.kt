@@ -13,6 +13,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -34,6 +35,9 @@ class MainService : Service() {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
+
+    private var touchSlop = 0
+    private var isDragging = false
     // Para clamp correcto
     private var screenW = 0
     private var screenH = 0
@@ -46,6 +50,7 @@ class MainService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        touchSlop = ViewConfiguration.get(this).scaledTouchSlop
         startForegroundInternal()
         showFloatingButton()
     }
@@ -90,6 +95,7 @@ class MainService : Service() {
         root.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    isDragging = false
                     initialX = floatingParams.x
                     initialY = floatingParams.y
                     initialTouchX = event.rawX
@@ -98,6 +104,12 @@ class MainService : Service() {
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    val dx = kotlin.math.abs(event.rawX - initialTouchX)
+                    val dy = kotlin.math.abs(event.rawY - initialTouchY)
+                    if (!isDragging && (dx > touchSlop || dy > touchSlop)) {
+                        isDragging = true
+                    }
+
                     floatingParams.x = initialX + (event.rawX - initialTouchX).toInt()
                     floatingParams.y = initialY + (event.rawY - initialTouchY).toInt()
                     clampAndUpdate()
@@ -109,17 +121,20 @@ class MainService : Service() {
                     true
                 }
 
-                MotionEvent.ACTION_UP -> {
+                                MotionEvent.ACTION_UP -> {
                     val dx = abs(event.rawX - initialTouchX)
                     val dy = abs(event.rawY - initialTouchY)
 
-                    if (dx < 10 && dy < 10) {
+                    // Tap corto = acción semántica. Drag = nunca cierra/abre.
+                    if (!isDragging && dx < 10 && dy < 10) {
                         togglePanel()
                         root.alpha = 0.5f
                         root.postDelayed({ root.alpha = 1f }, 120)
                     }
+                    isDragging = false
                     true
                 }
+
 
                 else -> false
             }
