@@ -32,6 +32,7 @@ class MainService : Service() {
     private var floatingRoot: View? = null
     private var btnView: View? = null
     private var panelRoot: View? = null
+    private var isPanelOpen = false
     private var panelCard: View? = null
 
     // Chips
@@ -243,12 +244,18 @@ class MainService : Service() {
     }
 
     private fun showPanel() {
+        if (isPanelOpen) return
+        isPanelOpen = true
+
         expandToFullscreenKeepingButton()
         panelRoot?.visibility = View.VISIBLE
         positionOverlayNextToButton()
     }
 
     private fun hidePanel() {
+        if (!isPanelOpen) return
+        isPanelOpen = false
+
         panelRoot?.visibility = View.GONE
         shrinkToWrapKeepingButton()
     }
