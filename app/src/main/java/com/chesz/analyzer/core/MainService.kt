@@ -33,6 +33,7 @@ class MainService : Service() {
     private var btnView: View? = null
     private var panelRoot: View? = null
     private var isPanelOpen = false
+    private var isTransitioning = false
     private var panelCard: View? = null
 
     // Chips
@@ -109,11 +110,40 @@ class MainService : Service() {
 
         // Panel inicia oculto
         panelRoot?.visibility = View.GONE
+
+        panelRoot?.setOnTouchListener { v, event ->
+            if (isTransitioning) return@setOnTouchListener true
+
+            // Solo cerrar al soltar el dedo
+            if (event.action == MotionEvent.ACTION_UP) {
+                // Cerrar SOLO si el toque fue fuera del card
+                val card = panelCard
+                if (card != null) {
+                    val loc = IntArray(2)
+                    card.getLocationOnScreen(loc)
+                    val left = loc[0]
+                    val top = loc[1]
+                    val right = left + card.width
+                    val bottom = top + card.height
+
+                    val rx = event.rawX.toInt()
+                    val ry = event.rawY.toInt()
+
+                    val inside = (rx >= left && rx <= right && ry >= top && ry <= bottom)
+                    if (!inside) {
+                        hidePanel()
+                    }
+                } else {
+                    // Si no hay card, cerrar
+                    hidePanel()
+                }
+            }
+            true
+        }
         // El card siempre visible (ya no hay "fantasma" de addView separado)
         panelCard?.visibility = View.VISIBLE
 
         // Tocar fuera del card = cerrar panel
-        panelRoot?.setOnClickListener { hidePanel() }
         // Tocar dentro no cierra
         panelCard?.setOnClickListener { /* no-op */ }
 
@@ -247,6 +277,8 @@ class MainService : Service() {
         if (isPanelOpen) return
         isPanelOpen = true
 
+        isTransitioning = true
+
         expandToFullscreenKeepingButton()
         panelRoot?.visibility = View.VISIBLE
         positionOverlayNextToButton()
@@ -255,6 +287,8 @@ class MainService : Service() {
     private fun hidePanel() {
         if (!isPanelOpen) return
         isPanelOpen = false
+
+        isTransitioning = true
 
         panelRoot?.visibility = View.GONE
         shrinkToWrapKeepingButton()
@@ -365,6 +399,7 @@ private fun expandToFullscreenKeepingButton() {
             overlayParams.x = clampedX
             overlayParams.y = clampedY
             windowManager?.updateViewLayout(root, overlayParams)
+        overlayView?.post { isTransitioning = false }
         }
 
         // IMPORTANTE: fijar posición final del botón ANTES de expandir
@@ -400,6 +435,7 @@ private fun shrinkToWrapKeepingButton() {
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
 
+        overlayView?.post { isTransitioning = false }
         // 2) Después: resetear el botón al origen (ya dentro de la ventana WRAP)
         btn.x = 0f
         btn.y = 0f
