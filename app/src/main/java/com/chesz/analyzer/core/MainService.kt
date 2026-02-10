@@ -338,13 +338,23 @@ class MainService : Service() {
             screenH = p.y
         }
     }
-    private fun expandToFullscreenKeepingButton() {
+private fun expandToFullscreenKeepingButton() {
         val root = overlayView ?: return
         val btn = floatingRoot ?: return
 
-        // Guardar posición actual de ventana (WRAP)
-        val winX = overlayParams.x
-        val winY = overlayParams.y
+        updateScreenSize()
+
+        // WRAP: posición de ventana -> clamp explícito
+        val bw = btn.width.coerceAtLeast(dp(56))
+        val bh = btn.height.coerceAtLeast(dp(56))
+        val maxX = (screenW - bw).coerceAtLeast(0)
+        val maxY = (screenH - bh).coerceAtLeast(0)
+        val winX = overlayParams.x.coerceIn(0, maxX)
+        val winY = overlayParams.y.coerceIn(0, maxY)
+
+        // IMPORTANT: fijar posición final del botón ANTES de expandir (evita frame en 0,0)
+        btn.x = winX.toFloat()
+        btn.y = winY.toFloat()
 
         // Expandir a FULL y fijar ventana en (0,0)
         overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
@@ -352,18 +362,21 @@ class MainService : Service() {
         overlayParams.x = 0
         overlayParams.y = 0
         windowManager?.updateViewLayout(root, overlayParams)
-
-        // Convertir: ahora el botón guarda la posición en pantalla
-        btn.x = winX.toFloat()
-        btn.y = winY.toFloat()
     }
-    private fun shrinkToWrapKeepingButton() {
+private fun shrinkToWrapKeepingButton() {
         val root = overlayView ?: return
         val btn = floatingRoot ?: return
 
-        // Guardar posición actual del botón (en pantalla) mientras está FULL
-        val winX = btn.x.toInt()
-        val winY = btn.y.toInt()
+        updateScreenSize()
+
+        val bw = btn.width.coerceAtLeast(dp(56))
+        val bh = btn.height.coerceAtLeast(dp(56))
+        val maxX = (screenW - bw).coerceAtLeast(0)
+        val maxY = (screenH - bh).coerceAtLeast(0)
+
+        // FULL: posición del botón -> clamp explícito
+        val winX = btn.x.toInt().coerceIn(0, maxX)
+        val winY = btn.y.toInt().coerceIn(0, maxY)
 
         // Volver botón al origen dentro de la ventana WRAP
         btn.x = 0f
@@ -376,6 +389,7 @@ class MainService : Service() {
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
     }
+
     private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
