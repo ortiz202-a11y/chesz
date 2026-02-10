@@ -14,7 +14,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -339,74 +338,45 @@ class MainService : Service() {
             screenH = p.y
         }
     }
-
     private fun expandToFullscreenKeepingButton() {
-val root = overlayView ?: return
+        val root = overlayView ?: return
         val btn = floatingRoot ?: return
-        overlayView?.visibility = View.INVISIBLE
-        btn.visibility = View.INVISIBLE
-        // Guardar posición actual de ventana (cuando estaba WRAP)
+
+        // Guardar posición actual de ventana (WRAP)
         val winX = overlayParams.x
         val winY = overlayParams.y
 
-        // Expandir ventana a pantalla completa
+        // Expandir a FULL y fijar ventana en (0,0)
         overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
         overlayParams.height = WindowManager.LayoutParams.MATCH_PARENT
         overlayParams.x = 0
         overlayParams.y = 0
         windowManager?.updateViewLayout(root, overlayParams)
 
-        // Mantener botón en la misma posición de pantalla
+        // Convertir: ahora el botón guarda la posición en pantalla
         btn.x = winX.toFloat()
         btn.y = winY.toFloat()
-        showAfterNextDraw(btn)
-
     }
-
     private fun shrinkToWrapKeepingButton() {
-val root = overlayView ?: return
+        val root = overlayView ?: return
         val btn = floatingRoot ?: return
-        overlayView?.visibility = View.INVISIBLE
-        btn.visibility = View.INVISIBLE
-        // Convertir posición del botón (en pantalla) a posición de ventana
+
+        // Guardar posición actual del botón (en pantalla) mientras está FULL
         val winX = btn.x.toInt()
         val winY = btn.y.toInt()
 
-        // Reset botón dentro de ventana WRAP (origen 0,0)
+        // Volver botón al origen dentro de la ventana WRAP
         btn.x = 0f
         btn.y = 0f
 
+        // Encoger ventana a WRAP y colocarla donde estaba el botón
         overlayParams.width = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.height = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.x = winX
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
-        showAfterNextDraw(btn)
-
     }
-
-    
-    private fun showAfterNextDraw(v: View) {
-        val root = overlayView
-        if (root == null) {
-            v.visibility = View.VISIBLE
-            return
-        }
-        val vto = root.viewTreeObserver
-        vto.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                try {
-                    if (root.viewTreeObserver.isAlive) {
-                        root.viewTreeObserver.removeOnPreDrawListener(this)
-                    }
-                } catch (_: Throwable) {}
-                root.visibility = View.VISIBLE
-                v.visibility = View.VISIBLE
-                return true
-            }
-        })
-    }
-private fun startForegroundInternal() {
+    private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
