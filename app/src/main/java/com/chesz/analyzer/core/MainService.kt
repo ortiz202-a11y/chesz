@@ -295,6 +295,7 @@ class MainService : Service() {
 
         card.x = x.toFloat()
         card.y = y.toFloat()
+        card.visibility = View.VISIBLE
     }
 
     private fun setChipActive(tv: TextView, active: Boolean) {
