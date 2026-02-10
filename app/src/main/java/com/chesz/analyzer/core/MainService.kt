@@ -379,7 +379,7 @@ class MainService : Service() {
             screenH = p.y
         }
     }
-private fun expandToFullscreenKeepingButton() {
+    private fun expandToFullscreenKeepingButton() {
         val root = overlayView ?: return
         val btn = floatingRoot ?: return
 
@@ -390,17 +390,33 @@ private fun expandToFullscreenKeepingButton() {
         val maxX = (screenW - bw).coerceAtLeast(0)
         val maxY = (screenH - bh).coerceAtLeast(0)
 
-        // Clamp explícito de la posición WRAP (evita corrección tardía del sistema)
         val clampedX = overlayParams.x.coerceIn(0, maxX)
         val clampedY = overlayParams.y.coerceIn(0, maxY)
 
-        // Si está fuera de rango, primero corrige WRAP (antes de expandir)
+        // Corregir WRAP si estaba fuera, antes de expandir (evita corrección tardía)
         if (clampedX != overlayParams.x || clampedY != overlayParams.y) {
             overlayParams.x = clampedX
             overlayParams.y = clampedY
             windowManager?.updateViewLayout(root, overlayParams)
-        overlayView?.post { isTransitioning = false }
         }
+
+        // Anti-fantasma: apagar dibujo del botón 1 frame durante la transición
+        btn.alpha = 0f
+
+        // Fijar posición final del botón ANTES de expandir
+        btn.x = overlayParams.x.toFloat()
+        btn.y = overlayParams.y.toFloat()
+
+        // Expandir a FULL y fijar ventana en (0,0)
+        overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
+        overlayParams.height = WindowManager.LayoutParams.MATCH_PARENT
+        overlayParams.x = 0
+        overlayParams.y = 0
+        windowManager?.updateViewLayout(root, overlayParams)
+
+        // Restaurar dibujo del botón en el siguiente tick UI
+        root.post { btn.alpha = 1f }
+    }
 
         // IMPORTANTE: fijar posición final del botón ANTES de expandir
         btn.x = overlayParams.x.toFloat()
@@ -413,7 +429,7 @@ private fun expandToFullscreenKeepingButton() {
         overlayParams.y = 0
         windowManager?.updateViewLayout(root, overlayParams)
     }
-private fun shrinkToWrapKeepingButton() {
+    private fun shrinkToWrapKeepingButton() {
         val root = overlayView ?: return
         val btn = floatingRoot ?: return
 
@@ -424,21 +440,25 @@ private fun shrinkToWrapKeepingButton() {
         val maxX = (screenW - bw).coerceAtLeast(0)
         val maxY = (screenH - bh).coerceAtLeast(0)
 
-        // FULL: posición del botón -> clamp explícito
         val winX = btn.x.toInt().coerceIn(0, maxX)
         val winY = btn.y.toInt().coerceIn(0, maxY)
 
-        // 1) Primero: encoger ventana a WRAP y moverla
+        // Anti-fantasma: apagar dibujo del botón 1 frame durante la transición
+        btn.alpha = 0f
+
+        // 1) Pasar a WRAP y mover ventana
         overlayParams.width = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.height = WindowManager.LayoutParams.WRAP_CONTENT
         overlayParams.x = winX
         overlayParams.y = winY
         windowManager?.updateViewLayout(root, overlayParams)
 
-        overlayView?.post { isTransitioning = false }
-        // 2) Después: resetear el botón al origen (ya dentro de la ventana WRAP)
+        // 2) Ya dentro de WRAP: reset a origen
         btn.x = 0f
         btn.y = 0f
+
+        // Restaurar dibujo del botón en el siguiente tick UI
+        root.post { btn.alpha = 1f }
     }
 
     private fun startForegroundInternal() {
