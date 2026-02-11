@@ -418,17 +418,6 @@ class MainService : Service() {
         root.post { btn.alpha = 1f }
     }
 
-        // IMPORTANTE: fijar posición final del botón ANTES de expandir
-        btn.x = overlayParams.x.toFloat()
-        btn.y = overlayParams.y.toFloat()
-
-        // Expandir a FULL y fijar ventana en (0,0)
-        overlayParams.width = WindowManager.LayoutParams.MATCH_PARENT
-        overlayParams.height = WindowManager.LayoutParams.MATCH_PARENT
-        overlayParams.x = 0
-        overlayParams.y = 0
-        windowManager?.updateViewLayout(root, overlayParams)
-    }
     private fun shrinkToWrapKeepingButton() {
         val root = overlayView ?: return
         val btn = floatingRoot ?: return
