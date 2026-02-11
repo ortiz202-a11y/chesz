@@ -25,11 +25,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+      
+          export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+      
           sdkmanager --version
-          # Accept licenses without failing the step because "yes" gets SIGPIPE
-          yes | sdkmanager --licenses >/dev/null || true
+      
+          # Aceptar licencias sin interacción (doble intento)
+          yes | sdkmanager --licenses || true
+          yes | sdkmanager --licenses || true
+      
+          # Solo lo necesario
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
       - name: Inject Stockfish (arm64) into assets
         shell: bash
         run: |
