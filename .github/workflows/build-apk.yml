@@ -30,6 +30,25 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Inject Stockfish (arm64) into assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets/stockfish
+          TMPDIR="${RUNNER_TEMP:-$(mktemp -d)}"
+          curl -L -o "$TMPDIR/stockfish-android-armv8.tar"             "https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-android-armv8.tar"
+          mkdir -p "$TMPDIR/sfext"
+          tar -xf "$TMPDIR/stockfish-android-armv8.tar" -C "$TMPDIR/sfext"
+          BIN="$(find "$TMPDIR/sfext" -type f -print0 | xargs -0 file | grep -i 'ELF 64-bit.*aarch64' | head -n 1 | cut -d: -f1)"
+          echo "Using BIN=$BIN"
+          test -n "$BIN"
+          cp -f "$BIN" app/src/main/assets/stockfish/stockfish-arm64
+          chmod 755 app/src/main/assets/stockfish/stockfish-arm64
+          ls -lh app/src/main/assets/stockfish/stockfish-arm64
+          file app/src/main/assets/stockfish/stockfish-arm64
+
+
+
       - name: Build Debug APK (with logs)
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace --info
 
