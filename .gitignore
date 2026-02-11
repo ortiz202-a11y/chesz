@@ -16,3 +16,6 @@ local.properties
 # Build artifacts / downloaded CI artifacts
 chesz-debug-apk/
 *.apk
+
+# Stockfish binario (se inyecta en GitHub Actions, no se sube al repo)
+app/src/main/assets/stockfish/stockfish-arm64
