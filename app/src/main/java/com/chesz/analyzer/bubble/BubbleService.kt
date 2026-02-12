@@ -87,7 +87,7 @@ class BubbleService : Service() {
   // CLOSE ZONE (X)
   // =========================
   private fun createCloseZone() {
-    val size = dp(84)
+    val size = dp(96)
 
     val root = FrameLayout(this).apply {
       visibility = View.GONE
@@ -220,8 +220,8 @@ class BubbleService : Service() {
     }
 
     bubbleLp = WindowManager.LayoutParams(
-      dp(56),
-      dp(56),
+      dp(80),
+      dp(80),
       windowType(),
       baseFlags(),
       PixelFormat.TRANSLUCENT
