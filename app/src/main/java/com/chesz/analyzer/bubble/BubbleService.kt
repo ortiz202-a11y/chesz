@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.*
+import android.view.LayoutInflater
 import android.widget.FrameLayout
 import android.widget.TextView
 import kotlin.math.abs
@@ -20,6 +21,9 @@ class BubbleService : Service() {
   private var bubbleView: View? = null
   private var closeView: View? = null
   private var panelView: View? = null
+
+  // Paso 1: overlay único (root) + panel como hijo
+  private var panelBubble: View? = null
 
   private lateinit var bubbleLp: WindowManager.LayoutParams
   private lateinit var closeLp: WindowManager.LayoutParams
@@ -62,10 +66,10 @@ class BubbleService : Service() {
 
   private fun removeViews() {
     if (!::wm.isInitialized) return
-    try { panelView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     try { bubbleView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     try { closeView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     panelView = null
+    panelBubble = null
     bubbleView = null
     closeView = null
   }
@@ -151,77 +155,59 @@ class BubbleService : Service() {
   // =========================
   // PANEL (burbuja desplegada)
   // =========================
-  private fun isPanelOpen(): Boolean = panelView != null
+  private fun isPanelOpen(): Boolean = (panelBubble?.visibility == View.VISIBLE)
 
   private fun openPanel() {
-    if (panelView != null) return
-
-    val w = dp(280)
-    val h = dp(360)
-
-    val root = FrameLayout(this).apply {
-      // tarjeta blanca redondeada
-      background = RoundRectDrawable(0xFFFFFFFF.toInt(), dp(28).toFloat())
-      setPadding(dp(18), dp(18), dp(18), dp(18))
-
-      addView(TextView(this@BubbleService).apply {
-        text = "Sshot/"
-        textSize = 18f
-        setTextColor(0xFF111111.toInt())
-      })
-    }
-
-    // Panel recibe ACTION_OUTSIDE para cerrar al tocar pantalla
-    root.setOnTouchListener { _, ev ->
-      if (ev.actionMasked == MotionEvent.ACTION_OUTSIDE) {
-        closePanel()
-        true
-      } else {
-        // tocar dentro no hace nada (consume para que no “pase” raro)
-        true
-      }
-    }
-
-    panelLp = WindowManager.LayoutParams(
-      w,
-      h,
-      windowType(),
-      baseFlags() or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-      PixelFormat.TRANSLUCENT
-    ).apply {
-      gravity = Gravity.CENTER
-    }
-
-    panelView = root
-    wm.addView(root, panelLp)
+    val p = panelBubble ?: return
+    if (p.visibility == View.VISIBLE) return
+    p.visibility = View.VISIBLE
   }
 
   private fun closePanel() {
-    val p = panelView ?: return
-    try { wm.removeViewImmediate(p) } catch (_: Throwable) {}
-    panelView = null
+    panelBubble?.visibility = View.GONE
   }
 
   // =========================
   // BUBBLE
   // =========================
   private fun createBubble() {
+    // Overlay único (root) desde XML
+    val root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null) as FrameLayout
+
+    // Burbuja (icono) dentro del contenedor
+    val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
     val iconView = CircleCropView(this).apply {
       setImageResource(R.drawable.bubble_icon)
     }
+    bubbleContainer.addView(iconView, FrameLayout.LayoutParams(
+      FrameLayout.LayoutParams.MATCH_PARENT,
+      FrameLayout.LayoutParams.MATCH_PARENT
+    ))
 
-    val container = FrameLayout(this).apply {
-      setBackgroundColor(0x00000000)
-      elevation = 0f
-      addView(iconView, FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.MATCH_PARENT,
-        FrameLayout.LayoutParams.MATCH_PARENT
-      ))
+    // Panel como hijo del mismo root (negro translúcido, 60% x 30%)
+    val panel = root.findViewById<View>(R.id.panelBubble)
+    panel.setBackgroundColor(0x88000000.toInt()) // negro translúcido
+    panel.visibility = View.GONE
+
+    val dm = resources.displayMetrics
+    val pw = (dm.widthPixels * 0.60f).toInt()
+    val ph = (dm.heightPixels * 0.30f).toInt()
+    val plp = FrameLayout.LayoutParams(pw, ph).apply {
+      gravity = Gravity.TOP or Gravity.START
+      leftMargin = dp(88) // a la derecha de la burbuja
+      topMargin = 0
+    }
+    panel.layoutParams = plp
+
+    // Tap to Close (cierra solo el panel)
+    root.findViewById<View>(R.id.tapToClose).setOnClickListener {
+      closePanel()
     }
 
+    // Drag SOLO desde la burbuja, pero mueve TODO el root (overlay único)
     bubbleLp = WindowManager.LayoutParams(
-      dp(80),
-      dp(80),
+      WindowManager.LayoutParams.WRAP_CONTENT,
+      WindowManager.LayoutParams.WRAP_CONTENT,
       windowType(),
       baseFlags(),
       PixelFormat.TRANSLUCENT
@@ -231,7 +217,7 @@ class BubbleService : Service() {
       y = dp(220)
     }
 
-    container.setOnTouchListener { v, ev ->
+    bubbleContainer.setOnTouchListener { _, ev ->
       when (ev.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
           downRawX = ev.rawX
@@ -255,7 +241,7 @@ class BubbleService : Service() {
 
           bubbleLp.x = downX + dx
           bubbleLp.y = downY + dy
-          wm.updateViewLayout(v, bubbleLp)
+          wm.updateViewLayout(root, bubbleLp)
           true
         }
 
@@ -264,10 +250,8 @@ class BubbleService : Service() {
           val isTap = (!moved && elapsed < 250)
 
           if (moved && isInsideCloseCircle(ev.rawX, ev.rawY)) {
-            // ✅ SOLO AQUÍ se mata el servicio completo
             shutdown()
           } else if (isTap) {
-            // ✅ TAP = abre/cierra panel (NO mata servicio)
             if (isPanelOpen()) closePanel() else openPanel()
             showClose(false)
           } else {
@@ -280,8 +264,11 @@ class BubbleService : Service() {
       }
     }
 
-    bubbleView = container
-    wm.addView(container, bubbleLp)
+    // Guardar refs
+    panelBubble = panel
+    bubbleView = root
+
+    wm.addView(root, bubbleLp)
   }
 
   private fun dp(v: Int): Int {
