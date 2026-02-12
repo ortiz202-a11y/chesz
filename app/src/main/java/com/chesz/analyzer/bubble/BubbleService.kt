@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.graphics.Rect
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -20,11 +19,9 @@ class BubbleService : Service() {
   private var bubbleView: View? = null
   private var closeView: View? = null
 
-  // Params burbuja
   private lateinit var bubbleLp: WindowManager.LayoutParams
   private lateinit var closeLp: WindowManager.LayoutParams
 
-  // Touch tracking
   private var downRawX = 0f
   private var downRawY = 0f
   private var downX = 0
@@ -72,34 +69,46 @@ class BubbleService : Service() {
         or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
   }
 
+  // ✅ X chica (círculo), NO barra
   private fun createCloseZone() {
+    val size = dp(84)
+
     val root = FrameLayout(this).apply {
-      // “X roja” inferior
-      setBackgroundColor(0x55FF0000) // rojo semitransparente
       visibility = View.GONE
-      // Texto X grande
-      addView(TextView(this@BubbleService).apply {
-        text = "X"
-        textSize = 32f
-        setTextColor(0xFFFFFFFF.toInt())
+      setBackgroundColor(0x00FFFFFF) // transparente
+      // Círculo rojo
+      addView(FrameLayout(this@BubbleService).apply {
+        setBackgroundColor(0xCCFF0000.toInt())
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+          override fun getOutline(view: View, outline: android.graphics.Outline) {
+            outline.setOval(0, 0, view.width, view.height)
+          }
+        }
+        addView(TextView(this@BubbleService).apply {
+          text = "X"
+          textSize = 28f
+          setTextColor(0xFFFFFFFF.toInt())
+          gravity = Gravity.CENTER
+          layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+          )
+        })
+      }, FrameLayout.LayoutParams(size, size).apply {
         gravity = Gravity.CENTER
-        layoutParams = FrameLayout.LayoutParams(
-          FrameLayout.LayoutParams.MATCH_PARENT,
-          FrameLayout.LayoutParams.MATCH_PARENT
-        )
       })
     }
 
     closeLp = WindowManager.LayoutParams(
-      WindowManager.LayoutParams.MATCH_PARENT,
-      dp(120),
+      size,
+      size,
       windowType(),
       baseFlags(),
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-      x = 0
-      y = 0
+      y = dp(28) // separación del borde inferior
     }
 
     closeView = root
@@ -108,15 +117,12 @@ class BubbleService : Service() {
 
   private fun createBubble() {
     val bubble = ImageView(this).apply {
-      // Usa tu icono (ya lo tienes como adaptive foreground)
       setImageResource(resources.getIdentifier("ic_launcher_foreground", "drawable", packageName))
       scaleType = ImageView.ScaleType.CENTER_CROP
-      // Fondo transparente, sin marco
       setBackgroundColor(0x00000000)
     }
 
     val container = FrameLayout(this).apply {
-      setPadding(0, 0, 0, 0)
       addView(bubble, FrameLayout.LayoutParams(dp(56), dp(56)).apply {
         gravity = Gravity.CENTER
       })
@@ -143,19 +149,22 @@ class BubbleService : Service() {
           downY = bubbleLp.y
           moved = false
           downTime = System.currentTimeMillis()
-          showClose(true)
+          showClose(false) // ✅ NO mostrar X en touch-down
           true
         }
 
         MotionEvent.ACTION_MOVE -> {
           val dx = (ev.rawX - downRawX).toInt()
           val dy = (ev.rawY - downRawY).toInt()
-          if (abs(dx) > dp(3) || abs(dy) > dp(3)) moved = true
+
+          if (!moved && (abs(dx) > dp(4) || abs(dy) > dp(4))) {
+            moved = true
+            showClose(true) // ✅ solo aparece cuando realmente estás arrastrando
+          }
+
           bubbleLp.x = downX + dx
           bubbleLp.y = downY + dy
           wm.updateViewLayout(v, bubbleLp)
-
-          // Si entra a la zona X roja, marca visual (opcional)
           true
         }
 
@@ -163,15 +172,12 @@ class BubbleService : Service() {
           val elapsed = System.currentTimeMillis() - downTime
           val isTap = (!moved && elapsed < 250)
 
-          if (isOverCloseZone(v)) {
-            // Drag a X: cerrar servicio completo
+          if (moved && isInsideClose(ev.rawX, ev.rawY)) {
             stopSelf()
           } else if (isTap) {
-            // Tap: cerrar burbuja + limpiar memoria
             clearSession()
             stopSelf()
           } else {
-            // Si no cerró, ocultar zona X
             showClose(false)
           }
           true
@@ -189,29 +195,24 @@ class BubbleService : Service() {
     closeView?.visibility = if (show) View.VISIBLE else View.GONE
   }
 
-  private fun isOverCloseZone(bubble: View): Boolean {
+  // ✅ Cierre SOLO si el dedo cae dentro del círculo rojo
+  private fun isInsideClose(rawX: Float, rawY: Float): Boolean {
     val close = closeView ?: return false
     if (close.visibility != View.VISIBLE) return false
 
-    val rBubble = Rect()
-    val rClose = Rect()
+    val loc = IntArray(2)
+    close.getLocationOnScreen(loc)
+    val left = loc[0]
+    val top = loc[1]
+    val right = left + close.width
+    val bottom = top + close.height
 
-    bubble.getGlobalVisibleRect(rBubble)
-    close.getGlobalVisibleRect(rClose)
-
-    // Intersección suficiente
-    return Rect.intersects(rBubble, rClose)
+    return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
   }
 
   private fun clearSession() {
-    // “Limpia memoria” (sin inventar lógica de motor):
-    // - cacheDir
-    // - filesDir (solo cache; no borramos todo el app data)
     try { cacheDir?.deleteRecursively() } catch (_: Throwable) {}
-    // Prefs de sesión si existen
-    try {
-      getSharedPreferences("chesz_session", MODE_PRIVATE).edit().clear().apply()
-    } catch (_: Throwable) {}
+    try { getSharedPreferences("chesz_session", MODE_PRIVATE).edit().clear().apply() } catch (_: Throwable) {}
   }
 
   private fun dp(v: Int): Int {

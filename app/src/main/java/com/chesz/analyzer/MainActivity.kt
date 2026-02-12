@@ -11,6 +11,10 @@ class MainActivity : Activity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+  }
+
+  override fun onResume() {
+    super.onResume()
 
     if (!Settings.canDrawOverlays(this)) {
       val i = Intent(
@@ -18,7 +22,6 @@ class MainActivity : Activity() {
         Uri.parse("package:$packageName")
       )
       startActivity(i)
-      finish()
       return
     }
 
