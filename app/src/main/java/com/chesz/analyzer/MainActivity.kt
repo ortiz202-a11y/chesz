@@ -10,6 +10,10 @@ import com.chesz.analyzer.bubble.BubbleService
 
 class MainActivity : Activity() {
 
+  companion object {
+    private const val REQ_OVERLAY = 1001
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
   }
@@ -17,25 +21,40 @@ class MainActivity : Activity() {
   override fun onResume() {
     super.onResume()
 
-    if (!Settings.canDrawOverlays(this)) {
-      Toast.makeText(
-        this,
-        "Dar permisos a chesz para mostrar sobre otras apps",
-        Toast.LENGTH_LONG
-      ).show()
-
-      val i = Intent(
-        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-        Uri.parse("package:$packageName")
-      )
-      startActivity(i)
+    // Si ya hay permiso, iniciar servicio y salir
+    if (Settings.canDrawOverlays(this)) {
+      startService(Intent(this, BubbleService::class.java))
+      finishAndRemoveTask()
       return
     }
 
-    // Permiso concedido → iniciar servicio
-    startService(Intent(this, BubbleService::class.java))
+    // Si NO hay permiso, avisar y mandar a Settings
+    Toast.makeText(
+      this,
+      "Da permisos a chesz para 'Mostrar sobre otras apps'. Actívalo y regresa.",
+      Toast.LENGTH_LONG
+    ).show()
 
-    // Cerrar Activity completamente (sin dejar rastro)
-    finishAndRemoveTask()
+    val i = Intent(
+      Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+      Uri.parse("package:$packageName")
+    )
+
+    @Suppress("DEPRECATION")
+    startActivityForResult(i, REQ_OVERLAY)
+  }
+
+  @Deprecated("Deprecated in Java")
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+
+    if (requestCode == REQ_OVERLAY) {
+      if (Settings.canDrawOverlays(this)) {
+        startService(Intent(this, BubbleService::class.java))
+        finishAndRemoveTask()
+      } else {
+        Toast.makeText(this, "Permiso no concedido.", Toast.LENGTH_SHORT).show()
+      }
+    }
   }
 }
