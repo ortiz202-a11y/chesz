@@ -13,6 +13,8 @@ import com.chesz.analyzer.bubble.BubbleService
 class MainActivity : Activity() {
 
   private var openedSettings = false
+  private val h = Handler(Looper.getMainLooper())
+  private var tries = 0
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -20,19 +22,14 @@ class MainActivity : Activity() {
 
   override fun onResume() {
     super.onResume()
+    h.removeCallbacksAndMessages(null)
 
-    // Ya con permiso: iniciar servicio y cerrar Activity (con delay para que el overlay alcance a dibujar)
     if (Settings.canDrawOverlays(this)) {
       startService(Intent(this, BubbleService::class.java))
-
-      Handler(Looper.getMainLooper()).postDelayed({
-        finishAndRemoveTask()
-      }, 350)
-
+      h.postDelayed({ finishAndRemoveTask() }, 250)
       return
     }
 
-    // Sin permiso: mandar a Settings SOLO UNA VEZ
     if (!openedSettings) {
       openedSettings = true
       Toast.makeText(
@@ -49,7 +46,28 @@ class MainActivity : Activity() {
       return
     }
 
-    // Si regresó sin dar permiso, salimos limpio
-    finishAndRemoveTask()
+    // Workaround: algunos Android tardan en reflejar el permiso al volver
+    tries = 0
+    h.postDelayed(::pollPermissionThenStart, 250)
+  }
+
+  private fun pollPermissionThenStart() {
+    if (Settings.canDrawOverlays(this)) {
+      startService(Intent(this, BubbleService::class.java))
+      h.postDelayed({ finishAndRemoveTask() }, 250)
+      return
+    }
+
+    tries++
+    if (tries >= 12) {
+      finishAndRemoveTask()
+      return
+    }
+    h.postDelayed(::pollPermissionThenStart, 250)
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    h.removeCallbacksAndMessages(null)
   }
 }
