@@ -3,15 +3,15 @@ package com.chesz.analyzer.bubble
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.graphics.PixelFormat
+import android.graphics.*
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.*
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.TextView
 import kotlin.math.abs
+import com.chesz.analyzer.R
 
 class BubbleService : Service() {
 
@@ -36,12 +36,16 @@ class BubbleService : Service() {
       shutdown()
       return START_NOT_STICKY
     }
+
     wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
     if (bubbleView == null) {
       createCloseZone()
       createBubble()
     }
-    return START_STICKY
+
+    // ✅ CLAVE: si cierras, NO debe revivir
+    return START_NOT_STICKY
   }
 
   override fun onDestroy() {
@@ -50,14 +54,14 @@ class BubbleService : Service() {
   }
 
   private fun shutdown() {
-    // ✅ mata TODO: vistas + servicio
     removeViews()
     stopSelf()
   }
 
   private fun removeViews() {
-    try { bubbleView?.let { wm.removeView(it) } } catch (_: Throwable) {}
-    try { closeView?.let { wm.removeView(it) } } catch (_: Throwable) {}
+    if (!::wm.isInitialized) return
+    try { bubbleView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
+    try { closeView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     bubbleView = null
     closeView = null
   }
@@ -84,12 +88,14 @@ class BubbleService : Service() {
 
       addView(FrameLayout(this@BubbleService).apply {
         setBackgroundColor(0xCCFF0000.toInt())
+        // círculo de la X
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
-          override fun getOutline(view: View, outline: android.graphics.Outline) {
+          override fun getOutline(view: View, outline: Outline) {
             outline.setOval(0, 0, view.width, view.height)
           }
         }
+
         addView(TextView(this@BubbleService).apply {
           text = "X"
           textSize = 28f
@@ -119,25 +125,14 @@ class BubbleService : Service() {
   }
 
   private fun createBubble() {
-    val icon = ImageView(this).apply {
-      // ✅ USAR TU PNG DIRECTO (sin halo raro de launcher/adaptive)
-      setImageResource(resources.getIdentifier("bubble_icon", "drawable", packageName))
-      scaleType = ImageView.ScaleType.CENTER_CROP
-      background = null
-      setBackgroundColor(0x00000000)
+    // ✅ CircleCrop real: sin “halo” por clipToOutline
+    val iconView = CircleCropView(this).apply {
+      setImageResource(R.drawable.bubble_icon)
     }
 
     val container = FrameLayout(this).apply {
-      // ✅ máscara circular real
-      clipToOutline = true
-      outlineProvider = object : ViewOutlineProvider() {
-        override fun getOutline(view: View, outline: android.graphics.Outline) {
-          outline.setOval(0, 0, view.width, view.height)
-        }
-      }
-      background = null
       setBackgroundColor(0x00000000)
-      addView(icon, FrameLayout.LayoutParams(
+      addView(iconView, FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
         FrameLayout.LayoutParams.MATCH_PARENT
       ))
@@ -226,5 +221,60 @@ class BubbleService : Service() {
   private fun dp(v: Int): Int {
     val d = resources.displayMetrics.density
     return (v * d).toInt()
+  }
+
+  // =========================
+  // CircleCrop real (shader)
+  // =========================
+  private class CircleCropView(ctx: Context) : View(ctx) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var shader: BitmapShader? = null
+    private var bitmap: Bitmap? = null
+
+    fun setImageResource(resId: Int) {
+      val d = context.resources.getDrawable(resId, context.theme)
+      bitmap = drawableToBitmap(d)
+      rebuildShader()
+      invalidate()
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+      super.onSizeChanged(w, h, oldw, oldh)
+      rebuildShader()
+    }
+
+    private fun rebuildShader() {
+      val b = bitmap ?: return
+      if (width <= 0 || height <= 0) return
+
+      shader = BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+
+      // centerCrop matrix
+      val m = Matrix()
+      val scale = maxOf(width.toFloat() / b.width, height.toFloat() / b.height)
+      val dx = (width - b.width * scale) * 0.5f
+      val dy = (height - b.height * scale) * 0.5f
+      m.setScale(scale, scale)
+      m.postTranslate(dx, dy)
+      shader!!.setLocalMatrix(m)
+
+      paint.shader = shader
+    }
+
+    override fun onDraw(canvas: Canvas) {
+      super.onDraw(canvas)
+      val r = minOf(width, height) * 0.5f
+      canvas.drawCircle(width * 0.5f, height * 0.5f, r, paint)
+    }
+
+    private fun drawableToBitmap(d: android.graphics.drawable.Drawable): Bitmap {
+      val w = if (d.intrinsicWidth > 0) d.intrinsicWidth else 512
+      val h = if (d.intrinsicHeight > 0) d.intrinsicHeight else 512
+      val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+      val c = Canvas(b)
+      d.setBounds(0, 0, c.width, c.height)
+      d.draw(c)
+      return b
+    }
   }
 }
