@@ -1,11 +1,6 @@
 package com.chesz.analyzer.bubble
 
 import android.app.Service
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.os.Handler
-import android.os.Looper
 import android.content.Context
 import android.content.Intent
 import android.graphics.*
@@ -22,40 +17,6 @@ import com.chesz.analyzer.R
 
 class BubbleService : Service() {
 
-  // ===== Foreground (para que el sistema no congele el overlay al volver de permisos) =====
-  private val fgChannelId = "chesz_overlay"
-  private val fgNotifId = 1001
-
-  private fun ensureForeground() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-      val ch = NotificationChannel(
-        fgChannelId,
-        "chesz overlay",
-        NotificationManager.IMPORTANCE_MIN
-      )
-      nm.createNotificationChannel(ch)
-    }
-
-    val notif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      Notification.Builder(this, fgChannelId)
-        .setContentTitle("chesz")
-        .setContentText("Overlay activo")
-        .setSmallIcon(R.mipmap.ic_launcher)
-        .setOngoing(true)
-        .build()
-    } else {
-      @Suppress("DEPRECATION")
-      Notification.Builder(this)
-        .setContentTitle("chesz")
-        .setContentText("Overlay activo")
-        .setSmallIcon(R.mipmap.ic_launcher)
-        .setOngoing(true)
-        .build()
-    }
-
-    startForeground(fgNotifId, notif)
-  }
 
 
   private lateinit var wm: WindowManager
@@ -87,7 +48,6 @@ class BubbleService : Service() {
 
     wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-    ensureForeground()
 
     if (bubbleView == null) {
       createCloseZone()
