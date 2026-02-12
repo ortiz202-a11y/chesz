@@ -33,7 +33,7 @@ class BubbleService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     if (!Settings.canDrawOverlays(this)) {
-      stopSelf()
+      shutdown()
       return START_NOT_STICKY
     }
     wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -41,12 +41,19 @@ class BubbleService : Service() {
       createCloseZone()
       createBubble()
     }
-    return START_STICKY
+    // ✅ IMPORTANTE: no “revivir” el servicio después de cerrarlo
+    return START_NOT_STICKY
   }
 
   override fun onDestroy() {
     super.onDestroy()
     removeViews()
+  }
+
+  private fun shutdown() {
+    // ✅ Cierra TODO: vistas + servicio
+    removeViews()
+    stopSelf()
   }
 
   private fun removeViews() {
@@ -69,14 +76,13 @@ class BubbleService : Service() {
         or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
   }
 
-  // ✅ X chica (círculo), NO barra
+  // X chica (círculo)
   private fun createCloseZone() {
     val size = dp(84)
 
     val root = FrameLayout(this).apply {
       visibility = View.GONE
-      setBackgroundColor(0x00FFFFFF) // transparente
-      // Círculo rojo
+      setBackgroundColor(0x00000000)
       addView(FrameLayout(this@BubbleService).apply {
         setBackgroundColor(0xCCFF0000.toInt())
         clipToOutline = true
@@ -95,9 +101,7 @@ class BubbleService : Service() {
             FrameLayout.LayoutParams.MATCH_PARENT
           )
         })
-      }, FrameLayout.LayoutParams(size, size).apply {
-        gravity = Gravity.CENTER
-      })
+      }, FrameLayout.LayoutParams(size, size).apply { gravity = Gravity.CENTER })
     }
 
     closeLp = WindowManager.LayoutParams(
@@ -108,24 +112,37 @@ class BubbleService : Service() {
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-      y = dp(28) // separación del borde inferior
+      y = dp(28)
     }
 
     closeView = root
     wm.addView(root, closeLp)
   }
 
+  // ✅ Burbuja: CÍRCULO REAL sin marco blanco
   private fun createBubble() {
-    val bubble = ImageView(this).apply {
+    val icon = ImageView(this).apply {
       setImageResource(resources.getIdentifier("ic_launcher_foreground", "drawable", packageName))
+      // ✅ llena el círculo, recorta si hace falta
       scaleType = ImageView.ScaleType.CENTER_CROP
       setBackgroundColor(0x00000000)
     }
 
     val container = FrameLayout(this).apply {
-      addView(bubble, FrameLayout.LayoutParams(dp(56), dp(56)).apply {
-        gravity = Gravity.CENTER
-      })
+      // ✅ máscara circular
+      clipToOutline = true
+      outlineProvider = object : ViewOutlineProvider() {
+        override fun getOutline(view: View, outline: android.graphics.Outline) {
+          outline.setOval(0, 0, view.width, view.height)
+        }
+      }
+      background = null
+      setPadding(0, 0, 0, 0)
+
+      addView(icon, FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams.MATCH_PARENT
+      ))
     }
 
     bubbleLp = WindowManager.LayoutParams(
@@ -149,7 +166,7 @@ class BubbleService : Service() {
           downY = bubbleLp.y
           moved = false
           downTime = System.currentTimeMillis()
-          showClose(false) // ✅ NO mostrar X en touch-down
+          showClose(false)
           true
         }
 
@@ -159,7 +176,7 @@ class BubbleService : Service() {
 
           if (!moved && (abs(dx) > dp(4) || abs(dy) > dp(4))) {
             moved = true
-            showClose(true) // ✅ solo aparece cuando realmente estás arrastrando
+            showClose(true)
           }
 
           bubbleLp.x = downX + dx
@@ -173,10 +190,12 @@ class BubbleService : Service() {
           val isTap = (!moved && elapsed < 250)
 
           if (moved && isInsideClose(ev.rawX, ev.rawY)) {
-            stopSelf()
+            // ✅ Drag a X: cerrar TODO
+            shutdown()
           } else if (isTap) {
+            // ✅ Tap: cerrar TODO
             clearSession()
-            stopSelf()
+            shutdown()
           } else {
             showClose(false)
           }
@@ -195,7 +214,6 @@ class BubbleService : Service() {
     closeView?.visibility = if (show) View.VISIBLE else View.GONE
   }
 
-  // ✅ Cierre SOLO si el dedo cae dentro del círculo rojo
   private fun isInsideClose(rawX: Float, rawY: Float): Boolean {
     val close = closeView ?: return false
     if (close.visibility != View.VISIBLE) return false
