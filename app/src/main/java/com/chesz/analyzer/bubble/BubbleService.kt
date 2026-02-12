@@ -94,7 +94,7 @@ class BubbleService : Service() {
       setBackgroundColor(0x00000000)
 
       addView(FrameLayout(this@BubbleService).apply {
-        setBackgroundColor(0xCC000000.toInt()) // fondo oscuro
+        setBackgroundColor(0xFFE53935.toInt()) // fondo oscuro
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
           override fun getOutline(view: View, outline: Outline) {
