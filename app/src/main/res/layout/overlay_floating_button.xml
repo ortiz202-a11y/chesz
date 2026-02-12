@@ -9,9 +9,9 @@
         android:id="@+id/btn"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:padding="10dp"
-        android:src="@drawable/btn_overlay"
-        android:scaleType="fitCenter"
-        android:background="@drawable/floating_bg"
+        android:padding="0dp"
+        android:src="@drawable/overlay_btn_icon"
+        android:scaleType="fitXY"
+        android:background="@null"
         android:contentDescription="chesz" />
 </FrameLayout>
