@@ -41,8 +41,7 @@ class BubbleService : Service() {
       createCloseZone()
       createBubble()
     }
-    // ✅ IMPORTANTE: no “revivir” el servicio después de cerrarlo
-    return START_NOT_STICKY
+    return START_STICKY
   }
 
   override fun onDestroy() {
@@ -51,7 +50,7 @@ class BubbleService : Service() {
   }
 
   private fun shutdown() {
-    // ✅ Cierra TODO: vistas + servicio
+    // ✅ mata TODO: vistas + servicio
     removeViews()
     stopSelf()
   }
@@ -76,13 +75,13 @@ class BubbleService : Service() {
         or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
   }
 
-  // X chica (círculo)
   private fun createCloseZone() {
     val size = dp(84)
 
     val root = FrameLayout(this).apply {
       visibility = View.GONE
       setBackgroundColor(0x00000000)
+
       addView(FrameLayout(this@BubbleService).apply {
         setBackgroundColor(0xCCFF0000.toInt())
         clipToOutline = true
@@ -119,17 +118,17 @@ class BubbleService : Service() {
     wm.addView(root, closeLp)
   }
 
-  // ✅ Burbuja: CÍRCULO REAL sin marco blanco
   private fun createBubble() {
     val icon = ImageView(this).apply {
-      setImageResource(resources.getIdentifier("ic_launcher_foreground", "drawable", packageName))
-      // ✅ llena el círculo, recorta si hace falta
+      // ✅ USAR TU PNG DIRECTO (sin halo raro de launcher/adaptive)
+      setImageResource(resources.getIdentifier("bubble_icon", "drawable", packageName))
       scaleType = ImageView.ScaleType.CENTER_CROP
+      background = null
       setBackgroundColor(0x00000000)
     }
 
     val container = FrameLayout(this).apply {
-      // ✅ máscara circular
+      // ✅ máscara circular real
       clipToOutline = true
       outlineProvider = object : ViewOutlineProvider() {
         override fun getOutline(view: View, outline: android.graphics.Outline) {
@@ -137,8 +136,7 @@ class BubbleService : Service() {
         }
       }
       background = null
-      setPadding(0, 0, 0, 0)
-
+      setBackgroundColor(0x00000000)
       addView(icon, FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
         FrameLayout.LayoutParams.MATCH_PARENT
@@ -190,11 +188,8 @@ class BubbleService : Service() {
           val isTap = (!moved && elapsed < 250)
 
           if (moved && isInsideClose(ev.rawX, ev.rawY)) {
-            // ✅ Drag a X: cerrar TODO
             shutdown()
           } else if (isTap) {
-            // ✅ Tap: cerrar TODO
-            clearSession()
             shutdown()
           } else {
             showClose(false)
@@ -226,11 +221,6 @@ class BubbleService : Service() {
     val bottom = top + close.height
 
     return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
-  }
-
-  private fun clearSession() {
-    try { cacheDir?.deleteRecursively() } catch (_: Throwable) {}
-    try { getSharedPreferences("chesz_session", MODE_PRIVATE).edit().clear().apply() } catch (_: Throwable) {}
   }
 
   private fun dp(v: Int): Int {
