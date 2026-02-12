@@ -11,6 +11,7 @@ import android.view.*
 import android.widget.FrameLayout
 import android.widget.TextView
 import kotlin.math.abs
+import kotlin.math.hypot
 import com.chesz.analyzer.R
 
 class BubbleService : Service() {
@@ -18,9 +19,11 @@ class BubbleService : Service() {
   private lateinit var wm: WindowManager
   private var bubbleView: View? = null
   private var closeView: View? = null
+  private var panelView: View? = null
 
   private lateinit var bubbleLp: WindowManager.LayoutParams
   private lateinit var closeLp: WindowManager.LayoutParams
+  private lateinit var panelLp: WindowManager.LayoutParams
 
   private var downRawX = 0f
   private var downRawY = 0f
@@ -44,7 +47,6 @@ class BubbleService : Service() {
       createBubble()
     }
 
-    // ✅ CLAVE: si cierras, NO debe revivir
     return START_NOT_STICKY
   }
 
@@ -60,8 +62,10 @@ class BubbleService : Service() {
 
   private fun removeViews() {
     if (!::wm.isInitialized) return
+    try { panelView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     try { bubbleView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
     try { closeView?.let { wm.removeViewImmediate(it) } } catch (_: Throwable) {}
+    panelView = null
     bubbleView = null
     closeView = null
   }
@@ -79,6 +83,9 @@ class BubbleService : Service() {
         or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN)
   }
 
+  // =========================
+  // CLOSE ZONE (X)
+  // =========================
   private fun createCloseZone() {
     val size = dp(84)
 
@@ -87,8 +94,7 @@ class BubbleService : Service() {
       setBackgroundColor(0x00000000)
 
       addView(FrameLayout(this@BubbleService).apply {
-        setBackgroundColor(0xCCFF0000.toInt())
-        // círculo de la X
+        setBackgroundColor(0xCC000000.toInt()) // fondo oscuro
         clipToOutline = true
         outlineProvider = object : ViewOutlineProvider() {
           override fun getOutline(view: View, outline: Outline) {
@@ -124,14 +130,89 @@ class BubbleService : Service() {
     wm.addView(root, closeLp)
   }
 
+  private fun showClose(show: Boolean) {
+    closeView?.visibility = if (show) View.VISIBLE else View.GONE
+  }
+
+  // hit circular REAL (no rectángulo)
+  private fun isInsideCloseCircle(rawX: Float, rawY: Float): Boolean {
+    val close = closeView ?: return false
+    if (close.visibility != View.VISIBLE) return false
+
+    val loc = IntArray(2)
+    close.getLocationOnScreen(loc)
+    val cx = loc[0] + close.width / 2f
+    val cy = loc[1] + close.height / 2f
+    val r = close.width.coerceAtMost(close.height) / 2f
+
+    return hypot(rawX - cx, rawY - cy) <= r
+  }
+
+  // =========================
+  // PANEL (burbuja desplegada)
+  // =========================
+  private fun isPanelOpen(): Boolean = panelView != null
+
+  private fun openPanel() {
+    if (panelView != null) return
+
+    val w = dp(280)
+    val h = dp(360)
+
+    val root = FrameLayout(this).apply {
+      // tarjeta blanca redondeada
+      background = RoundRectDrawable(0xFFFFFFFF.toInt(), dp(28).toFloat())
+      setPadding(dp(18), dp(18), dp(18), dp(18))
+
+      addView(TextView(this@BubbleService).apply {
+        text = "Sshot/"
+        textSize = 18f
+        setTextColor(0xFF111111.toInt())
+      })
+    }
+
+    // Panel recibe ACTION_OUTSIDE para cerrar al tocar pantalla
+    root.setOnTouchListener { _, ev ->
+      if (ev.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+        closePanel()
+        true
+      } else {
+        // tocar dentro no hace nada (consume para que no “pase” raro)
+        true
+      }
+    }
+
+    panelLp = WindowManager.LayoutParams(
+      w,
+      h,
+      windowType(),
+      baseFlags() or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+      PixelFormat.TRANSLUCENT
+    ).apply {
+      gravity = Gravity.CENTER
+    }
+
+    panelView = root
+    wm.addView(root, panelLp)
+  }
+
+  private fun closePanel() {
+    val p = panelView ?: return
+    try { wm.removeViewImmediate(p) } catch (_: Throwable) {}
+    panelView = null
+  }
+
+  // =========================
+  // BUBBLE
+  // =========================
   private fun createBubble() {
-    // ✅ CircleCrop real: sin “halo” por clipToOutline
     val iconView = CircleCropView(this).apply {
       setImageResource(R.drawable.bubble_icon)
     }
 
     val container = FrameLayout(this).apply {
       setBackgroundColor(0x00000000)
+      elevation = 0f
       addView(iconView, FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
         FrameLayout.LayoutParams.MATCH_PARENT
@@ -182,10 +263,13 @@ class BubbleService : Service() {
           val elapsed = System.currentTimeMillis() - downTime
           val isTap = (!moved && elapsed < 250)
 
-          if (moved && isInsideClose(ev.rawX, ev.rawY)) {
+          if (moved && isInsideCloseCircle(ev.rawX, ev.rawY)) {
+            // ✅ SOLO AQUÍ se mata el servicio completo
             shutdown()
           } else if (isTap) {
-            shutdown()
+            // ✅ TAP = abre/cierra panel (NO mata servicio)
+            if (isPanelOpen()) closePanel() else openPanel()
+            showClose(false)
           } else {
             showClose(false)
           }
@@ -198,24 +282,6 @@ class BubbleService : Service() {
 
     bubbleView = container
     wm.addView(container, bubbleLp)
-  }
-
-  private fun showClose(show: Boolean) {
-    closeView?.visibility = if (show) View.VISIBLE else View.GONE
-  }
-
-  private fun isInsideClose(rawX: Float, rawY: Float): Boolean {
-    val close = closeView ?: return false
-    if (close.visibility != View.VISIBLE) return false
-
-    val loc = IntArray(2)
-    close.getLocationOnScreen(loc)
-    val left = loc[0]
-    val top = loc[1]
-    val right = left + close.width
-    val bottom = top + close.height
-
-    return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
   }
 
   private fun dp(v: Int): Int {
@@ -249,7 +315,6 @@ class BubbleService : Service() {
 
       shader = BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
 
-      // centerCrop matrix
       val m = Matrix()
       val scale = maxOf(width.toFloat() / b.width, height.toFloat() / b.height)
       val dx = (width - b.width * scale) * 0.5f
@@ -276,5 +341,24 @@ class BubbleService : Service() {
       d.draw(c)
       return b
     }
+  }
+
+  // fondo redondeado simple (sin libs)
+  private class RoundRectDrawable(
+    private val color: Int,
+    private val radius: Float
+  ) : android.graphics.drawable.Drawable() {
+
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = this@RoundRectDrawable.color }
+    private val r = RectF()
+
+    override fun draw(canvas: Canvas) {
+      r.set(bounds)
+      canvas.drawRoundRect(r, radius, radius, p)
+    }
+
+    override fun setAlpha(alpha: Int) { p.alpha = alpha }
+    override fun setColorFilter(colorFilter: ColorFilter?) { p.colorFilter = colorFilter }
+    override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
   }
 }
