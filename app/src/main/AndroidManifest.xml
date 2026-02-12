@@ -22,7 +22,7 @@
 
     <service
         android:name="com.chesz.analyzer.bubble.BubbleService"
-        android:foregroundServiceType="specialUse"
+        android:foregroundServiceType="mediaProjection"
         android:exported="false" />
 
   </application>
