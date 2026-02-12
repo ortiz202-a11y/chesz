@@ -464,8 +464,8 @@ class MainService : Service() {
         }
 
         val notification: Notification = Notification.Builder(this, channelId)
-            .setContentTitle("chesz")
-            .setContentText("Overlay activo")
+            .setContentTitle("chesz__TEST_ICON")
+            .setContentText("Overlay activo TEST")
             .setSmallIcon(android.R.drawable.ic_menu_view)
             .build()
 
