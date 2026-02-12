@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import com.chesz.analyzer.bubble.BubbleService
 
 class MainActivity : Activity() {
@@ -16,8 +17,13 @@ class MainActivity : Activity() {
   override fun onResume() {
     super.onResume()
 
-    // 1) Si NO hay permiso, manda a Settings y NO inicia servicio todavía
     if (!Settings.canDrawOverlays(this)) {
+      Toast.makeText(
+        this,
+        "Dar permisos a chesz para mostrar sobre otras apps",
+        Toast.LENGTH_LONG
+      ).show()
+
       val i = Intent(
         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
         Uri.parse("package:$packageName")
@@ -26,10 +32,10 @@ class MainActivity : Activity() {
       return
     }
 
-    // 2) Ya con permiso: iniciar como servicio normal (NO foreground)
+    // Permiso concedido → iniciar servicio
     startService(Intent(this, BubbleService::class.java))
 
-    // 3) Cierra la Activity (solo era launcher)
-    finish()
+    // Cerrar Activity completamente (sin dejar rastro)
+    finishAndRemoveTask()
   }
 }
