@@ -14,6 +14,9 @@ import android.widget.TextView
 import kotlin.math.abs
 import kotlin.math.hypot
 import com.chesz.analyzer.R
+import android.text.TextUtils
+import android.widget.Button
+import android.widget.LinearLayout
 
 class BubbleService : Service() {
 
@@ -161,12 +164,85 @@ class BubbleService : Service() {
   private fun isPanelOpen(): Boolean = (panelBubble?.visibility == View.VISIBLE)
 
   private fun openPanel() {
-    val p = panelBubble ?: return
-    if (p.visibility == View.VISIBLE) return
-    p.visibility = View.VISIBLE
+    if (panelView != null) return
+
+    val w = dp(280)
+    val h = dp(360)
+
+    // Contenedor vertical: TOP status, MIDDLE recomendaciones, BOTTOM botón close
+    val col = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      layoutParams = FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams.MATCH_PARENT
+      )
+    }
+
+    val statusTv = TextView(this@BubbleService).apply {
+      text = "Sshot/Fen/AI/Done"
+      textSize = 11f
+      setTextColor(0xFF111111.toInt())
+      maxLines = 1
+      ellipsize = TextUtils.TruncateAt.END
+      // pegado arriba (mínimo padding)
+      setPadding(0, 0, 0, dp(6))
+    }
+
+    val bodyTv = TextView(this@BubbleService).apply {
+      text = "" // aquí luego van recomendaciones
+      textSize = 14f
+      setTextColor(0xFF111111.toInt())
+      // ocupa todo el espacio del medio
+      layoutParams = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        0,
+        1f
+      )
+    }
+
+    val closeBtn = Button(this@BubbleService).apply {
+      text = "Tap to Close"
+      textSize = 12f
+      isAllCaps = false
+      // más delgado
+      layoutParams = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        dp(34)
+      )
+      setPadding(0, 0, 0, 0)
+      setOnClickListener { closePanel() }
+    }
+
+    col.addView(statusTv)
+    col.addView(bodyTv)
+    col.addView(closeBtn)
+
+    val root = FrameLayout(this).apply {
+      // tarjeta blanca redondeada
+      background = RoundRectDrawable(0xFFFFFFFF.toInt(), dp(28).toFloat())
+      // padding general (menos arriba para “pegar” status)
+      setPadding(dp(14), dp(10), dp(14), dp(12))
+      addView(col)
+    }
+
+    // tocar dentro no hace nada (no cerramos por outside; se cierra con el botón)
+    root.setOnTouchListener { _, _ -> true }
+
+    panelLp = WindowManager.LayoutParams(
+      w,
+      h,
+      windowType(),
+      baseFlags(),
+      PixelFormat.TRANSLUCENT
+    ).apply {
+      gravity = Gravity.CENTER
+    }
+
+    panelView = root
+    wm.addView(root, panelLp)
   }
 
-  private fun closePanel() {
+private fun closePanel() {
     panelBubble?.visibility = View.GONE
   }
 
