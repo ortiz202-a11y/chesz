@@ -255,7 +255,7 @@ private fun togglePanel() {
           panelParams.width = overlayW
           panelParams.height = overlayH
 
-          panelParams.x = floatingParams.x
+          panelParams.x = floatingParams.x - dp(6)
           panelParams.y = floatingParams.y - overlayH + bh
 
           windowManager?.updateViewLayout(pv, panelParams)

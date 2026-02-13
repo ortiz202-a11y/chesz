@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/floatingRoot"
-    android:layout_width="56dp"
-    android:layout_height="56dp"
+    android:layout_width="60dp"
+    android:layout_height="60dp"
     android:background="@android:color/transparent">
 
     <ImageView
         android:id="@+id/btn"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:padding="0dp"
         android:src="@drawable/overlay_btn_icon"
         android:scaleType="fitXY"
