@@ -3,14 +3,14 @@
     android:id="@+id/rootOverlay"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@android:color/transparent">
+    android:background="#88000000">
 
     <!-- Aquí se inyecta el CircleCropView por código -->
     <FrameLayout
         android:id="@+id/bubbleContainer"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:background="@android:color/transparent" />
+        android:background="#88000000" />
 
     <!-- Panel (burbuja) dentro del MISMO overlay -->
     <LinearLayout
@@ -24,7 +24,7 @@
         android:paddingRight="14dp"
         android:paddingTop="0dp"
         android:paddingBottom="0dp"
-        android:background="@android:color/transparent">
+        android:background="#88000000">
 
         <TextView
             android:id="@+id/stateText"
