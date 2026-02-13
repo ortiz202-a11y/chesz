@@ -165,7 +165,7 @@ private fun togglePanel() {
         // Panel NO fullscreen: tamaño overlay (no bloquea arrastrar el botón debajo)
         updateScreenSize()
         val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
-        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
+        val overlayH = (screenH * 0.30f).toInt().coerceAtLeast(dp(64))
 
         panelParams = WindowManager.LayoutParams(
             overlayW,
@@ -255,7 +255,7 @@ private fun togglePanel() {
           panelParams.width = overlayW
           panelParams.height = overlayH
 
-          panelParams.x = floatingParams.x - dp(6)
+          panelParams.x = floatingParams.x + bw - dp(6)
           panelParams.y = floatingParams.y - overlayH + bh
 
           windowManager?.updateViewLayout(pv, panelParams)
