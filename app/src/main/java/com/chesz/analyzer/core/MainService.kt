@@ -165,7 +165,7 @@ private fun togglePanel() {
         // Panel NO fullscreen: tamaño overlay (no bloquea arrastrar el botón debajo)
         updateScreenSize()
         val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
-        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
+        val overlayH = (screenH * 0.30f).toInt().coerceAtLeast(dp(64))
 
         panelParams = WindowManager.LayoutParams(
             overlayW,
@@ -251,12 +251,19 @@ private fun togglePanel() {
 
         // Tamaño overlay relativo a la pantalla
         val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
-        val overlayH = (screenH * 0.20f).toInt().coerceAtLeast(dp(64))
+        val overlayH = (screenH * 0.30f).toInt().coerceAtLeast(dp(64))
 
         // Forzar tamaño del card por código
         val lp = FrameLayout.LayoutParams(overlayW, overlayH)
         lp.gravity = Gravity.TOP or Gravity.START
         card.layoutParams = lp
+
+          // === pegar panel a la derecha del botón y alinear BASE ===
+          panelParams.width = overlayW
+          panelParams.height = overlayH
+          panelParams.x = floatingParams.x + bw
+          panelParams.y = floatingParams.y + bh - overlayH
+          windowManager?.updateViewLayout(pv, panelParams)
 
         val margin = 0 // PEGADO
 
@@ -288,8 +295,8 @@ private fun togglePanel() {
         x = x.coerceIn(0, (screenW - overlayW).coerceAtLeast(0))
         y = y.coerceIn(0, (screenH - overlayH).coerceAtLeast(0))
 
-        card.x = x.toFloat()
-        card.y = y.toFloat()
+// card.x = x.toFloat()
+// card.y = y.toFloat()
     }
 
     private fun setChipActive(tv: TextView, active: Boolean) {
