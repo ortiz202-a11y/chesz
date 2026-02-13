@@ -162,14 +162,30 @@ class BubbleService : Service() {
   // =========================
   private fun isPanelOpen(): Boolean = (panelBubble?.visibility == View.VISIBLE)
 
-  private fun openPanel() {
-    panelBubble?.visibility = View.VISIBLE
-  }
-
+private fun openPanel() {
+  val panel = panelBubble ?: return
+  panel.visibility = View.VISIBLE
+  panel.post { animatePanelHeightTo30(panel) }
+}
   private fun closePanel() {
     panelBubble?.visibility = View.GONE
   }
+private fun animatePanelHeightTo30(panel: View) {
+  val dm = resources.displayMetrics
+  val targetH = (dm.heightPixels * 0.30f).toInt()
 
+  val lp = panel.layoutParams
+  val startH = if (panel.height > 0) panel.height else lp.height
+  if (startH == targetH) return
+
+  val anim = android.animation.ValueAnimator.ofInt(startH, targetH)
+  anim.duration = 160L
+  anim.addUpdateListener {
+    lp.height = it.animatedValue as Int
+    panel.layoutParams = lp
+  }
+  anim.start()
+}
   // =========================
   // BUBBLE
   // =========================
