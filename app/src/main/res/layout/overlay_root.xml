@@ -20,7 +20,10 @@
         android:layout_gravity="top|start"
         android:visibility="gone"
         android:orientation="vertical"
-        android:padding="14dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp"
         android:background="@android:color/transparent">
 
         <TextView
@@ -29,8 +32,11 @@
             android:layout_height="wrap_content"
             android:text="Sshot/"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp" />
 
         <TextView
             android:id="@+id/recoText"
@@ -44,11 +50,13 @@
         <TextView
             android:id="@+id/tapToClose"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="19dp"
             android:gravity="center"
             android:text="Tap to Close"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
+            android:textSize="10sp"
+            android:includeFontPadding="false"
+            android:padding="0dp"
             android:background="#33FFFFFF" />
     </LinearLayout>
 
