@@ -241,63 +241,25 @@ private fun togglePanel() {
      * - si se sale, empuja el GRUPO (botón+overlay) para que quepa
      * - PEGADO al botón (sin margen)
      */
-    private fun positionOverlayNextToButton() {
-        val pv = panelView ?: return
-        val card = pv.findViewById<View>(R.id.panelCard) ?: return
+      private fun positionOverlayNextToButton() {
+          val pv = panelView ?: return
 
-        updateScreenSize()
-        val bw = floatingView?.width ?: viewW
-        val bh = floatingView?.height ?: viewH
+          updateScreenSize()
 
-        // Tamaño overlay relativo a la pantalla
-        val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
-        val overlayH = (screenH * 0.30f).toInt().coerceAtLeast(dp(64))
+          val bw = floatingView?.width ?: viewW
+          val bh = floatingView?.height ?: viewH
 
-        // Forzar tamaño del card por código
-        val lp = FrameLayout.LayoutParams(overlayW, overlayH)
-        lp.gravity = Gravity.TOP or Gravity.START
-        card.layoutParams = lp
+          val overlayW = (screenW * 0.60f).toInt().coerceAtLeast(dp(160))
+          val overlayH = (screenH * 0.30f).toInt().coerceAtLeast(dp(64))
 
-          // === pegar panel a la derecha del botón y alinear BASE ===
           panelParams.width = overlayW
           panelParams.height = overlayH
+
           panelParams.x = floatingParams.x + bw
           panelParams.y = floatingParams.y + bh - overlayH
+
           windowManager?.updateViewLayout(pv, panelParams)
-
-        val margin = 0 // PEGADO
-
-        fun desiredX(): Int = floatingParams.x + bw + margin
-        fun desiredY(): Int = (floatingParams.y + bh) - overlayH // crece hacia arriba
-
-        var x = desiredX()
-        var y = desiredY()
-
-        // ---- Auto-ajuste moviendo el GRUPO ----
-        // Si se sale por derecha: mover botón a la izquierda
-        val overflowRight = (x + overlayW) - screenW
-        if (overflowRight > 0) {
-            floatingParams.x -= overflowRight
-            clampAndUpdate()
-            x = desiredX()
-            y = desiredY()
-        }
-
-        // Si se sale por arriba: mover botón hacia abajo
-        if (y < 0) {
-            floatingParams.y += -y
-            clampAndUpdate()
-            x = desiredX()
-            y = desiredY()
-        }
-
-        // Seguridad final
-        x = x.coerceIn(0, (screenW - overlayW).coerceAtLeast(0))
-        y = y.coerceIn(0, (screenH - overlayH).coerceAtLeast(0))
-
-// card.x = x.toFloat()
-// card.y = y.toFloat()
-    }
+      }
 
     private fun setChipActive(tv: TextView, active: Boolean) {
         tv.alpha = if (active) 1f else 0.90f
