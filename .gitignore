@@ -16,3 +16,6 @@ local.properties
 # Build artifacts / downloaded CI artifacts
 chesz-debug-apk/
 *.apk
+*.bak
+*.RV1.bak
+ktlint_all.txt
