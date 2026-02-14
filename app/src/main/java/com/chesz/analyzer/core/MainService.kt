@@ -21,7 +21,6 @@ import com.chesz.analyzer.R
 import kotlin.math.abs
 
 class MainService : Service() {
-
     private var windowManager: WindowManager? = null
 
     // UNA sola ventana/root para TODO
@@ -44,6 +43,7 @@ class MainService : Service() {
 
     // Estado W/L
     private enum class Mode { W, L }
+
     private var mode: Mode = Mode.W
 
     override fun onCreate() {
@@ -52,7 +52,11 @@ class MainService : Service() {
         showOverlay()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int = START_STICKY
 
     override fun onDestroy() {
         super.onDestroy()
@@ -68,19 +72,21 @@ class MainService : Service() {
         updateScreenSize()
 
         val layoutType =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
+            } else {
                 WindowManager.LayoutParams.TYPE_PHONE
+            }
 
-        rootParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-            PixelFormat.TRANSLUCENT
-        )
+        rootParams =
+            WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                layoutType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                PixelFormat.TRANSLUCENT,
+            )
         rootParams.gravity = Gravity.TOP or Gravity.START
         rootParams.x = 0
         rootParams.y = 300
@@ -105,10 +111,11 @@ class MainService : Service() {
         val bv = View.inflate(this, R.layout.overlay_floating_button, null)
         buttonView = bv
 
-        val btnLp = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT
-        )
+        val btnLp =
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+            )
         btnLp.gravity = Gravity.TOP or Gravity.START
         bv.layoutParams = btnLp
 
@@ -133,12 +140,14 @@ class MainService : Service() {
                     initialTouchY = event.rawY
                     true
                 }
+
                 MotionEvent.ACTION_MOVE -> {
                     rootParams.x = initialX + (event.rawX - initialTouchX).toInt()
                     rootParams.y = initialY + (event.rawY - initialTouchY).toInt()
                     clampRootAndUpdate()
                     true
                 }
+
                 MotionEvent.ACTION_UP -> {
                     val dx = abs(event.rawX - initialTouchX)
                     val dy = abs(event.rawY - initialTouchY)
@@ -149,7 +158,10 @@ class MainService : Service() {
                     }
                     true
                 }
-                else -> false
+
+                else -> {
+                    false
+                }
             }
         }
 
@@ -196,7 +208,7 @@ class MainService : Service() {
         // botón real size
         bv.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
         )
         val bw = bv.measuredWidth
         val bh = bv.measuredHeight
@@ -268,7 +280,10 @@ class MainService : Service() {
         }
     }
 
-    private fun setChipActive(tv: TextView, active: Boolean) {
+    private fun setChipActive(
+        tv: TextView,
+        active: Boolean,
+    ) {
         tv.alpha = if (active) 1f else 0.90f
         tv.setBackgroundResource(if (active) R.drawable.chip_mode_active else R.drawable.chip_mode_inactive)
     }
@@ -291,20 +306,23 @@ class MainService : Service() {
     private fun startForegroundInternal() {
         val channelId = "chesz_core_service"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Chesz Core Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
+            val channel =
+                NotificationChannel(
+                    channelId,
+                    "Chesz Core Service",
+                    NotificationManager.IMPORTANCE_LOW,
+                )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
 
-        val notification: Notification = Notification.Builder(this, channelId)
-            .setContentTitle("chesz")
-            .setContentText("Overlay activo")
-            .setSmallIcon(android.R.drawable.ic_menu_view)
-            .build()
+        val notification: Notification =
+            Notification
+                .Builder(this, channelId)
+                .setContentTitle("chesz")
+                .setContentText("Overlay activo")
+                .setSmallIcon(android.R.drawable.ic_menu_view)
+                .build()
 
         startForeground(1, notification)
     }
