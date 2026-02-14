@@ -3,7 +3,7 @@
     android:id="@+id/panelRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#55FF0000">
+    android:background="#22000000">
 
     <!-- CARD PRINCIPAL (tamaño lo fuerza MainService por % pantalla) -->
     <LinearLayout
