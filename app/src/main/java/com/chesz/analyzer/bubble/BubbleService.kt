@@ -21,6 +21,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -332,11 +333,24 @@ class BubbleService : Service() {
     // CLAMP overlay to screen
     // =========================
     private fun getScreenSizePx(): Pair<Int, Int> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val metrics = wm.currentWindowMetrics
-            val b = metrics.bounds
-            Pair(b.width(), b.height())
-        } else {
+          return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+              val metrics = wm.currentWindowMetrics
+              val b = metrics.bounds
+
+              // Área usable = bounds - insets (evita “margen lateral” por gestos/cutout)
+              val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+                  WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+              )
+
+              val w = b.width() - insets.left - insets.right
+              val h = b.height() - insets.top - insets.bottom
+              Pair(w.coerceAtLeast(0), h.coerceAtLeast(0))
+          } else {
+              @Suppress("DEPRECATION")
+              val dm = resources.displayMetrics
+              Pair(dm.widthPixels, dm.heightPixels)
+          }
+      } else {
             ("DEPRECATION")
             val dm = resources.displayMetrics
             Pair(dm.widthPixels, dm.heightPixels)
