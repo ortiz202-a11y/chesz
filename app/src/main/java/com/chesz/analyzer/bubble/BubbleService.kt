@@ -198,12 +198,20 @@ class BubbleService : Service() {
     private fun isPanelOpen(): Boolean = (panelBubble?.visibility == View.VISIBLE)
 
     private fun openPanel() {
-        panelBubble?.visibility = View.VISIBLE
-    }
+          panelBubble?.visibility = View.VISIBLE
+          val root = bubbleView
+          if (root != null && ::bubbleLp.isInitialized) {
+              root.post { updateOverlayLayoutClamped(root, bubbleLp) }
+          }
+      }
 
     private fun closePanel() {
-        panelBubble?.visibility = View.GONE
-    }
+          panelBubble?.visibility = View.GONE
+          val root = bubbleView
+          if (root != null && ::bubbleLp.isInitialized) {
+              root.post { updateOverlayLayoutClamped(root, bubbleLp) }
+          }
+      }
 
     // =========================
     // BUBBLE
