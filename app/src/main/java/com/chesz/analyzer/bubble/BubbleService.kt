@@ -343,7 +343,23 @@ class BubbleService : Service() {
         }
     }
 
-    private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
+    
+      private fun effectiveOverlaySizePx(root: View): Pair<Int, Int> {
+          // Panel abierto => tamaño real = root completo (botón + panel)
+          if (isPanelOpen()) {
+              val w = if (root.width > 0) root.width else root.measuredWidth
+              val h = if (root.height > 0) root.height else root.measuredHeight
+              return Pair(w, h)
+          }
+
+          // Panel cerrado => clamp SOLO por tamaño del botón (evita margen lateral por panel)
+          val bubble = root.findViewById<View>(R.id.bubbleContainer)
+          val w = if (bubble.width > 0) bubble.width else bubble.measuredWidth
+          val h = if (bubble.height > 0) bubble.height else bubble.measuredHeight
+          return Pair(w, h)
+      }
+
+private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
         val (sw, sh) = getScreenSizePx()
 
         val size = effectiveOverlaySizePx(overlayView)
