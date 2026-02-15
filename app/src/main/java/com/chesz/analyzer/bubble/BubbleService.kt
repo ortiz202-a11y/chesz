@@ -265,7 +265,7 @@ class BubbleService : Service() {
                     baseFlags(),
                     PixelFormat.TRANSLUCENT,
                 ).apply {
-                    gravity = Gravity.TOP or Gravity.START
+                    gravity = Gravity.BOTTOM or Gravity.START
                     x = dp(16)
                     y = dp(220)
                 }
