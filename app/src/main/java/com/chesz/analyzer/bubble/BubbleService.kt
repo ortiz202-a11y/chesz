@@ -244,9 +244,9 @@ class BubbleService : Service() {
         val ph = (dm.heightPixels * 0.30f).toInt()
         val plp =
             FrameLayout.LayoutParams(pw, ph).apply {
-                gravity = Gravity.BOTTOM or Gravity.START
-                leftMargin = dp(88) // a la derecha de la burbuja
-                  bottomMargin = 0
+                gravity = Gravity.TOP or Gravity.START
+                leftMargin = 0
+                topMargin = dp(64) // 80dp - 16dp overlap
             }
         panel.layoutParams = plp
 
@@ -369,9 +369,11 @@ private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
         val maxX = (sw - vw).coerceAtLeast(0)
         val maxY = (sh - vh).coerceAtLeast(0)
 
-        lp.x = lp.x.coerceIn(0, maxX)
+        val overscan = dp(2)
+
+        lp.x = lp.x.coerceIn(-overscan, maxX + overscan)
         lp.y = lp.y.coerceIn(0, maxY)
-    }
+}
 
     private fun updateOverlayLayoutClamped(root: View, lp: WindowManager.LayoutParams) {
         clampToScreen(lp, root)
