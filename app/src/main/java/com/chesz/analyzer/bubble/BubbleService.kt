@@ -371,7 +371,7 @@ private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
 
         val overscan = dp(2)
 
-        lp.x = lp.x.coerceIn(-overscan, maxX + overscan)
+        lp.x = lp.x.coerceIn(0, maxX)
         lp.y = lp.y.coerceIn(0, maxY)
 }
 
