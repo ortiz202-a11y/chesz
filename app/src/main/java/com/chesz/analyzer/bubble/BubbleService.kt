@@ -265,7 +265,7 @@ class BubbleService : Service() {
                     baseFlags(),
                     PixelFormat.TRANSLUCENT,
                 ).apply {
-                    gravity = Gravity.BOTTOM or Gravity.START
+                    gravity = Gravity.TOP or Gravity.START
                     x = dp(16)
                     y = dp(220)
                 }
@@ -293,7 +293,7 @@ class BubbleService : Service() {
                     }
 
                     bubbleLp.x = downX + dx
-                    bubbleLp.y = downY - dy
+                    bubbleLp.y = downY + dy
                     updateOverlayLayoutClamped(root, bubbleLp)
                     true
                 }
