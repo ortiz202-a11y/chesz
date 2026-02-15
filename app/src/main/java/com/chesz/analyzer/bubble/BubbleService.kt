@@ -346,7 +346,9 @@ class BubbleService : Service() {
     private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
         val (sw, sh) = getScreenSizePx()
 
-        val (vw, vh) = effectiveOverlaySizePx(overlayView)
+        val size = effectiveOverlaySizePx(overlayView)
+        val vw = size.first
+        val vh = size.second
         if (vw <= 0 || vh <= 0) return
 
         val maxX = (sw - vw).coerceAtLeast(0)
