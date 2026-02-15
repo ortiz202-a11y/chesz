@@ -244,9 +244,9 @@ class BubbleService : Service() {
         val ph = (dm.heightPixels * 0.30f).toInt()
         val plp =
             FrameLayout.LayoutParams(pw, ph).apply {
-                gravity = Gravity.TOP or Gravity.START
+                gravity = Gravity.BOTTOM or Gravity.START
                 leftMargin = dp(88) // a la derecha de la burbuja
-                topMargin = 0
+                  bottomMargin = 0
             }
         panel.layoutParams = plp
 
