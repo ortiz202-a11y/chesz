@@ -293,7 +293,7 @@ class BubbleService : Service() {
                     }
 
                     bubbleLp.x = downX + dx
-                    bubbleLp.y = downY + dy
+                    bubbleLp.y = downY - dy
                     updateOverlayLayoutClamped(root, bubbleLp)
                     true
                 }
