@@ -286,7 +286,7 @@ class BubbleService : Service() {
 
                     bubbleLp.x = downX + dx
                     bubbleLp.y = downY + dy
-                    wm.updateViewLayout(root, bubbleLp)
+                    updateOverlayLayoutClamped(root, bubbleLp)
                     true
                 }
 
@@ -316,7 +316,44 @@ class BubbleService : Service() {
         bubbleView = root
 
         wm.addView(root, bubbleLp)
+
+        root.post { updateOverlayLayoutClamped(root, bubbleLp) }
     }
+
+    // =========================
+    // CLAMP overlay to screen
+    // =========================
+    private fun getScreenSizePx(): Pair<Int, Int> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val metrics = wm.currentWindowMetrics
+            val b = metrics.bounds
+            Pair(b.width(), b.height())
+        } else {
+            ("DEPRECATION")
+            val dm = resources.displayMetrics
+            Pair(dm.widthPixels, dm.heightPixels)
+        }
+    }
+
+    private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
+        val (sw, sh) = getScreenSizePx()
+
+        val vw = if (overlayView.width > 0) overlayView.width else overlayView.measuredWidth
+        val vh = if (overlayView.height > 0) overlayView.height else overlayView.measuredHeight
+        if (vw <= 0 || vh <= 0) return
+
+        val maxX = (sw - vw).coerceAtLeast(0)
+        val maxY = (sh - vh).coerceAtLeast(0)
+
+        lp.x = lp.x.coerceIn(0, maxX)
+        lp.y = lp.y.coerceIn(0, maxY)
+    }
+
+    private fun updateOverlayLayoutClamped(root: View, lp: WindowManager.LayoutParams) {
+        clampToScreen(lp, root)
+        wm.updateViewLayout(root, lp)
+    }
+
 
     private fun dp(v: Int): Int {
         val d = resources.displayMetrics.density
