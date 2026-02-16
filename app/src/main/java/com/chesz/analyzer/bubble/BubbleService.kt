@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.provider.Settings
 import android.view.*
 import android.widget.FrameLayout
+import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
 
@@ -24,10 +25,7 @@ class BubbleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_STICKY }
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        if (bubbleView == null) {
-            createCloseZone()
-            createBubble()
-        }
+        if (bubbleView == null) { createCloseZone(); createBubble() }
         return START_STICKY
     }
 
@@ -42,12 +40,11 @@ class BubbleService : Service() {
         val size = dp(96)
         closeView = FrameLayout(this).apply {
             visibility = View.GONE
-            val circle = FrameLayout(context).apply { setBackgroundColor(0xAAFF0000.toInt()) }
-            addView(circle, FrameLayout.LayoutParams(size, size, Gravity.CENTER))
+            addView(FrameLayout(context).apply { setBackgroundColor(0xAAFF0000.toInt()) }, 
+                FrameLayout.LayoutParams(size, size, Gravity.CENTER))
         }
         val closeLp = WindowManager.LayoutParams(size, size, windowType(), baseFlags(), PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            y = dp(28)
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = dp(28)
         }
         wm.addView(closeView, closeLp)
     }
@@ -58,6 +55,7 @@ class BubbleService : Service() {
         panelBubble = root.findViewById<View>(R.id.panelBubble)
         
         panelBubble?.visibility = View.GONE
+        panelBubble?.setBackgroundColor(0x88000000.toInt())
 
         bubbleLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -66,8 +64,7 @@ class BubbleService : Service() {
             baseFlags(),
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = dp(16); y = dp(220)
+            gravity = Gravity.TOP or Gravity.START; x = dp(16); y = dp(220)
         }
 
         var downRawX = 0f; var downRawY = 0f
@@ -86,16 +83,12 @@ class BubbleService : Service() {
                     val dx = (ev.rawX - downRawX).toInt()
                     val dy = (ev.rawY - downRawY).toInt()
                     if (!moved && (abs(dx) > dp(5) || abs(dy) > dp(5))) {
-                        moved = true
-                        closeView?.visibility = View.VISIBLE
+                        moved = true; closeView?.visibility = View.VISIBLE
                     }
-                    bubbleLp.x = downX + dx
-                    bubbleLp.y = downY + dy
-                    
+                    bubbleLp.x = downX + dx; bubbleLp.y = downY + dy
                     val dm = resources.displayMetrics
                     bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - dp(80))
                     bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - dp(80))
-                    
                     wm.updateViewLayout(root, bubbleLp)
                     true
                 }
