@@ -225,7 +225,7 @@ class BubbleService : Service() {
           // Layout MÁSTER: burbuja abajo-izquierda
           (bubbleContainer.layoutParams as FrameLayout.LayoutParams).apply {
               gravity = Gravity.BOTTOM or Gravity.START
-              leftMargin = -dp(55)
+              leftMargin = 0
               bottomMargin = 0
               bubbleContainer.layoutParams = this
           }
@@ -254,7 +254,7 @@ class BubbleService : Service() {
               FrameLayout.LayoutParams(pw, ph).apply {
                   // Layout MÁSTER: panel abajo-izquierda, corrido a la derecha con overlap
                   gravity = Gravity.BOTTOM or Gravity.START
-                  leftMargin = 0 // panel pegado; burbuja sale 55dp
+                  leftMargin = dp(55) // panel pegado; burbuja sale 55dp
                   bottomMargin = 0
               }
           panel.layoutParams = plp
