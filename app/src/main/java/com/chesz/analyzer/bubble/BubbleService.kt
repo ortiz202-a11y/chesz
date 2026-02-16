@@ -246,7 +246,7 @@ class BubbleService : Service() {
             FrameLayout.LayoutParams(pw, ph).apply {
                 gravity = Gravity.TOP or Gravity.START
                 leftMargin = 0
-                topMargin = dp(64) // 80dp - 16dp overlap
+                topMargin = dp(55) // 80dp - 25dp overlap
             }
         panel.layoutParams = plp
 
