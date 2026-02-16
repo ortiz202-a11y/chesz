@@ -201,7 +201,7 @@ class BubbleService : Service() {
           panelBubble?.visibility = View.VISIBLE
           val root = bubbleView
           if (root != null && ::bubbleLp.isInitialized) {
-              root.post { updateOverlayLayoutClamped(root, bubbleLp) }
+              // Post eliminado
           }
       }
 
@@ -209,7 +209,10 @@ class BubbleService : Service() {
           panelBubble?.visibility = View.GONE
           val root = bubbleView
           if (root != null && ::bubbleLp.isInitialized) {
-              root.post { updateOverlayLayoutClamped(root, bubbleLp) }
+              // Eliminamos el clamp aquí para que NO brinque
+              wm.updateViewLayout(root, bubbleLp)
+          }
+      }
           }
       }
 
@@ -334,7 +337,7 @@ class BubbleService : Service() {
 
         wm.addView(root, bubbleLp)
 
-        root.post { updateOverlayLayoutClamped(root, bubbleLp) }
+        // Post eliminado
     }
 
     // =========================
