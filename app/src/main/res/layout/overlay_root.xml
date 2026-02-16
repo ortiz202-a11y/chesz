@@ -4,46 +4,46 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:clipChildren="false"
-    android:clipToPadding="false"
-    android:padding="0dp">
+    android:clipToPadding="false">
 
     <LinearLayout
         android:id="@+id/panelBubble"
-        android:layout_width="250dp"
-        android:layout_height="200dp"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#CC000000"
-        android:padding="10dp"
-        android:layout_marginStart="80dp"
+        android:background="@android:drawable/toast_frame"
+        android:backgroundTint="#EE000000"
+        android:padding="12dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginStart="65dp"
         android:visibility="gone">
         <TextView
             android:id="@+id/stateText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFF"
+            android:textSize="14sp"
             android:text="Estado: Listo" />
         <TextView
             android:id="@+id/recoText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
             android:text="Chesz Analyzer" />
-        <Button
-            android:id="@+id/tapToClose"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Cerrar Panel" />
     </LinearLayout>
 
     <FrameLayout
         android:id="@+id/bubbleContainer"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:background="@android:color/transparent">
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="top|start"
+        android:background="@android:drawable/ic_menu_bg">
         <ImageView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:src="@android:drawable/ic_menu_info_details"
-            android:background="#FF444444" />
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center"
+            android:src="@android:drawable/ic_dialog_info"
+            android:tint="#FFFFFF" />
     </FrameLayout>
 </FrameLayout>
