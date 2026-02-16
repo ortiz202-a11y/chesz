@@ -367,22 +367,23 @@ class BubbleService : Service() {
           return Pair(w, h)
       }
 
+
 private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
-        val (sw, sh) = getScreenSizePx()
+    val (sw, sh) = getScreenSizePx()
+    val size = effectiveOverlaySizePx(overlayView)
+    val vw = size.first
+    val vh = size.second
+    
+    // ELIMINAMOS EL MARCO FANTASMA: 
+    // Si el panel está cerrado, el ancho real para chocar con la pared es solo el de la burbuja
+    val maxX = if (isPanelOpen()) (sw - vw) else (sw - dp(80)) 
+    val maxY = (sh - vh).coerceAtLeast(0)
 
-        val size = effectiveOverlaySizePx(overlayView)
-        val vw = size.first
-        val vh = size.second
-        if (vw <= 0 || vh <= 0) return
-
-        val maxX = (sw - vw).coerceAtLeast(0)
-        val maxY = (sh - vh).coerceAtLeast(0)
-
-        val overscan = dp(2)
-
-        lp.x = lp.x.coerceIn(0, maxX)
-        lp.y = lp.y.coerceIn(0, (getScreenSizePx().second - effectiveOverlaySizePx(overlayView).second).coerceAtLeast(0))
+    // LÍMITE SUPERIOR FORZADO A 0
+    lp.x = lp.x.coerceIn(0, sw - dp(80)) 
+    lp.y = lp.y.coerceIn(0, sh - dp(80))
 }
+
 
     private fun updateOverlayLayoutClamped(root: View, lp: WindowManager.LayoutParams) {
         clampToScreen(lp, root)
