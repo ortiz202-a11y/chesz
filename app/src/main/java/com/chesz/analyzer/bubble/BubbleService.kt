@@ -57,8 +57,7 @@ class BubbleService : Service() {
     }
 
     private fun createBubble() {
-        val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-        val root = inflater.inflate(R.layout.overlay_root, null) as FrameLayout
+        val root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null) as FrameLayout
         val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
         panelBubble = root.findViewById<View>(R.id.panelBubble)
         
