@@ -31,13 +31,20 @@ class BubbleService : Service() {
         val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
         val panel = root.findViewById<View>(R.id.panelBubble)
         
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
+            
         bubbleLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
+            type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = 0 }
+        ).apply { 
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 100 
+        }
 
         var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
         var moved = false; var time = 0L
@@ -46,19 +53,23 @@ class BubbleService : Service() {
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     dX = ev.rawX; dY = ev.rawY; oX = bubbleLp.x; oY = bubbleLp.y
-                    moved = false; time = System.currentTimeMillis(); true
+                    moved = false; time = System.currentTimeMillis()
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (ev.rawX - dX).toInt(); val dy = (ev.rawY - dY).toInt()
                     if (!moved && (abs(dx) > 10 || abs(dy) > 10)) moved = true
-                    bubbleLp.x = oX + dx; bubbleLp.y = oY + dy
                     
-                    // LÍMITES TOTALES: 0 es el borde físico
+                    bubbleLp.x = oX + dx
+                    bubbleLp.y = oY + dy
+                    
+                    // LÍMITES FÍSICOS: Permite Y=0 (techo de la pantalla)
                     val dm = resources.displayMetrics
-                    bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - 60)
-                    bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - 60)
+                    bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - dp(60))
+                    bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - dp(60))
                     
-                    wm.updateViewLayout(root, bubbleLp); true
+                    wm.updateViewLayout(root, bubbleLp)
+                    true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved && (System.currentTimeMillis() - time) < 250) {
@@ -73,6 +84,8 @@ class BubbleService : Service() {
         bubbleView = root
         wm.addView(root, bubbleLp)
     }
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
         super.onDestroy()
