@@ -3,61 +3,73 @@
     android:id="@+id/rootOverlay"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@android:color/transparent">
+    android:background="@android:color/transparent"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
-    <!-- Aquí se inyecta el CircleCropView por código -->
     <FrameLayout
-        android:id="@+id/bubbleContainer"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:background="@android:color/transparent" />
+        android:id="@+id/panelContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-    <!-- Panel (burbuja) dentro del MISMO overlay -->
-    <LinearLayout
-        android:id="@+id/panelBubble"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
-        android:layout_gravity="bottom|start"
-        android:visibility="gone"
-        android:orientation="vertical"
-        android:paddingLeft="14dp"
-        android:paddingRight="14dp"
-        android:paddingTop="0dp"
-        android:paddingBottom="0dp"
-        android:background="@android:color/transparent">
-
-        <TextView
-            android:id="@+id/stateText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Sshot/"
-            android:textColor="#FFFFFF"
-            android:textSize="9sp"
-            android:textStyle="bold"
-            android:includeFontPadding="false"
+        <!-- Panel (tamaño/pos lo fuerza BubbleService por % pantalla) -->
+        <LinearLayout
+            android:id="@+id/panelBubble"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_gravity="top|start"
+            android:visibility="gone"
+            android:orientation="vertical"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
             android:paddingTop="0dp"
-            android:paddingBottom="0dp" />
+            android:paddingBottom="0dp"
+            android:background="@android:color/transparent">
 
-        <TextView
-            android:id="@+id/recoText"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:text=""
-            android:textColor="#FFFFFF"
-            android:textSize="15sp" />
+            <TextView
+                android:id="@+id/stateText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sshot/"
+                android:textColor="#FFFFFF"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp" />
 
-        <TextView
-            android:id="@+id/tapToClose"
-            android:layout_width="match_parent"
-            android:layout_height="19dp"
-            android:gravity="center"
-            android:text="Tap to Close"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:includeFontPadding="false"
-            android:padding="0dp"
-            android:background="#33FFFFFF" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/recoText"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:text=""
+                android:textColor="#FFFFFF"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tapToClose"
+                android:layout_width="match_parent"
+                android:layout_height="19dp"
+                android:gravity="center"
+                android:text="Tap to Close"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:includeFontPadding="false"
+                android:padding="0dp"
+                android:background="#33FFFFFF" />
+        </LinearLayout>
+
+        <!-- Botón (se posiciona por código: 30dp dentro / 50dp fuera) -->
+        <FrameLayout
+            android:id="@+id/bubbleContainer"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_gravity="top|start"
+            android:background="@android:color/transparent" />
+
+    </FrameLayout>
 
 </FrameLayout>

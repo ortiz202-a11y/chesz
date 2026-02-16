@@ -222,6 +222,14 @@ class BubbleService : Service() {
 
         // Burbuja (icono) dentro del contenedor
         val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
+          // Layout MÁSTER: burbuja abajo-izquierda
+          (bubbleContainer.layoutParams as FrameLayout.LayoutParams).apply {
+              gravity = Gravity.BOTTOM or Gravity.START
+              leftMargin = -dp(55)
+              bottomMargin = 0
+              bubbleContainer.layoutParams = this
+          }
+
         val iconView =
             CircleCropView(this).apply {
                 setImageResource(R.drawable.bubble_icon)
@@ -243,12 +251,13 @@ class BubbleService : Service() {
         val pw = (dm.widthPixels * 0.60f).toInt()
         val ph = (dm.heightPixels * 0.30f).toInt()
         val plp =
-            FrameLayout.LayoutParams(pw, ph).apply {
-                gravity = Gravity.TOP or Gravity.START
-                leftMargin = 0
-                topMargin = dp(55) // 80dp - 16dp overlap
-            }
-        panel.layoutParams = plp
+              FrameLayout.LayoutParams(pw, ph).apply {
+                  // Layout MÁSTER: panel abajo-izquierda, corrido a la derecha con overlap
+                  gravity = Gravity.BOTTOM or Gravity.START
+                  leftMargin = 0 // panel pegado; burbuja sale 55dp
+                  bottomMargin = 0
+              }
+          panel.layoutParams = plp
 
         // Tap to Close (cierra solo el panel)
         root.findViewById<View>(R.id.tapToClose).setOnClickListener {
