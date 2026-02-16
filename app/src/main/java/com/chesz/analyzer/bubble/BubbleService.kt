@@ -3,7 +3,7 @@ package com.chesz.analyzer.bubble
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -37,14 +37,13 @@ class BubbleService : Service() {
                                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
 
     private fun createCloseZone() {
-        val size = dp(96)
+        val size = (96 * resources.displayMetrics.density).toInt()
         closeView = FrameLayout(this).apply {
             visibility = View.GONE
-            addView(FrameLayout(context).apply { setBackgroundColor(0xAAFF0000.toInt()) }, 
-                FrameLayout.LayoutParams(size, size, Gravity.CENTER))
+            setBackgroundColor(0xAAFF0000.toInt())
         }
         val lp = WindowManager.LayoutParams(size, size, windowType(), baseFlags(), PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = dp(28)
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = 100
         }
         wm.addView(closeView, lp)
     }
@@ -54,11 +53,10 @@ class BubbleService : Service() {
         val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
         panelBubble = root.findViewById<View>(R.id.panelBubble)
         
-        // Restauramos los textos para que el XML no truene
-        root.findViewById<TextView>(R.id.stateText)?.text = "Listo"
-        root.findViewById<TextView>(R.id.recoText)?.text = "Chesz"
-        
-        panelBubble?.visibility = View.GONE
+        root.findViewById<View>(R.id.tapToClose)?.setOnClickListener { 
+            panelBubble?.visibility = View.GONE
+            wm.updateViewLayout(root, bubbleLp)
+        }
 
         bubbleLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -68,7 +66,7 @@ class BubbleService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = dp(16); y = dp(220)
+            x = 100; y = 100
         }
 
         var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
@@ -82,13 +80,12 @@ class BubbleService : Service() {
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (ev.rawX - dX).toInt(); val dy = (ev.rawY - dY).toInt()
-                    if (!moved && (abs(dx) > 5 || abs(dy) > 5)) { moved = true; closeView?.visibility = View.VISIBLE }
+                    if (!moved && (abs(dx) > 10 || abs(dy) > 10)) { moved = true; closeView?.visibility = View.VISIBLE }
                     bubbleLp.x = oX + dx; bubbleLp.y = oY + dy
                     
-                    // Límites reales a 0
                     val dm = resources.displayMetrics
-                    bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - dp(80))
-                    bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - dp(80))
+                    bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - (80 * dm.density).toInt())
+                    bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - (80 * dm.density).toInt())
                     
                     wm.updateViewLayout(root, bubbleLp); true
                 }
@@ -96,7 +93,7 @@ class BubbleService : Service() {
                     closeView?.visibility = View.GONE
                     if (!moved && (System.currentTimeMillis() - time) < 250) {
                         panelBubble?.visibility = if (panelBubble?.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        wm.updateViewLayout(root, bubbleLp) // ACTUALIZACIÓN SIN BRINCO
+                        wm.updateViewLayout(root, bubbleLp)
                     }
                     true
                 }
@@ -106,8 +103,6 @@ class BubbleService : Service() {
         bubbleView = root
         wm.addView(root, bubbleLp)
     }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
         super.onDestroy()
