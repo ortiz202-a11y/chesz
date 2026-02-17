@@ -9,7 +9,6 @@ import android.os.IBinder
 import android.provider.Settings
 import android.view.*
 import android.widget.FrameLayout
-import com.chesz.analyzer.R
 import kotlin.math.abs
 
 class BubbleService : Service() {
@@ -23,9 +22,17 @@ class BubbleService : Service() {
         if (!Settings.canDrawOverlays(this)) return START_NOT_STICKY
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         if (root == null) {
-            root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null)
-            val container = root!!.findViewById<FrameLayout>(R.id.bubbleContainer)
-            val panel = root!!.findViewById<View>(R.id.panelBubble)
+            val res = resources
+            val pkg = packageName
+            
+            // Buscamos los IDs por nombre para que GitHub no se queje
+            val layoutId = res.getIdentifier("overlay_root", "layout", pkg)
+            val containerId = res.getIdentifier("bubbleContainer", "id", pkg)
+            val panelId = res.getIdentifier("panelBubble", "id", pkg)
+            
+            root = LayoutInflater.from(this).inflate(layoutId, null)
+            val container = root!!.findViewById<FrameLayout>(containerId)
+            val panel = root!!.findViewById<View>(panelId)
             
             val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
@@ -64,6 +71,6 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        root?.let { wm?.removeViewImmediate(it) }
+        root?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
     }
 }
