@@ -5,10 +5,8 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
-import android.provider.Settings
 import android.view.*
 import android.widget.FrameLayout
-import android.widget.RelativeLayout
 import kotlin.math.abs
 
 class BubbleService : Service() {
@@ -19,12 +17,10 @@ class BubbleService : Service() {
     override fun onBind(i: Intent?): IBinder? = null
 
     override fun onStartCommand(i: Intent?, f: Int, s: Int): Int {
-        if (!Settings.canDrawOverlays(this)) return START_NOT_STICKY
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         if (root == null) {
             val res = resources
             val pkg = packageName
-            
             val layoutId = res.getIdentifier("overlay_root", "layout", pkg)
             root = LayoutInflater.from(this).inflate(layoutId, null)
             
@@ -32,16 +28,13 @@ class BubbleService : Service() {
             val panel = root!!.findViewById<View>(res.getIdentifier("panelBubble", "id", pkg))
             val btnClose = root!!.findViewById<View>(res.getIdentifier("btnClosePanel", "id", pkg))
             
-            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
-            
             lp = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                type,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 2038 else 2002,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
-            ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = 100 }
+            ).apply { gravity = Gravity.TOP or Gravity.START; x = 500; y = 1000 }
 
             var dX = 0f; var dY = 0f; var oX = 0; var oY = 0; var mov = false
 
@@ -56,23 +49,7 @@ class BubbleService : Service() {
                     }
                     MotionEvent.ACTION_UP -> {
                         if (!mov) {
-                            // Lógica Inteligente de Apertura
-                            val screenWidth = res.displayMetrics.widthPixels
-                            val params = panel.layoutParams as RelativeLayout.LayoutParams
-                            val bubbleParams = container.layoutParams as RelativeLayout.LayoutParams
-
-                            if (lp.x > screenWidth / 2) {
-                                // Estamos a la derecha: Panel a la IZQUIERDA del botón
-                                params.removeRule(RelativeLayout.END_OF)
-                                bubbleParams.addRule(RelativeLayout.END_OF, panel.id)
-                            } else {
-                                // Estamos a la izquierda: Panel a la DERECHA del botón
-                                bubbleParams.removeRule(RelativeLayout.END_OF)
-                                params.addRule(RelativeLayout.END_OF, container.id)
-                            }
-                            
-                            panel.layoutParams = params
-                            container.layoutParams = bubbleParams
+                            // Solo alternamos visibilidad, sin mover reglas de layout
                             panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
                         }
                         true
@@ -89,6 +66,6 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        root?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
+        root?.let { wm?.removeViewImmediate(it) }
     }
 }

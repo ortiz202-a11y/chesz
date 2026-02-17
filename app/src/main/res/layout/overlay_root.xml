@@ -7,6 +7,8 @@
         android:id="@+id/panelBubble"
         android:layout_width="220dp"
         android:layout_height="wrap_content"
+        android:layout_above="@id/bubbleContainer"
+        android:layout_alignStart="@id/bubbleContainer"
         android:background="#DD000000"
         android:orientation="vertical"
         android:padding="8dp"
@@ -38,7 +40,7 @@
         <TextView
             android:id="@+id/btnClosePanel"
             android:layout_width="match_parent"
-            android:layout_height="30dp"
+            android:layout_height="35dp"
             android:gravity="center"
             android:text="CERRAR PANEL"
             android:textColor="#FF4444"
@@ -50,15 +52,15 @@
         android:id="@+id/bubbleContainer"
         android:layout_width="55dp"
         android:layout_height="55dp"
-        android:layout_toEndOf="@id/panelBubble"
+        android:layout_alignParentBottom="true"
         android:background="@android:drawable/screen_background_dark_transparent">
         
         <ImageView
-            android:layout_width="35dp"
-            android:layout_height="35dp"
+            android:id="@+id/bubbleIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="center"
-            android:src="@android:drawable/ic_dialog_info" 
-            android:contentDescription="Analyzer Icon" />
+            android:src="@drawable/ic_analyzer" />
     </FrameLayout>
 
 </RelativeLayout>
