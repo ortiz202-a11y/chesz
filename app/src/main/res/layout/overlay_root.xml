@@ -8,15 +8,14 @@
         android:layout_width="55dp"
         android:layout_height="55dp"
         android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true"
         android:background="@android:drawable/screen_background_dark_transparent">
         
         <ImageView
             android:id="@+id/bubbleIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_analyzer" />
+            android:src="@android:drawable/ic_menu_search" />
     </FrameLayout>
 
     <LinearLayout
@@ -24,41 +23,33 @@
         android:layout_width="220dp"
         android:layout_height="wrap_content"
         android:layout_above="@id/bubbleContainer"
-        android:layout_alignStart="@id/bubbleContainer"
-        android:background="#DD000000"
+        android:background="#EE000000"
         android:orientation="vertical"
-        android:padding="8dp"
+        android:padding="10dp"
         android:visibility="gone">
 
         <TextView
             android:id="@+id/stateText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Sshot / Fen / Ai / Done"
-            android:textColor="#AAAAAA"
-            android:textSize="10sp" />
+            android:text="Estado: Sshot / Fen / Ai"
+            android:textColor="#BBBBBB"
+            android:textSize="11sp" />
 
         <TextView
             android:id="@+id/apiDataText"
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:layout_marginTop="5dp"
-            android:text="Esperando datos de API..."
+            android:text="Esperando datos..."
             android:textColor="#FFFFFF" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="#444444" />
 
         <TextView
             android:id="@+id/btnClosePanel"
             android:layout_width="match_parent"
+            android:layout_height="40dp"
             android:gravity="center"
-            android:padding="8dp"
             android:text="CERRAR PANEL"
-            android:textColor="#FF4444"
+            android:textColor="#FF5555"
             android:textStyle="bold" />
     </LinearLayout>
 
