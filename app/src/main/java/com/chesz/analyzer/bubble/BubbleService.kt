@@ -38,7 +38,7 @@ class BubbleService : Service() {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply { 
             gravity = Gravity.TOP or Gravity.START
@@ -63,10 +63,12 @@ class BubbleService : Service() {
                     bubbleLp.x = oX + dx
                     bubbleLp.y = oY + dy
                     
-                    // LÍMITES FÍSICOS: Permite Y=0 (techo de la pantalla)
                     val dm = resources.displayMetrics
-                    bubbleLp.x = bubbleLp.x.coerceIn(0, dm.widthPixels - dp(60))
-                    bubbleLp.y = bubbleLp.y.coerceIn(0, dm.heightPixels - dp(60))
+                    val limitX = dm.widthPixels - (60 * dm.density).toInt()
+                    val limitY = dm.heightPixels - (60 * dm.density).toInt()
+                    
+                    bubbleLp.x = bubbleLp.x.coerceIn(0, limitX)
+                    bubbleLp.y = bubbleLp.y.coerceIn(-100, limitY) // Permitimos subir un poco más
                     
                     wm.updateViewLayout(root, bubbleLp)
                     true
@@ -84,8 +86,6 @@ class BubbleService : Service() {
         bubbleView = root
         wm.addView(root, bubbleLp)
     }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
         super.onDestroy()
