@@ -34,22 +34,28 @@ class BubbleService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 2038 else 2002,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
-            ).apply { gravity = Gravity.TOP or Gravity.START; x = 500; y = 1000 }
+            ).apply { 
+                gravity = Gravity.TOP or Gravity.START
+                x = 500
+                y = 1000 
+            }
 
             var dX = 0f; var dY = 0f; var oX = 0; var oY = 0; var mov = false
 
             container.setOnTouchListener { _, e ->
                 when (e.action) {
-                    MotionEvent.ACTION_DOWN -> { dX = e.rawX; dY = e.rawY; oX = lp.x; oY = lp.y; mov = false; true }
+                    MotionEvent.ACTION_DOWN -> { 
+                        dX = e.rawX; dY = e.rawY; oX = lp.x; oY = lp.y; mov = false; true 
+                    }
                     MotionEvent.ACTION_MOVE -> {
                         lp.x = oX + (e.rawX - dX).toInt()
                         lp.y = oY + (e.rawY - dY).toInt()
-                        if (abs(e.rawX - dX) > 10 || abs(e.rawY - dY) > 10) mov = true
-                        wm?.updateViewLayout(root, lp); true
+                        if (abs(e.rawX - dX) > 15 || abs(e.rawY - dY) > 15) mov = true
+                        wm?.updateViewLayout(root, lp)
+                        true
                     }
                     MotionEvent.ACTION_UP -> {
                         if (!mov) {
-                            // Solo alternamos visibilidad, sin mover reglas de layout
                             panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
                         }
                         true
