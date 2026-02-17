@@ -13,7 +13,7 @@ import com.chesz.analyzer.R
 import kotlin.math.abs
 
 class BubbleService : Service() {
-    private lateinit var wm: WindowManager
+    private var wm: WindowManager? = null
     private var bubbleView: View? = null
     private lateinit var bubbleLp: WindowManager.LayoutParams
 
@@ -57,26 +57,28 @@ class BubbleService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = (ev.rawX - dX).toInt(); val dy = (ev.rawY - dY).toInt()
+                    val dx = (ev.rawX - dX).toInt()
+                    val dy = (ev.rawY - dY).toInt()
                     if (!moved && (abs(dx) > 10 || abs(dy) > 10)) moved = true
                     
                     bubbleLp.x = oX + dx
                     bubbleLp.y = oY + dy
                     
                     val dm = resources.displayMetrics
-                    val limitX = dm.widthPixels - (60 * dm.density).toInt()
-                    val limitY = dm.heightPixels - (60 * dm.density).toInt()
+                    val den = dm.density
+                    val limitX = dm.widthPixels - (65 * den).toInt()
+                    val limitY = dm.heightPixels - (65 * den).toInt()
                     
                     bubbleLp.x = bubbleLp.x.coerceIn(0, limitX)
-                    bubbleLp.y = bubbleLp.y.coerceIn(-100, limitY) // Permitimos subir un poco más
+                    bubbleLp.y = bubbleLp.y.coerceIn(-100, limitY)
                     
-                    wm.updateViewLayout(root, bubbleLp)
+                    wm?.updateViewLayout(root, bubbleLp)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved && (System.currentTimeMillis() - time) < 250) {
                         panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        wm.updateViewLayout(root, bubbleLp)
+                        wm?.updateViewLayout(root, bubbleLp)
                     }
                     true
                 }
@@ -84,11 +86,11 @@ class BubbleService : Service() {
             }
         }
         bubbleView = root
-        wm.addView(root, bubbleLp)
+        wm?.addView(root, bubbleLp)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        bubbleView?.let { try { wm.removeViewImmediate(it) } catch(e: Exception) {} }
+        bubbleView?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
     }
 }
