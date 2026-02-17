@@ -3,6 +3,22 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
+    <FrameLayout
+        android:id="@+id/bubbleContainer"
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentStart="true"
+        android:background="@android:drawable/screen_background_dark_transparent">
+        
+        <ImageView
+            android:id="@+id/bubbleIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_analyzer" />
+    </FrameLayout>
+
     <LinearLayout
         android:id="@+id/panelBubble"
         android:layout_width="220dp"
@@ -28,8 +44,7 @@
             android:layout_height="100dp"
             android:layout_marginTop="5dp"
             android:text="Esperando datos de API..."
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
+            android:textColor="#FFFFFF" />
 
         <View
             android:layout_width="match_parent"
@@ -40,27 +55,11 @@
         <TextView
             android:id="@+id/btnClosePanel"
             android:layout_width="match_parent"
-            android:layout_height="35dp"
             android:gravity="center"
+            android:padding="8dp"
             android:text="CERRAR PANEL"
             android:textColor="#FF4444"
-            android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/bubbleContainer"
-        android:layout_width="55dp"
-        android:layout_height="55dp"
-        android:layout_alignParentBottom="true"
-        android:background="@android:drawable/screen_background_dark_transparent">
-        
-        <ImageView
-            android:id="@+id/bubbleIcon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_analyzer" />
-    </FrameLayout>
 
 </RelativeLayout>
