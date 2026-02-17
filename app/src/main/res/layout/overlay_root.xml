@@ -7,7 +7,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="start">
+        android:gravity="center_horizontal">
 
         <LinearLayout
             android:id="@+id/panelBubble"
@@ -45,16 +45,16 @@
 
         <FrameLayout
             android:id="@+id/bubbleContainer"
-            android:layout_width="55dp"
-            android:layout_height="55dp"
-            android:background="@android:drawable/screen_background_dark_transparent">
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="@android:color/transparent">
             
             <ImageView
                 android:id="@+id/bubbleIcon"
-                android:layout_width="35dp"
-                android:layout_height="35dp"
-                android:layout_gravity="center"
-                android:src="@android:drawable/ic_menu_search" />
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_analyzer" />
         </FrameLayout>
     </LinearLayout>
 </FrameLayout>
