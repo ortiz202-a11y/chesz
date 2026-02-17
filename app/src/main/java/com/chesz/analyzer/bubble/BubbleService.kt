@@ -7,14 +7,11 @@ import android.os.Build
 import android.os.IBinder
 import android.view.*
 import android.widget.ImageView
-import android.widget.TextView
 import kotlin.math.abs
 import kotlin.math.sqrt
 
 class BubbleService : Service() {
     private var wm: WindowManager? = null
-    
-    // Capas separadas para evitar brincos
     private var bubbleView: View? = null
     private lateinit var bubbleLp: WindowManager.LayoutParams
     private var panelView: View? = null
@@ -36,9 +33,9 @@ class BubbleService : Service() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else 2002
         val pkg = packageName
 
-        // 1. Capa del Botón (80dp reales)
+        // Capa 1: El Botón (80dp exactos, sin marcos)
         bubbleView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
-        val container = bubbleView!!.findViewById<View>(resources.getIdentifier("bubbleContainer", "id", pkg))
+        val bubbleImg = bubbleView!!.findViewById<ImageView>(resources.getIdentifier("bubbleContainer", "id", pkg))
         bubbleView!!.findViewById<View>(resources.getIdentifier("panelBubble", "id", pkg)).visibility = View.GONE
 
         bubbleLp = WindowManager.LayoutParams(
@@ -47,7 +44,7 @@ class BubbleService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START; x = 500; y = 1000 }
 
-        // 2. Capa del Panel (Independiente para 0 brincos)
+        // Capa 2: El Panel (Capa separada = 0 brincos)
         panelView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
         val actualPanel = panelView!!.findViewById<View>(resources.getIdentifier("panelBubble", "id", pkg))
         panelView!!.findViewById<View>(resources.getIdentifier("bubbleContainer", "id", pkg)).visibility = View.GONE
@@ -59,7 +56,7 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.TOP or Gravity.START; x = 430; y = 1085 }
         panelView!!.visibility = View.GONE
 
-        // 3. Capa de Cierre (Con la X blanca)
+        // Capa 3: El Cierre (La X blanca)
         closeView = inflater.inflate(resources.getIdentifier("close_target", "layout", pkg), null)
         closeLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -72,14 +69,14 @@ class BubbleService : Service() {
         wm?.addView(panelView, panelLp)
         wm?.addView(bubbleView, bubbleLp)
 
-        setupInteractions(container, actualPanel)
+        setupInteractions(bubbleImg, actualPanel)
     }
 
-    private fun setupInteractions(container: View, panel: View) {
+    private fun setupInteractions(bubble: ImageView, panel: View) {
         var dX = 0f; var dY = 0f; var oX = 0; var oY = 0; var mov = false
         val pkg = packageName
 
-        container.setOnTouchListener { _, e ->
+        bubble.setOnTouchListener { _, e ->
             when (e.action) {
                 MotionEvent.ACTION_DOWN -> {
                     dX = e.rawX; dY = e.rawY; oX = bubbleLp.x; oY = bubbleLp.y; mov = false
@@ -142,8 +139,8 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        bubbleView?.let { wm?.removeViewImmediate(it) }
-        panelView?.let { wm?.removeViewImmediate(it) }
-        closeView?.let { wm?.removeViewImmediate(it) }
+        bubbleView?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
+        panelView?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
+        closeView?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
     }
 }
