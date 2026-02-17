@@ -2,13 +2,11 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
-
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center_horizontal">
-
         <LinearLayout
             android:id="@+id/panelBubble"
             android:layout_width="220dp"
@@ -17,7 +15,6 @@
             android:orientation="vertical"
             android:padding="10dp"
             android:visibility="gone">
-
             <TextView
                 android:id="@+id/stateText"
                 android:layout_width="match_parent"
@@ -25,14 +22,12 @@
                 android:text="Estado: Sshot / Fen / Ai"
                 android:textColor="#BBBBBB"
                 android:textSize="10sp" />
-
             <TextView
                 android:id="@+id/apiDataText"
                 android:layout_width="match_parent"
                 android:layout_height="100dp"
                 android:text="Esperando datos..."
                 android:textColor="#FFFFFF" />
-
             <TextView
                 android:id="@+id/btnClosePanel"
                 android:layout_width="match_parent"
@@ -42,14 +37,12 @@
                 android:textColor="#FF5555"
                 android:textStyle="bold" />
         </LinearLayout>
-
         <FrameLayout
             android:id="@+id/bubbleContainer"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:background="@android:color/transparent"
             android:padding="0dp">
-            
             <ImageView
                 android:id="@+id/bubbleIcon"
                 android:layout_width="match_parent"

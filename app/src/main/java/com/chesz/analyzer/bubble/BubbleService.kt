@@ -27,13 +27,11 @@ class BubbleService : Service() {
         val pkg = packageName
 
         if (root == null) {
-            // Cargar Burbuja y Panel
             root = LayoutInflater.from(this).inflate(res.getIdentifier("overlay_root", "layout", pkg), null)
             val container = root!!.findViewById<FrameLayout>(res.getIdentifier("bubbleContainer", "id", pkg))
             val panel = root!!.findViewById<View>(res.getIdentifier("panelBubble", "id", pkg))
             val btnClose = root!!.findViewById<View>(res.getIdentifier("btnClosePanel", "id", pkg))
             
-            // Cargar Zona de Cierre
             closeZone = LayoutInflater.from(this).inflate(res.getIdentifier("overlay_close_zone", "layout", pkg), null)
             val closeCircle = closeZone!!.findViewById<View>(res.getIdentifier("closeZoneCircle", "id", pkg))
 
@@ -61,7 +59,6 @@ class BubbleService : Service() {
             container.setOnTouchListener { _, e ->
                 val sw = res.displayMetrics.widthPixels
                 val sh = res.displayMetrics.heightPixels
-
                 when (e.action) {
                     MotionEvent.ACTION_DOWN -> { 
                         dX = e.rawX; dY = e.rawY; oX = lp.x; oY = lp.y; mov = false
@@ -71,31 +68,20 @@ class BubbleService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         lp.x = (oX + (e.rawX - dX).toInt()).coerceIn(0, sw - dp(80))
                         lp.y = (oY + (e.rawY - dY).toInt()).coerceIn(0, sh - dp(80))
-                        
                         if (abs(e.rawX - dX) > 15 || abs(e.rawY - dY) > 15) mov = true
                         wm?.updateViewLayout(root, lp)
                         true
                     }
                     MotionEvent.ACTION_UP -> {
                         closeCircle.visibility = View.GONE
-                        
-                        // Verificar si está en la zona de cierre (centro inferior)
-                        val distToClose = sqrt(
-                            Math.pow((lp.x + dp(40) - sw/2).toDouble(), 2.0) + 
-                            Math.pow((lp.y + dp(40) - (sh - dp(90))).toDouble(), 2.0)
-                        )
-
-                        if (distToClose < dp(100)) {
-                            stopSelf()
-                        } else if (!mov) {
-                            panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        }
+                        val distToClose = sqrt(Math.pow((lp.x + dp(40) - sw/2).toDouble(), 2.0) + Math.pow((lp.y + dp(40) - (sh - dp(90))).toDouble(), 2.0))
+                        if (distToClose < dp(100)) { stopSelf() } 
+                        else if (!mov) { panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE }
                         true
                     }
                     else -> false
                 }
             }
-
             btnClose.setOnClickListener { panel.visibility = View.GONE }
             wm?.addView(closeZone, closeLp)
             wm?.addView(root, lp)
