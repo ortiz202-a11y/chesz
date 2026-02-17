@@ -1,32 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
+
     <LinearLayout
         android:id="@+id/panelBubble"
-        android:layout_width="200dp"
+        android:layout_width="220dp"
         android:layout_height="wrap_content"
-        android:background="#CC000000"
-        android:padding="10dp"
-        android:layout_marginStart="60dp"
-        android:visibility="gone"
-        android:orientation="vertical">
+        android:background="#DD000000"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:visibility="gone">
+
         <TextView
             android:id="@+id/stateText"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="Sshot / Fen / Ai / Done"
+            android:textColor="#AAAAAA"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/apiDataText"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_marginTop="5dp"
+            android:text="Esperando datos de API..."
             android:textColor="#FFFFFF"
-            android:text="Estado: Listo" />
+            android:textSize="14sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="8dp"
+            android:background="#444444" />
+
+        <TextView
+            android:id="@+id/btnClosePanel"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:gravity="center"
+            android:text="CERRAR PANEL"
+            android:textColor="#FF4444"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
+
     <FrameLayout
         android:id="@+id/bubbleContainer"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:background="#444444">
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:layout_toEndOf="@id/panelBubble"
+        android:background="@android:drawable/screen_background_dark_transparent">
+        
         <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
             android:layout_gravity="center"
-            android:src="@android:drawable/ic_dialog_info" />
+            android:src="@android:drawable/ic_dialog_info" 
+            android:contentDescription="Analyzer Icon" />
     </FrameLayout>
-</FrameLayout>
+
+</RelativeLayout>
