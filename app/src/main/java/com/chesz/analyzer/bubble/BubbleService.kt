@@ -14,83 +14,56 @@ import kotlin.math.abs
 
 class BubbleService : Service() {
     private var wm: WindowManager? = null
-    private var bubbleView: View? = null
-    private lateinit var bubbleLp: WindowManager.LayoutParams
+    private var root: View? = null
+    private lateinit var lp: WindowManager.LayoutParams
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(i: Intent?): IBinder? = null
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!Settings.canDrawOverlays(this)) { stopSelf(); return START_STICKY }
-        wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        if (bubbleView == null) createBubble()
-        return START_STICKY
-    }
-
-    private fun createBubble() {
-        val root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null) as FrameLayout
-        val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
-        val panel = root.findViewById<View>(R.id.panelBubble)
-        
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
+    override fun onStartCommand(i: Intent?, f: Int, s: Int): Int {
+        if (!Settings.canDrawOverlays(this)) return START_NOT_STICKY
+        wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        if (root == null) {
+            root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null)
+            val container = root!!.findViewById<FrameLayout>(R.id.bubbleContainer)
+            val panel = root!!.findViewById<View>(R.id.panelBubble)
             
-        bubbleLp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        ).apply { 
-            gravity = Gravity.TOP or Gravity.START
-            x = 0
-            y = 100 
-        }
+            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE
+            
+            lp = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply { gravity = Gravity.TOP or Gravity.START; x = 0; y = 100 }
 
-        var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
-        var moved = false; var time = 0L
+            var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
+            var mov = false
 
-        bubbleContainer.setOnTouchListener { _, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    dX = ev.rawX; dY = ev.rawY; oX = bubbleLp.x; oY = bubbleLp.y
-                    moved = false; time = System.currentTimeMillis()
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (ev.rawX - dX).toInt()
-                    val dy = (ev.rawY - dY).toInt()
-                    if (!moved && (abs(dx) > 10 || abs(dy) > 10)) moved = true
-                    
-                    bubbleLp.x = oX + dx
-                    bubbleLp.y = oY + dy
-                    
-                    val dm = resources.displayMetrics
-                    val den = dm.density
-                    val limitX = dm.widthPixels - (65 * den).toInt()
-                    val limitY = dm.heightPixels - (65 * den).toInt()
-                    
-                    bubbleLp.x = bubbleLp.x.coerceIn(0, limitX)
-                    bubbleLp.y = bubbleLp.y.coerceIn(-100, limitY)
-                    
-                    wm?.updateViewLayout(root, bubbleLp)
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!moved && (System.currentTimeMillis() - time) < 250) {
-                        panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        wm?.updateViewLayout(root, bubbleLp)
+            container.setOnTouchListener { _, e ->
+                when (e.action) {
+                    MotionEvent.ACTION_DOWN -> { dX = e.rawX; dY = e.rawY; oX = lp.x; oY = lp.y; mov = false; true }
+                    MotionEvent.ACTION_MOVE -> {
+                        lp.x = oX + (e.rawX - dX).toInt()
+                        lp.y = oY + (e.rawY - dY).toInt()
+                        if (abs(e.rawX - dX) > 10 || abs(e.rawY - dY) > 10) mov = true
+                        wm?.updateViewLayout(root, lp); true
                     }
-                    true
+                    MotionEvent.ACTION_UP -> {
+                        if (!mov) panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                        true
+                    }
+                    else -> false
                 }
-                else -> false
             }
+            wm?.addView(root, lp)
         }
-        bubbleView = root
-        wm?.addView(root, bubbleLp)
+        return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        bubbleView?.let { try { wm?.removeViewImmediate(it) } catch(e: Exception) {} }
+        root?.let { wm?.removeViewImmediate(it) }
     }
 }
