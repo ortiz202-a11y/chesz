@@ -34,7 +34,7 @@ class BubbleService : Service() {
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else 2002
 
-        // 1. CAPA CIERRE (La X blanca abajo)
+        // 1. Capa Cierre (Independiente)
         closeView = inflater.inflate(resources.getIdentifier("close_target", "layout", pkg), null)
         closeLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -43,7 +43,7 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = 100 }
         closeView!!.visibility = View.GONE
 
-        // 2. CAPA PANEL (El que tiene el texto y botones)
+        // 2. Capa Panel (220dp reales)
         panelView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
         panelView!!.findViewById<View>(resources.getIdentifier("bubbleContainer", "id", pkg)).visibility = View.GONE
         panelLp = WindowManager.LayoutParams(
@@ -53,7 +53,7 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.TOP or Gravity.START }
         panelView!!.visibility = View.GONE
 
-        // 3. CAPA BOTÓN (El icono de 80dp)
+        // 3. Capa Botón (80dp con NO_LIMITS)
         bubbleView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
         val bubbleImg = bubbleView!!.findViewById<ImageView>(resources.getIdentifier("bubbleContainer", "id", pkg))
         bubbleView!!.findViewById<View>(resources.getIdentifier("panelBubble", "id", pkg)).visibility = View.GONE
@@ -92,7 +92,6 @@ class BubbleService : Service() {
                         wm?.updateViewLayout(bubbleView, bubbleLp)
                         if (panelView!!.visibility == View.VISIBLE) panelView!!.visibility = View.GONE
                     }
-                    // Lógica del Cierre (escalar la X)
                     val dist = calculateDist(bubbleLp.x, bubbleLp.y)
                     val circle = closeView!!.findViewById<View>(resources.getIdentifier("closeCircle", "id", packageName))
                     val p = circle.layoutParams
@@ -107,7 +106,6 @@ class BubbleService : Service() {
                     if (calculateDist(bubbleLp.x, bubbleLp.y) < 250) {
                         stopSelf()
                     } else if (!mov && (System.currentTimeMillis() - startTime) < 200) {
-                        // TAP: Mostrar/Ocultar Panel
                         if (panelView!!.visibility == View.GONE) {
                             panelLp.x = bubbleLp.x; panelLp.y = bubbleLp.y + dpToPx(85)
                             wm?.updateViewLayout(panelView, panelLp)
