@@ -10,7 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' } // <--- EL CADENERO YA SABRÁ BUSCAR AQUÍ
+        maven { url 'https://jitpack.io' }
     }
 }
 rootProject.name = "chesz"
