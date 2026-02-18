@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.*
@@ -38,7 +39,7 @@ class BubbleService : Service() {
 
         rootLayout = FrameLayout(this)
 
-        // EL PANEL (Construido programáticamente para evitar errores de XML)
+        // PANEL
         panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor("#EE000000"))
@@ -46,37 +47,28 @@ class BubbleService : Service() {
             visibility = View.GONE
             layoutParams = FrameLayout.LayoutParams(600, FrameLayout.LayoutParams.WRAP_CONTENT)
             
-            val title = TextView(context).apply { 
-                text = "CHESZ ANALYZER"
-                setTextColor(Color.GREEN)
-                textSize = 18f
-            }
-            val data = TextView(context).apply { 
-                text = "\nEsperando datos del análisis..."
-                setTextColor(Color.WHITE)
-            }
-            val closeBtn = Button(context).apply { 
-                text = "CERRAR PANEL"
-                setOnClickListener { panel.visibility = View.GONE }
-            }
-            
-            addView(title)
-            addView(data)
-            addView(closeBtn)
+            addView(TextView(this@BubbleService).apply { 
+                text = "CHESZ ANALYZER"; setTextColor(Color.GREEN); textSize = 18f 
+            })
+            addView(TextView(this@BubbleService).apply { 
+                text = "\nEsperando datos..."; setTextColor(Color.WHITE) 
+            })
+            addView(Button(this@BubbleService).apply { 
+                text = "CERRAR"; setOnClickListener { this@apply.visibility = View.GONE }
+            })
         }
 
-        // EL BOTÓN (Círculo sólido para no depender de imágenes)
+        // BOTÓN
         bubble = View(this).apply {
             val size = (70 * resources.displayMetrics.density).toInt()
             layoutParams = FrameLayout.LayoutParams(size, size).apply {
                 leftMargin = 100
                 topMargin = 500
             }
-            // Fondo verde circular (programático)
-            val shape = android.graphics.drawable.GradientDrawable()
-            shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-            shape.setColor(Color.GREEN)
-            background = shape
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.GREEN)
+            }
         }
 
         bubble.setOnTouchListener(object : View.OnTouchListener {
@@ -88,26 +80,26 @@ class BubbleService : Service() {
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         startTime = System.currentTimeMillis()
-                        initialX = (bubble.layoutParams as FrameLayout.LayoutParams).leftMargin
-                        initialY = (bubble.layoutParams as FrameLayout.LayoutParams).topMargin
+                        val lp = v.layoutParams as FrameLayout.LayoutParams
+                        initialX = lp.leftMargin
+                        initialY = lp.topMargin
                         initialTouchX = event.rawX
                         initialTouchY = event.rawY
                         return true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        val lp = bubble.layoutParams as FrameLayout.LayoutParams
+                        val lp = v.layoutParams as FrameLayout.LayoutParams
                         lp.leftMargin = initialX + (event.rawX - initialTouchX).toInt()
                         lp.topMargin = initialY + (event.rawY - initialTouchY).toInt()
-                        bubble.layoutParams = lp
-                        if (panel.visibility == View.VISIBLE) panel.visibility = View.GONE
+                        v.layoutParams = lp
+                        panel.visibility = View.GONE
                         return true
                     }
                     MotionEvent.ACTION_UP -> {
                         val duration = System.currentTimeMillis() - startTime
                         val dist = abs(event.rawX - initialTouchX) + abs(event.rawY - initialTouchY)
-                        
                         if (duration < 200 && dist < 25) {
-                            val lp = bubble.layoutParams as FrameLayout.LayoutParams
+                            val lp = v.layoutParams as FrameLayout.LayoutParams
                             panel.x = lp.leftMargin.toFloat()
                             panel.y = (lp.topMargin + v.height + 10).toFloat()
                             panel.visibility = View.VISIBLE
