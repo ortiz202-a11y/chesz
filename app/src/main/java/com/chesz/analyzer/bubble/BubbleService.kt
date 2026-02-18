@@ -34,7 +34,7 @@ class BubbleService : Service() {
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else 2002
 
-        // 1. Capa Cierre (Independiente)
+        // 1. CIERRE
         closeView = inflater.inflate(resources.getIdentifier("close_target", "layout", pkg), null)
         closeLp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -43,7 +43,7 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = 100 }
         closeView!!.visibility = View.GONE
 
-        // 2. Capa Panel (220dp reales)
+        // 2. PANEL (Ajuste de coordenadas)
         panelView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
         panelView!!.findViewById<View>(resources.getIdentifier("bubbleContainer", "id", pkg)).visibility = View.GONE
         panelLp = WindowManager.LayoutParams(
@@ -53,7 +53,7 @@ class BubbleService : Service() {
         ).apply { gravity = Gravity.TOP or Gravity.START }
         panelView!!.visibility = View.GONE
 
-        // 3. Capa Botón (80dp con NO_LIMITS)
+        // 3. BOTÓN (Con limites de pantalla manuales)
         bubbleView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
         val bubbleImg = bubbleView!!.findViewById<ImageView>(resources.getIdentifier("bubbleContainer", "id", pkg))
         bubbleView!!.findViewById<View>(resources.getIdentifier("panelBubble", "id", pkg)).visibility = View.GONE
@@ -62,7 +62,7 @@ class BubbleService : Service() {
             dpToPx(80), dpToPx(80), layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = 500; y = 1000 }
+        ).apply { gravity = Gravity.TOP or Gravity.START; x = 200; y = 500 }
 
         wm?.addView(closeView, closeLp)
         wm?.addView(panelView, panelLp)
@@ -72,6 +72,7 @@ class BubbleService : Service() {
     }
 
     private fun setupLogic(bubble: ImageView) {
+        val dm = resources.displayMetrics
         var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
         var mov = false; var startTime = 0L
 
@@ -84,33 +85,38 @@ class BubbleService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val curX = e.rawX - dX; val curY = e.rawY - dY
-                    if (abs(curX) > 10 || abs(curY) > 10) {
+                    val curX = (oX + (e.rawX - dX)).toInt()
+                    val curY = (oY + (e.rawY - dY)).toInt()
+                    
+                    // FRENO: No dejar que el botón desaparezca de la pantalla
+                    bubbleLp.x = curX.coerceIn(-dpToPx(20), dm.widthPixels - dpToPx(60))
+                    bubbleLp.y = curY.coerceIn(0, dm.heightPixels - dpToPx(100))
+                    
+                    if (abs(e.rawX - dX) > 10 || abs(e.rawY - dY) > 10) {
                         mov = true
-                        bubbleLp.x = oX + curX.toInt()
-                        bubbleLp.y = oY + curY.toInt()
                         wm?.updateViewLayout(bubbleView, bubbleLp)
-                        if (panelView!!.visibility == View.VISIBLE) panelView!!.visibility = View.GONE
+                        panelView!!.visibility = View.GONE
                     }
+                    
                     val dist = calculateDist(bubbleLp.x, bubbleLp.y)
-                    val circle = closeView!!.findViewById<View>(resources.getIdentifier("closeCircle", "id", packageName))
-                    val p = circle.layoutParams
-                    if (dist < 250) { p.width = dpToPx(130); p.height = dpToPx(130) } 
-                    else { p.width = dpToPx(110); p.height = dpToPx(110) }
-                    circle.layoutParams = p
-                    wm?.updateViewLayout(closeView, closeLp)
+                    if (dist < 250) closeView!!.scaleX = 1.2f else closeView!!.scaleX = 1.0f
                     true
                 }
                 MotionEvent.ACTION_UP -> {
                     closeView!!.visibility = View.GONE
                     if (calculateDist(bubbleLp.x, bubbleLp.y) < 250) {
                         stopSelf()
-                    } else if (!mov && (System.currentTimeMillis() - startTime) < 200) {
+                    } else if (!mov && (System.currentTimeMillis() - startTime) < 250) {
+                        // TAP: Posicionar panel inteligentemente
                         if (panelView!!.visibility == View.GONE) {
-                            panelLp.x = bubbleLp.x; panelLp.y = bubbleLp.y + dpToPx(85)
+                            // Si el botón está muy a la derecha, mover panel a la izquierda
+                            panelLp.x = if (bubbleLp.x > dm.widthPixels / 2) bubbleLp.x - dpToPx(140) else bubbleLp.x
+                            panelLp.y = bubbleLp.y + dpToPx(85)
                             wm?.updateViewLayout(panelView, panelLp)
                             panelView!!.visibility = View.VISIBLE
-                        } else { panelView!!.visibility = View.GONE }
+                        } else {
+                            panelView!!.visibility = View.GONE
+                        }
                     }
                     true
                 }
