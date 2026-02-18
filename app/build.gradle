@@ -22,6 +22,5 @@ android {
 
 dependencies {
     implementation "androidx.core:core-ktx:1.12.0"
-    // Librería profesional para vistas flotantes
     implementation "com.github.tuannt:floatingview:1.0.2"
 }
