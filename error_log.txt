@@ -1,0 +1,256 @@
+🚀 INICIANDO CICLO DE TRABAJO: CHESZ ENGINE
+🕵️ Ejecutando Fisgón...
+🔍 El Fisgón está recorriendo el proyecto...
+✅ Reporte generado en: ~/storage/downloads/fisgon.txt
+Contenido del reporte:
+FILE: /data/data/com.termux/files/home/chesz/app/build.gradle
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+}
+
+android {
+    namespace "com.chesz.analyzer"
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.chesz.analyzer"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.12.0"
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    // Probamos con la versión estable de floatingview
+    implementation "com.github.tuannt:floatingview:1.0.2"
+}
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/floating/FloatingListener.kt
+package com.chesz.analyzer.floating
+
+interface FloatingListener {
+    fun onFinishFloatingView()
+    fun伴随着(x: Int, y: Int) // Para rastrear posición si fuera necesario
+}
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/floating/FloatingService.kt
+package com.chesz.analyzer.floating
+
+import android.app.Service
+import android.content.Intent
+import android.graphics.PixelFormat
+import android.os.IBinder
+import android.view.*
+import android.widget.ImageView
+import android.widget.FrameLayout
+import android.graphics.Color
+
+class FloatingService : Service() {
+    private lateinit var windowManager: WindowManager
+    private var floatingView: View? = null
+    private val params = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+        PixelFormat.TRANSLUCENT
+    )
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        
+        // Creamos la burbuja (Icono temporal de sistema)
+        floatingView = ImageView(this).apply {
+            setImageResource(android.R.drawable.ic_dialog_info)
+            layoutParams = ViewGroup.LayoutParams(160, 160)
+        }
+
+        params.gravity = Gravity.TOP or Gravity.START
+        params.x = 100
+        params.y = 100
+
+        floatingView?.setOnTouchListener(object : View.OnTouchListener {
+            private var initialX = 0; private var initialY = 0
+            private var initialTouchX = 0f; private var initialTouchY = 0f
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        initialX = params.x
+                        initialY = params.y
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        params.x = initialX + (event.rawX - initialTouchX).toInt()
+                        params.y = initialY + (event.rawY - initialTouchY).toInt()
+                        windowManager.updateViewLayout(floatingView, params)
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+
+        windowManager.addView(floatingView, params)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (floatingView != null) windowManager.removeView(floatingView)
+    }
+}
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/MainActivity.kt
+package com.chesz.analyzer
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
+import com.chesz.analyzer.floating.FloatingService
+
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val button = Button(this).apply {
+            text = "ARRANCAR BURBUJA"
+            setOnClickListener {
+                if (checkPermission()) {
+                    startService(Intent(this@MainActivity, FloatingService::class.java))
+                }
+            }
+        }
+        setContentView(button)
+    }
+
+    private fun checkPermission(): Boolean {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+            startActivityForResult(intent, 0)
+            return false
+        }
+        return true
+    }
+}
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/res/layout/panel_layout.xml
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="280dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#E6000000"
+    android:padding="20dp"
+    android:elevation="8dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="CHESZ ENGINE"
+        android:textColor="#00FF00"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:paddingBottom="15dp"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#33FFFFFF"/>
+
+    <Button
+        android:id="@+id/btn_close"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="OCULTAR"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#CCFF0000"
+        android:textColor="#FFFFFF"/>
+</LinearLayout>
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/res/values/strings.xml
+<resources>
+    <string name="app_name">chesz</string>
+</resources>
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/app/src/main/AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@android:mipmap/sym_def_app_icon"
+        android:label="Chesz Analyzer"
+        android:theme="@style/Theme.AppCompat.NoActionBar">
+        
+        <service 
+            android:name=".floating.FloatingService"
+            android:enabled="true"
+            android:exported="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+
+---
+
+FILE: /data/data/com.termux/files/home/chesz/build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+plugins {
+    id "com.android.application" version "8.6.1" apply false
+    id "org.jetbrains.kotlin.android" version "2.0.21" apply false
+}
+// La sección allprojects se maneja en settings.gradle
+
+---
+
+🛡️ Ejecutando Check de Seguridad...
+--- ANALIZADOR DE SINTAXIS PROFESIONAL ---
+Revisando build.gradle...
+Revisando estructura de BubbleService...
+grep: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt: No such file or directory
+grep: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt: No such file or directory
+grep: /data/data/com.termux/files/home/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt: No such file or directory
+✅ SINTAXIS ESTRUCTURAL OK. Procediendo...
