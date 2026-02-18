@@ -2,33 +2,29 @@ package com.chesz.analyzer.bubble
 
 import android.app.Service
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.*
+import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import kotlin.math.abs
 
 class BubbleService : Service() {
     private lateinit var wm: WindowManager
-    private var rootLayout: View? = null
-    private lateinit var bubble: ImageView
-    private lateinit var panel: View
+    private lateinit var rootLayout: FrameLayout
+    private lateinit var bubble: View
+    private lateinit var panel: LinearLayout
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(i: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        setupMasterOverlay()
-    }
-
-    private fun setupMasterOverlay() {
-        val inflater = LayoutInflater.from(this)
-        val pkg = packageName
         
-        // Ventana maestra que cubre TODA la pantalla
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else 2002
 
@@ -40,15 +36,48 @@ class BubbleService : Service() {
             PixelFormat.TRANSLUCENT
         )
 
-        rootLayout = inflater.inflate(resources.getIdentifier("overlay_master", "layout", pkg), null)
-        bubble = rootLayout!!.findViewById(resources.getIdentifier("master_bubble", "id", pkg))
-        panel = rootLayout!!.findViewById(resources.getIdentifier("master_panel", "id", pkg))
+        rootLayout = FrameLayout(this)
 
-        // Posición inicial del botón
-        val bLp = bubble.layoutParams as FrameLayout.LayoutParams
-        bLp.leftMargin = 100
-        bLp.topMargin = 500
-        bubble.layoutParams = bLp
+        // EL PANEL (Construido programáticamente para evitar errores de XML)
+        panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#EE000000"))
+            setPadding(40, 40, 40, 40)
+            visibility = View.GONE
+            layoutParams = FrameLayout.LayoutParams(600, FrameLayout.LayoutParams.WRAP_CONTENT)
+            
+            val title = TextView(context).apply { 
+                text = "CHESZ ANALYZER"
+                setTextColor(Color.GREEN)
+                textSize = 18f
+            }
+            val data = TextView(context).apply { 
+                text = "\nEsperando datos del análisis..."
+                setTextColor(Color.WHITE)
+            }
+            val closeBtn = Button(context).apply { 
+                text = "CERRAR PANEL"
+                setOnClickListener { panel.visibility = View.GONE }
+            }
+            
+            addView(title)
+            addView(data)
+            addView(closeBtn)
+        }
+
+        // EL BOTÓN (Círculo sólido para no depender de imágenes)
+        bubble = View(this).apply {
+            val size = (70 * resources.displayMetrics.density).toInt()
+            layoutParams = FrameLayout.LayoutParams(size, size).apply {
+                leftMargin = 100
+                topMargin = 500
+            }
+            // Fondo verde circular (programático)
+            val shape = android.graphics.drawable.GradientDrawable()
+            shape.shape = android.graphics.drawable.GradientDrawable.OVAL
+            shape.setColor(Color.GREEN)
+            background = shape
+        }
 
         bubble.setOnTouchListener(object : View.OnTouchListener {
             private var initialX = 0; private var initialY = 0
@@ -66,24 +95,22 @@ class BubbleService : Service() {
                         return true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        val dx = (event.rawX - initialTouchX).toInt()
-                        val dy = (event.rawY - initialTouchY).toInt()
-                        
                         val lp = bubble.layoutParams as FrameLayout.LayoutParams
-                        lp.leftMargin = initialX + dx
-                        lp.topMargin = initialY + dy
+                        lp.leftMargin = initialX + (event.rawX - initialTouchX).toInt()
+                        lp.topMargin = initialY + (event.rawY - initialTouchY).toInt()
                         bubble.layoutParams = lp
-                        
                         if (panel.visibility == View.VISIBLE) panel.visibility = View.GONE
                         return true
                     }
                     MotionEvent.ACTION_UP -> {
                         val duration = System.currentTimeMillis() - startTime
-                        val moveDist = abs(event.rawX - initialTouchX) + abs(event.rawY - initialTouchY)
+                        val dist = abs(event.rawX - initialTouchX) + abs(event.rawY - initialTouchY)
                         
-                        if (duration < 200 && moveDist < 20) {
-                            // ES UN CLICK
-                            showPanel()
+                        if (duration < 200 && dist < 25) {
+                            val lp = bubble.layoutParams as FrameLayout.LayoutParams
+                            panel.x = lp.leftMargin.toFloat()
+                            panel.y = (lp.topMargin + v.height + 10).toFloat()
+                            panel.visibility = View.VISIBLE
                         }
                         return true
                     }
@@ -92,27 +119,13 @@ class BubbleService : Service() {
             }
         })
 
-        rootLayout!!.findViewById<View>(resources.getIdentifier("btn_close_panel", "id", pkg)).setOnClickListener {
-            panel.visibility = View.GONE
-        }
-
+        rootLayout.addView(panel)
+        rootLayout.addView(bubble)
         wm.addView(rootLayout, params)
-    }
-
-    private fun showPanel() {
-        val bLp = bubble.layoutParams as FrameLayout.LayoutParams
-        val pLp = panel.layoutParams as FrameLayout.LayoutParams
-        
-        // El panel aparece pegado al botón
-        pLp.leftMargin = bLp.leftMargin
-        pLp.topMargin = bLp.topMargin + bubble.height
-        
-        panel.layoutParams = pLp
-        panel.visibility = View.VISIBLE
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        rootLayout?.let { wm.removeView(it) }
+        if (::rootLayout.isInitialized) try { wm.removeView(rootLayout) } catch(e: Exception) {}
     }
 }
