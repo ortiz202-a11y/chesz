@@ -9,7 +9,7 @@ import android.widget.ImageView
 import android.widget.FrameLayout
 import android.graphics.Color
 
-class FloatingService : Service() {
+class BubbleService : Service() {
     private lateinit var windowManager: WindowManager
     private var floatingView: View? = null
     private val params = WindowManager.LayoutParams(

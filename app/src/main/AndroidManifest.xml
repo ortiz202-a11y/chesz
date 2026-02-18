@@ -11,7 +11,7 @@
         android:theme="@style/Theme.AppCompat.NoActionBar">
         
         <service 
-            android:name=".floating.FloatingService"
+            android:name=".floating.BubbleService"
             android:enabled="true"
             android:exported="false" />
 
