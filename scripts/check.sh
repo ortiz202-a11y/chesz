@@ -11,14 +11,14 @@ fi
 # 2. Validar sintaxis de Kotlin (Verificar que no haya líneas truncadas)
 echo "Revisando estructura de BubbleService..."
 # Verificamos que no haya signos '=' huérfanos al inicio de línea (basura común)
-if grep -q "^[[:space:]]*=" ~/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt; then
+if grep -q "^[[:space:]]*=" ~/chesz/app/src/main/java/com/chesz/analyzer/floating/BubbleService.kt; then
     echo "❌ ERROR: Se detectaron asignaciones huérfanas (basura) en BubbleService."
     exit 1
 fi
 
 # 3. Verificación de llaves cerradas
-OPEN_BRACES=$(grep -o "{" ~/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt | wc -l)
-CLOSE_BRACES=$(grep -o "}" ~/chesz/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt | wc -l)
+OPEN_BRACES=$(grep -o "{" ~/chesz/app/src/main/java/com/chesz/analyzer/floating/BubbleService.kt | wc -l)
+CLOSE_BRACES=$(grep -o "}" ~/chesz/app/src/main/java/com/chesz/analyzer/floating/BubbleService.kt | wc -l)
 
 if [ "$OPEN_BRACES" -eq "$CLOSE_BRACES" ]; then
     echo "✅ SINTAXIS ESTRUCTURAL OK. Procediendo..."
