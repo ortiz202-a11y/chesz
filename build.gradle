@@ -4,10 +4,7 @@ buildscript {
         mavenCentral()
     }
 }
-
 plugins {
     id "com.android.application" version "8.6.1" apply false
     id "org.jetbrains.kotlin.android" version "2.0.21" apply false
 }
-# La sección allprojects { repositories { ... } } se elimina 
-# porque GitHub ya la maneja en settings.gradle.
