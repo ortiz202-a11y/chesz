@@ -6,138 +6,113 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.*
+import android.widget.FrameLayout
 import android.widget.ImageView
 import kotlin.math.abs
-import kotlin.math.sqrt
 
 class BubbleService : Service() {
-    private var wm: WindowManager? = null
-    private var bubbleView: View? = null
-    private var panelView: View? = null
-    private var closeView: View? = null
-    
-    private lateinit var bubbleLp: WindowManager.LayoutParams
-    private lateinit var panelLp: WindowManager.LayoutParams
-    private lateinit var closeLp: WindowManager.LayoutParams
+    private lateinit var wm: WindowManager
+    private var rootLayout: View? = null
+    private lateinit var bubble: ImageView
+    private lateinit var panel: View
 
-    override fun onBind(i: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onCreate() {
+        super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        if (bubbleView == null) setupEverything()
-        return START_STICKY
+        setupMasterOverlay()
     }
 
-    private fun setupEverything() {
+    private fun setupMasterOverlay() {
         val inflater = LayoutInflater.from(this)
         val pkg = packageName
-        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) 
+        
+        // Ventana maestra que cubre TODA la pantalla
+        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else 2002
 
-        // 1. CIERRE
-        closeView = inflater.inflate(resources.getIdentifier("close_target", "layout", pkg), null)
-        closeLp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; y = 100 }
-        closeView!!.visibility = View.GONE
-
-        // 2. PANEL (Ajuste de coordenadas)
-        panelView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
-        panelView!!.findViewById<View>(resources.getIdentifier("bubbleContainer", "id", pkg)).visibility = View.GONE
-        panelLp = WindowManager.LayoutParams(
-            dpToPx(220), WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START }
-        panelView!!.visibility = View.GONE
-
-        // 3. BOTÓN (Con limites de pantalla manuales)
-        bubbleView = inflater.inflate(resources.getIdentifier("overlay_root", "layout", pkg), null)
-        val bubbleImg = bubbleView!!.findViewById<ImageView>(resources.getIdentifier("bubbleContainer", "id", pkg))
-        bubbleView!!.findViewById<View>(resources.getIdentifier("panelBubble", "id", pkg)).visibility = View.GONE
-        
-        bubbleLp = WindowManager.LayoutParams(
-            dpToPx(80), dpToPx(80), layoutFlag,
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = 200; y = 500 }
+        )
 
-        wm?.addView(closeView, closeLp)
-        wm?.addView(panelView, panelLp)
-        wm?.addView(bubbleView, bubbleLp)
+        rootLayout = inflater.inflate(resources.getIdentifier("overlay_master", "layout", pkg), null)
+        bubble = rootLayout!!.findViewById(resources.getIdentifier("master_bubble", "id", pkg))
+        panel = rootLayout!!.findViewById(resources.getIdentifier("master_panel", "id", pkg))
 
-        setupLogic(bubbleImg)
-    }
+        // Posición inicial del botón
+        val bLp = bubble.layoutParams as FrameLayout.LayoutParams
+        bLp.leftMargin = 100
+        bLp.topMargin = 500
+        bubble.layoutParams = bLp
 
-    private fun setupLogic(bubble: ImageView) {
-        val dm = resources.displayMetrics
-        var dX = 0f; var dY = 0f; var oX = 0; var oY = 0
-        var mov = false; var startTime = 0L
+        bubble.setOnTouchListener(object : View.OnTouchListener {
+            private var initialX = 0; private var initialY = 0
+            private var initialTouchX = 0f; private var initialTouchY = 0f
+            private var startTime = 0L
 
-        bubble.setOnTouchListener { _, e ->
-            when (e.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    dX = e.rawX; dY = e.rawY; oX = bubbleLp.x; oY = bubbleLp.y
-                    startTime = System.currentTimeMillis(); mov = false
-                    closeView!!.visibility = View.VISIBLE
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val curX = (oX + (e.rawX - dX)).toInt()
-                    val curY = (oY + (e.rawY - dY)).toInt()
-                    
-                    // FRENO: No dejar que el botón desaparezca de la pantalla
-                    bubbleLp.x = curX.coerceIn(-dpToPx(20), dm.widthPixels - dpToPx(60))
-                    bubbleLp.y = curY.coerceIn(0, dm.heightPixels - dpToPx(100))
-                    
-                    if (abs(e.rawX - dX) > 10 || abs(e.rawY - dY) > 10) {
-                        mov = true
-                        wm?.updateViewLayout(bubbleView, bubbleLp)
-                        panelView!!.visibility = View.GONE
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        startTime = System.currentTimeMillis()
+                        initialX = (bubble.layoutParams as FrameLayout.LayoutParams).leftMargin
+                        initialY = (bubble.layoutParams as FrameLayout.LayoutParams).topMargin
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        return true
                     }
-                    
-                    val dist = calculateDist(bubbleLp.x, bubbleLp.y)
-                    if (dist < 250) closeView!!.scaleX = 1.2f else closeView!!.scaleX = 1.0f
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    closeView!!.visibility = View.GONE
-                    if (calculateDist(bubbleLp.x, bubbleLp.y) < 250) {
-                        stopSelf()
-                    } else if (!mov && (System.currentTimeMillis() - startTime) < 250) {
-                        // TAP: Posicionar panel inteligentemente
-                        if (panelView!!.visibility == View.GONE) {
-                            // Si el botón está muy a la derecha, mover panel a la izquierda
-                            panelLp.x = if (bubbleLp.x > dm.widthPixels / 2) bubbleLp.x - dpToPx(140) else bubbleLp.x
-                            panelLp.y = bubbleLp.y + dpToPx(85)
-                            wm?.updateViewLayout(panelView, panelLp)
-                            panelView!!.visibility = View.VISIBLE
-                        } else {
-                            panelView!!.visibility = View.GONE
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = (event.rawX - initialTouchX).toInt()
+                        val dy = (event.rawY - initialTouchY).toInt()
+                        
+                        val lp = bubble.layoutParams as FrameLayout.LayoutParams
+                        lp.leftMargin = initialX + dx
+                        lp.topMargin = initialY + dy
+                        bubble.layoutParams = lp
+                        
+                        if (panel.visibility == View.VISIBLE) panel.visibility = View.GONE
+                        return true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        val duration = System.currentTimeMillis() - startTime
+                        val moveDist = abs(event.rawX - initialTouchX) + abs(event.rawY - initialTouchY)
+                        
+                        if (duration < 200 && moveDist < 20) {
+                            // ES UN CLICK
+                            showPanel()
                         }
+                        return true
                     }
-                    true
                 }
-                else -> false
+                return false
             }
+        })
+
+        rootLayout!!.findViewById<View>(resources.getIdentifier("btn_close_panel", "id", pkg)).setOnClickListener {
+            panel.visibility = View.GONE
         }
-        panelView!!.findViewById<View>(resources.getIdentifier("btnClosePanel", "id", packageName)).setOnClickListener {
-            panelView!!.visibility = View.GONE
-        }
+
+        wm.addView(rootLayout, params)
     }
 
-    private fun calculateDist(x: Int, y: Int): Double {
-        val dm = resources.displayMetrics
-        val tx = (dm.widthPixels / 2) - dpToPx(40); val ty = dm.heightPixels - dpToPx(150)
-        return sqrt(Math.pow((x - tx).toDouble(), 2.0) + Math.pow((y - ty).toDouble(), 2.0))
+    private fun showPanel() {
+        val bLp = bubble.layoutParams as FrameLayout.LayoutParams
+        val pLp = panel.layoutParams as FrameLayout.LayoutParams
+        
+        // El panel aparece pegado al botón
+        pLp.leftMargin = bLp.leftMargin
+        pLp.topMargin = bLp.topMargin + bubble.height
+        
+        panel.layoutParams = pLp
+        panel.visibility = View.VISIBLE
     }
-
-    private fun dpToPx(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
         super.onDestroy()
-        try { wm?.removeView(bubbleView); wm?.removeView(panelView); wm?.removeView(closeView) } catch(e: Exception) {}
+        rootLayout?.let { wm.removeView(it) }
     }
 }
