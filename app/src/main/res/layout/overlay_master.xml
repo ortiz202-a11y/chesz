@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/master_panel"
+        android:layout_width="240dp"
+        android:layout_height="wrap_content"
+        android:background="#EE000000"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:elevation="10dp">
+        
+        <TextView 
+            android:layout_width="match_parent" 
+            android:layout_height="wrap_content" 
+            android:text="ANALIZADOR CHESZ" 
+            android:textColor="#00FF00" 
+            android:textStyle="bold" />
+            
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#333333" android:layout_marginVertical="8dp"/>
+        
+        <TextView 
+            android:id="@+id/data_display"
+            android:layout_width="match_parent" 
+            android:layout_height="100dp" 
+            android:text="Esperando datos..." 
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btn_close_panel"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:text="CERRAR"
+            android:backgroundTint="#444444"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/master_bubble"
+        android:layout_width="70dp"
+        android:layout_height="70dp"
+        android:src="@drawable/ic_analyzer"
+        android:padding="5dp"
+        android:elevation="11dp" />
+
+</FrameLayout>
