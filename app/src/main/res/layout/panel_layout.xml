@@ -1,0 +1,19 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="400dp"
+    android:background="#FF000000"
+    android:padding="16dp">
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CHESZ ANALYZER"
+        android:textColor="#FF00FF00"
+        android:textSize="18sp"
+        android:layout_gravity="top|center_horizontal" />
+    <Button
+        android:id="@+id/btn_close"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CERRAR"
+        android:layout_gravity="bottom|center_horizontal" />
+</FrameLayout>
