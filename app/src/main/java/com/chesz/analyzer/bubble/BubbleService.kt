@@ -25,7 +25,6 @@ class BubbleService : Service(), FloatingViewListener {
             addViewToWindow(iconView, options)
         }
     }
-
     override fun onFinishFloatingView() { stopSelf() }
     override fun onTouchFinished(isFinishing: Boolean, x: Int, y: Int) {}
     override fun onDestroy() {
