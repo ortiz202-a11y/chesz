@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder floating button icon: white circle with a chess knight symbol (♞) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#3D5AFE"
+        android:pathData="M20,20 m-18,0 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0" />
+
+    <!-- Simple "play" triangle as placeholder symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M15,12 L28,20 L15,28 Z" />
+
+</vector>

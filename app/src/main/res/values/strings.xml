@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chesz</string>
+    <string name="floating_button_desc">Botón flotante Chesz</string>
+    <string name="panel_icon_desc">Ícono del panel Chesz</string>
+    <string name="panel_placeholder">Toca el botón para capturar el tablero y analizar la posición.</string>
+    <string name="close">Cerrar</string>
+    <string name="enable_overlay">Habilitar overlay</string>
+    <string name="overlay_permission_rationale">Chesz necesita permiso para mostrar el botón flotante sobre otras apps.</string>
+    <string name="overlay_started">Overlay iniciado</string>
+</resources>
