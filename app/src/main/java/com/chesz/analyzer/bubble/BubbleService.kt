@@ -3,6 +3,7 @@ package com.chesz.analyzer.bubble
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.*
 import android.util.DisplayMetrics
@@ -261,6 +262,10 @@ class BubbleService : Service() {
           .build()
       }
 
-    startForeground(1, notif)
+    if (Build.VERSION.SDK_INT >= 29) {
+      startForeground(1, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+    } else {
+      startForeground(1, notif)
+    }
   }
 }
