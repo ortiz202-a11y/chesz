@@ -1,447 +1,266 @@
 package com.chesz.analyzer.bubble
 
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.Canvas
-import android.graphics.ColorFilter
-import android.graphics.Matrix
-import android.graphics.Outline
-import android.graphics.Paint
 import android.graphics.PixelFormat
-import android.graphics.RectF
-import android.graphics.Shader
-import android.os.Build
-import android.os.IBinder
-import android.provider.Settings
-import android.view.Gravity
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewOutlineProvider
-import android.view.WindowManager
+import android.os.*
+import android.util.DisplayMetrics
+import android.view.*
 import android.widget.FrameLayout
-import android.widget.TextView
 import com.chesz.analyzer.R
 import kotlin.math.abs
-import kotlin.math.hypot
 
 class BubbleService : Service() {
-    private lateinit var wm: WindowManager
-    private var bubbleView: View? = null
-    private var closeView: View? = null
 
-    // Paso 1: overlay único (root) + panel como hijo
-    private var panelBubble: View? = null
+  // =============================
+  // CONFIGURACIÓN EDITABLE FUTURA
+  // =============================
+  private val PANEL_W_RATIO = 0.60f
+  private val PANEL_H_RATIO = 0.25f
 
-    private lateinit var bubbleLp: WindowManager.LayoutParams
-    private lateinit var closeLp: WindowManager.LayoutParams
+  private lateinit var wm: WindowManager
+  private var root: View? = null
+  private var panel: View? = null
+  private var buttonContainer: View? = null
+  private var lp: WindowManager.LayoutParams? = null
 
-    private var downRawX = 0f
-    private var downRawY = 0f
-    private var downX = 0
-    private var downY = 0
-    private var moved = false
-    private var downTime = 0L
+  private var anchorBtnX = 0
+  private var anchorBtnY = 200
 
-    override fun onBind(intent: Intent?): IBinder? = null
+  private var isPanelOpen = false
+  private var btnW = 0
+  private var btnH = 0
+  private var panelW = 0
+  private var panelH = 0
 
-    override fun onStartCommand(
-        intent: Intent?,
-        flags: Int,
-        startId: Int,
-    ): Int {
-        if (!Settings.canDrawOverlays(this)) {
-            shutdown()
-            return START_STICKY
+  override fun onBind(intent: Intent?): IBinder? = null
+
+  override fun onCreate() {
+    super.onCreate()
+    wm = getSystemService(WINDOW_SERVICE) as WindowManager
+    startForegroundCompat()
+    inflateOverlay()
+    attachDragToButtonOnly()
+    attachCloseIfPresent()
+    addRootToWindow()
+  }
+
+  override fun onDestroy() {
+    super.onDestroy()
+    root?.let { runCatching { wm.removeView(it) } }
+  }
+
+  private fun inflateOverlay() {
+    val inflater = LayoutInflater.from(this)
+    val v = inflater.inflate(R.layout.overlay_root, null)
+
+    root = v
+    panel = v.findViewById(R.id.panelContainer)
+    buttonContainer = v.findViewById(R.id.floatingButtonContainer)
+
+    panel?.visibility = View.GONE
+    isPanelOpen = false
+
+    v.post {
+      btnW = buttonContainer?.width ?: 0
+      btnH = buttonContainer?.height ?: 0
+    }
+  }
+
+  private fun addRootToWindow() {
+    val type =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+      else WindowManager.LayoutParams.TYPE_PHONE
+
+    val params = WindowManager.LayoutParams(
+      WindowManager.LayoutParams.WRAP_CONTENT,
+      WindowManager.LayoutParams.WRAP_CONTENT,
+      type,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+      PixelFormat.TRANSLUCENT
+    )
+
+    params.gravity = Gravity.TOP or Gravity.START
+    params.x = anchorBtnX
+    params.y = anchorBtnY
+
+    lp = params
+    wm.addView(root, params)
+  }
+
+  // =============================
+  // DRAG SOLO EN BOTÓN
+  // =============================
+  private fun attachDragToButtonOnly() {
+    val btn = buttonContainer ?: return
+
+    var startRawX = 0f
+    var startRawY = 0f
+    var startAnchorX = 0
+    var startAnchorY = 0
+    var moved = false
+
+    btn.setOnTouchListener { _, ev ->
+      when (ev.actionMasked) {
+        MotionEvent.ACTION_DOWN -> {
+          moved = false
+          startRawX = ev.rawX
+          startRawY = ev.rawY
+          startAnchorX = anchorBtnX
+          startAnchorY = anchorBtnY
+          true
         }
 
-        wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        MotionEvent.ACTION_MOVE -> {
+          val dx = (ev.rawX - startRawX).toInt()
+          val dy = (ev.rawY - startRawY).toInt()
+          if (abs(dx) > 6 || abs(dy) > 6) moved = true
 
-        if (bubbleView == null) {
-            createCloseZone()
-            createBubble()
+          anchorBtnX = startAnchorX + dx
+          anchorBtnY = startAnchorY + dy
+          applyPositionForCurrentState()
+          true
         }
 
-        return START_STICKY
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        removeViews()
-    }
-
-    private fun shutdown() {
-        removeViews()
-        stopSelf()
-    }
-
-    private fun removeViews() {
-        if (!::wm.isInitialized) return
-
-        try {
-            bubbleView?.let { wm.removeViewImmediate(it) }
-        } catch (_: Throwable) {
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+          if (!moved) togglePanelAttempt()
+          true
         }
 
-        try {
-            closeView?.let { wm.removeViewImmediate(it) }
-        } catch (_: Throwable) {
-        }
+        else -> false
+      }
+    }
+  }
 
-        panelBubble = null
-        bubbleView = null
-        closeView = null
+  // =============================
+  // PANEL OPEN/CLOSE V1
+  // =============================
+  private fun togglePanelAttempt() {
+    if (isPanelOpen) {
+      closePanel()
+      return
     }
 
-    private fun windowType(): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
+    calculatePanelSize()
 
-    private fun baseFlags(): Int =
-        (
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        )
-
-    // =========================
-    // CLOSE ZONE (X)
-    // =========================
-    private fun createCloseZone() {
-        val size = dp(96)
-
-        val root =
-            FrameLayout(this).apply {
-                visibility = View.GONE
-                setBackgroundColor(0x00000000)
-
-                addView(
-                    FrameLayout(this@BubbleService).apply {
-                        setBackgroundColor(0xFFE53935.toInt()) // fondo oscuro
-                        clipToOutline = true
-                        outlineProvider =
-                            object : ViewOutlineProvider() {
-                                override fun getOutline(
-                                    view: View,
-                                    outline: Outline,
-                                ) {
-                                    outline.setOval(0, 0, view.width, view.height)
-                                }
-                            }
-
-                        addView(
-                            TextView(this@BubbleService).apply {
-                                text = "X"
-                                textSize = 28f
-                                setTextColor(0xFFFFFFFF.toInt())
-                                gravity = Gravity.CENTER
-                                layoutParams =
-                                    FrameLayout.LayoutParams(
-                                        FrameLayout.LayoutParams.MATCH_PARENT,
-                                        FrameLayout.LayoutParams.MATCH_PARENT,
-                                    )
-                            },
-                        )
-                    },
-                    FrameLayout.LayoutParams(size, size).apply { gravity = Gravity.CENTER },
-                )
-            }
-
-        closeLp =
-            WindowManager
-                .LayoutParams(
-                    size,
-                    size,
-                    windowType(),
-                    baseFlags(),
-                    PixelFormat.TRANSLUCENT,
-                ).apply {
-                    gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    y = dp(28)
-                }
-
-        closeView = root
-        wm.addView(root, closeLp)
+    if (!canOpenPanelNow()) {
+      feedbackCantOpen()
+      return
     }
 
-    private fun showClose(show: Boolean) {
-        closeView?.visibility = if (show) View.VISIBLE else View.GONE
+    openPanel()
+  }
+
+  private fun calculatePanelSize() {
+    val (sw, sh) = getScreenSizePx()
+
+    panelW = (sw * PANEL_W_RATIO).toInt()
+    panelH = (sh * PANEL_H_RATIO).toInt()
+
+    val lpPanel = panel?.layoutParams
+    lpPanel?.width = panelW
+    lpPanel?.height = panelH
+    panel?.layoutParams = lpPanel
+  }
+
+  private fun openPanel() {
+    isPanelOpen = true
+    panel?.visibility = View.VISIBLE
+    applyPositionForCurrentState()
+  }
+
+  private fun closePanel() {
+    isPanelOpen = false
+    panel?.visibility = View.GONE
+    applyPositionForCurrentState()
+  }
+
+  private fun applyPositionForCurrentState() {
+    val params = lp ?: return
+
+    val rootY =
+      if (isPanelOpen) anchorBtnY - (panelH - btnH)
+      else anchorBtnY
+
+    params.x = anchorBtnX
+    params.y = rootY
+
+    root?.let { wm.updateViewLayout(it, params) }
+  }
+
+  private fun canOpenPanelNow(): Boolean {
+    val (sw, sh) = getScreenSizePx()
+    val overlap = btnW / 2
+
+    val rootX = anchorBtnX
+    val rootY = anchorBtnY - (panelH - btnH)
+    val rootW = panelW + overlap
+    val rootH = panelH
+
+    if (rootX < 0) return false
+    if (rootY < 0) return false
+    if (rootX + rootW > sw) return false
+    if (rootY + rootH > sh) return false
+
+    return true
+  }
+
+  private fun feedbackCantOpen() {
+    val vib = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      vib.vibrate(VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE))
+    } else {
+      @Suppress("DEPRECATION")
+      vib.vibrate(45)
+    }
+  }
+
+  private fun getScreenSizePx(): Pair<Int, Int> {
+    return if (Build.VERSION.SDK_INT >= 30) {
+      val m = wm.currentWindowMetrics.bounds
+      Pair(m.width(), m.height())
+    } else {
+      @Suppress("DEPRECATION")
+      val dm = DisplayMetrics().also { wm.defaultDisplay.getRealMetrics(it) }
+      Pair(dm.widthPixels, dm.heightPixels)
+    }
+  }
+
+  private fun attachCloseIfPresent() {
+    val r = root ?: return
+    val close = r.findViewById<View?>(R.id.btnClose) ?: return
+    close.setOnClickListener { closePanel() }
+  }
+
+  private fun startForegroundCompat() {
+    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val channelId = "chesz_overlay"
+
+    if (Build.VERSION.SDK_INT >= 26) {
+      nm.createNotificationChannel(
+        NotificationChannel(channelId, "CHESZ Overlay", NotificationManager.IMPORTANCE_MIN)
+      )
     }
 
-    // hit circular REAL (no rectángulo)
-    private fun isInsideCloseCircle(
-        rawX: Float,
-        rawY: Float,
-    ): Boolean {
-        val close = closeView ?: return false
-        if (close.visibility != View.VISIBLE) return false
+    val notif =
+      if (Build.VERSION.SDK_INT >= 26) {
+        Notification.Builder(this, channelId)
+          .setContentTitle("CHESZ")
+          .setContentText("Overlay activo")
+          .setSmallIcon(android.R.drawable.ic_menu_info_details)
+          .build()
+      } else {
+        @Suppress("DEPRECATION")
+        Notification.Builder(this)
+          .setContentTitle("CHESZ")
+          .setContentText("Overlay activo")
+          .setSmallIcon(android.R.drawable.ic_menu_info_details)
+          .build()
+      }
 
-        val loc = IntArray(2)
-        close.getLocationOnScreen(loc)
-        val cx = loc[0] + close.width / 2f
-        val cy = loc[1] + close.height / 2f
-        val r = close.width.coerceAtMost(close.height) / 2f
-
-        return hypot(rawX - cx, rawY - cy) <= r
-    }
-
-    // =========================
-    // PANEL (burbuja desplegada)
-    // =========================
-    private fun isPanelOpen(): Boolean = (panelBubble?.visibility == View.VISIBLE)
-
-    private fun openPanel() {
-        panelBubble?.visibility = View.VISIBLE
-    }
-
-    private fun closePanel() {
-        panelBubble?.visibility = View.GONE
-    }
-
-    // =========================
-    // BUBBLE
-    // =========================
-    private fun createBubble() {
-        // Overlay único (root) desde XML
-        val root = LayoutInflater.from(this).inflate(R.layout.overlay_root, null) as FrameLayout
-
-        // Burbuja (icono) dentro del contenedor
-        val bubbleContainer = root.findViewById<FrameLayout>(R.id.bubbleContainer)
-        val iconView =
-            CircleCropView(this).apply {
-                setImageResource(R.drawable.bubble_icon)
-            }
-        bubbleContainer.addView(
-            iconView,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            ),
-        )
-
-        // Panel como hijo del mismo root (negro translúcido, 60% x 30%)
-        val panel = root.findViewById<View>(R.id.panelBubble)
-        panel.setBackgroundColor(0x88000000.toInt()) // negro translúcido
-        panel.visibility = View.GONE
-
-        val dm = resources.displayMetrics
-        val pw = (dm.widthPixels * 0.60f).toInt()
-        val ph = (dm.heightPixels * 0.30f).toInt()
-        val plp =
-            FrameLayout.LayoutParams(pw, ph).apply {
-                gravity = Gravity.TOP or Gravity.START
-                leftMargin = dp(88) // a la derecha de la burbuja
-                topMargin = 0
-            }
-        panel.layoutParams = plp
-
-        // Tap to Close (cierra solo el panel)
-        root.findViewById<View>(R.id.tapToClose).setOnClickListener {
-            closePanel()
-        }
-
-        // Drag SOLO desde la burbuja, pero mueve TODO el root (overlay único)
-        bubbleLp =
-            WindowManager
-                .LayoutParams(
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    windowType(),
-                    baseFlags(),
-                    PixelFormat.TRANSLUCENT,
-                ).apply {
-                    gravity = Gravity.TOP or Gravity.START
-                    x = dp(16)
-                    y = dp(220)
-                }
-
-        bubbleContainer.setOnTouchListener { _, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downRawX = ev.rawX
-                    downRawY = ev.rawY
-                    downX = bubbleLp.x
-                    downY = bubbleLp.y
-                    moved = false
-                    downTime = System.currentTimeMillis()
-                    showClose(false)
-                    true
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (ev.rawX - downRawX).toInt()
-                    val dy = (ev.rawY - downRawY).toInt()
-
-                    if (!moved && (abs(dx) > dp(4) || abs(dy) > dp(4))) {
-                        moved = true
-                        showClose(true)
-                    }
-
-                    bubbleLp.x = downX + dx
-                    bubbleLp.y = downY + dy
-                    updateOverlayLayoutClamped(root, bubbleLp)
-                    true
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val elapsed = System.currentTimeMillis() - downTime
-                    val isTap = (!moved && elapsed < 250)
-
-                    if (moved && isInsideCloseCircle(ev.rawX, ev.rawY)) {
-                        shutdown()
-                    } else if (isTap) {
-                        if (isPanelOpen()) closePanel() else openPanel()
-                        showClose(false)
-                    } else {
-                        showClose(false)
-                    }
-                    true
-                }
-
-                else -> {
-                    false
-                }
-            }
-        }
-
-        // Guardar refs
-        panelBubble = panel
-        bubbleView = root
-
-        wm.addView(root, bubbleLp)
-
-        root.post { updateOverlayLayoutClamped(root, bubbleLp) }
-    }
-
-    // =========================
-    // CLAMP overlay to screen
-    // =========================
-    private fun getScreenSizePx(): Pair<Int, Int> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val metrics = wm.currentWindowMetrics
-            val b = metrics.bounds
-            Pair(b.width(), b.height())
-        } else {
-            ("DEPRECATION")
-            val dm = resources.displayMetrics
-            Pair(dm.widthPixels, dm.heightPixels)
-        }
-    }
-
-    private fun clampToScreen(lp: WindowManager.LayoutParams, overlayView: View) {
-        val (sw, sh) = getScreenSizePx()
-
-        val vw = if (overlayView.width > 0) overlayView.width else overlayView.measuredWidth
-        val vh = if (overlayView.height > 0) overlayView.height else overlayView.measuredHeight
-        if (vw <= 0 || vh <= 0) return
-
-        val maxX = (sw - vw).coerceAtLeast(0)
-        val maxY = (sh - vh).coerceAtLeast(0)
-
-        lp.x = lp.x.coerceIn(0, maxX)
-        lp.y = lp.y.coerceIn(0, maxY)
-    }
-
-    private fun updateOverlayLayoutClamped(root: View, lp: WindowManager.LayoutParams) {
-        clampToScreen(lp, root)
-        wm.updateViewLayout(root, lp)
-    }
-
-
-    private fun dp(v: Int): Int {
-        val d = resources.displayMetrics.density
-        return (v * d).toInt()
-    }
-
-    // =========================
-    // CircleCrop real (shader)
-    // =========================
-    private class CircleCropView(
-        ctx: Context,
-    ) : View(ctx) {
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private var shader: BitmapShader? = null
-        private var bitmap: Bitmap? = null
-
-        fun setImageResource(resId: Int) {
-            val d = context.resources.getDrawable(resId, context.theme)
-            bitmap = drawableToBitmap(d)
-            rebuildShader()
-            invalidate()
-        }
-
-        override fun onSizeChanged(
-            w: Int,
-            h: Int,
-            oldw: Int,
-            oldh: Int,
-        ) {
-            super.onSizeChanged(w, h, oldw, oldh)
-            rebuildShader()
-        }
-
-        private fun rebuildShader() {
-            val b = bitmap ?: return
-            if (width <= 0 || height <= 0) return
-
-            shader = BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-
-            val m = Matrix()
-            val scale = maxOf(width.toFloat() / b.width, height.toFloat() / b.height)
-            val dx = (width - b.width * scale) * 0.5f
-            val dy = (height - b.height * scale) * 0.5f
-            m.setScale(scale, scale)
-            m.postTranslate(dx, dy)
-            shader!!.setLocalMatrix(m)
-
-            paint.shader = shader
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val r = minOf(width, height) * 0.5f
-            canvas.drawCircle(width * 0.5f, height * 0.5f, r, paint)
-        }
-
-        private fun drawableToBitmap(d: android.graphics.drawable.Drawable): Bitmap {
-            val w = if (d.intrinsicWidth > 0) d.intrinsicWidth else 512
-            val h = if (d.intrinsicHeight > 0) d.intrinsicHeight else 512
-            val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            val c = Canvas(b)
-            d.setBounds(0, 0, c.width, c.height)
-            d.draw(c)
-            return b
-        }
-    }
-
-    // fondo redondeado simple (sin libs)
-    private class RoundRectDrawable(
-        private val color: Int,
-        private val radius: Float,
-    ) : android.graphics.drawable.Drawable() {
-        private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = this@RoundRectDrawable.color }
-        private val r = RectF()
-
-        override fun draw(canvas: Canvas) {
-            r.set(bounds)
-            canvas.drawRoundRect(r, radius, radius, p)
-        }
-
-        override fun setAlpha(alpha: Int) {
-            p.alpha = alpha
-        }
-
-        override fun setColorFilter(colorFilter: ColorFilter?) {
-            p.colorFilter = colorFilter
-        }
-
-        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
-    }
+    startForeground(1, notif)
+  }
 }
