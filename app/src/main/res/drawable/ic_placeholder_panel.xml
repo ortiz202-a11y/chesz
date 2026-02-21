@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder panel icon: simple chess board outline -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+
+    <!-- Outer square -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M5,5 L35,5 L35,35 L5,35 Z" />
+
+    <!-- Inner grid lines (simplified 2×2 chess board) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M20,5 L20,35 M5,20 L35,20" />
+
+    <!-- Filled squares (top-left and bottom-right) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M5,5 L20,5 L20,20 L5,20 Z"
+        android:fillAlpha="0.3" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20,20 L35,20 L35,35 L20,35 Z"
+        android:fillAlpha="0.3" />
+
+</vector>

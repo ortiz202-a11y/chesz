@@ -74,3 +74,47 @@ Licencia
 --
 
 Notes for maintainers: icons will be added once uploaded from the device. Ensure GitHub Actions workflow produces the APK artifact and the CI is configured to publish artifacts accessible for download.
+
+---
+
+## Feature: Floating Overlay Button & Panel (feature/floating-button)
+
+### How to get the APK from CI
+
+1. Open the repository on GitHub and go to the **Actions** tab.
+2. Select the latest **Build Debug APK** workflow run for the `feature/floating-button` branch.
+3. Scroll to the bottom of the run page and click the **chesz-debug-apk** artifact to download the ZIP.
+4. Unzip the archive and transfer the `app-debug.apk` to your Android device:
+   ```
+   # From a PC / Termux via ADB
+   adb push app-debug.apk /storage/emulated/0/Download/apps/app-debug.apk
+   # Or copy the file manually via USB / cloud storage
+   ```
+5. On the device, install the APK:
+   ```
+   pm install -r /storage/emulated/0/Download/apps/app-debug.apk
+   ```
+   Or open the file with a file manager and allow "Install from unknown sources" if prompted.
+
+### First run — granting the overlay permission
+
+1. Launch **Chesz** from the app drawer.
+2. Tap **Habilitar overlay**.
+3. In the system settings page that opens, enable **"Display over other apps"** for Chesz.
+4. Return to the app (back button or recent apps). The MainActivity will detect the permission and start the floating service automatically, then close itself.
+5. You should now see the floating button on top of any other app.
+
+### Manual testing checklist
+
+- [ ] **Drag — no jumps**: Touch and drag the floating button; verify it moves smoothly without teleporting.
+- [ ] **Snap to edge**: Lift your finger after dragging; the button should snap instantly to the nearest left or right screen edge.
+- [ ] **Panel opens upward**: Tap the button (without dragging); the panel should appear above the button with ~40 % overlap under the button bottom.
+- [ ] **Panel follows button**: With the panel open, drag the button; verify the panel stays attached and repositions correctly.
+- [ ] **Close button works**: Tap **Cerrar** in the panel; the panel should hide and the button should remain visible and interactive.
+- [ ] **Button stays in bounds**: Drag the button to all four corners; it must never be pushed off-screen.
+- [ ] **Panel stays in bounds**: Open the panel while the button is near the top of the screen; the panel must clamp to the top edge and not overflow.
+- [ ] **No crashes**: Perform all of the above steps rapidly; the app must not crash.
+
+### Reporting issues
+
+If a bug is found, create a fix branch (e.g. `fix/floating-ghost`) and open a new PR or add commits to this PR with a clear description of the fix.

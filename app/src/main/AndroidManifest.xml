@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        SYSTEM_ALERT_WINDOW (overlay) permission is required for the floating service.
+        On Android 6+ the user must grant this permission manually via
+        Settings → Apps → Special access → Display over other apps.
+        Request it at runtime with ACTION_MANAGE_OVERLAY_PERMISSION before starting FloatingService.
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- FOREGROUND_SERVICE required to keep the overlay alive while the app is in background -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Chesz">
+
+        <!-- Entry-point activity: requests overlay permission, then starts FloatingService -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            FloatingService: runs as a foreground service and manages the draggable overlay
+            button + panel via WindowManager.
+            android:exported="false" — only this app can bind/start it.
+        -->
+        <service
+            android:name=".floating.FloatingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
+    </application>
+
+</manifest>
