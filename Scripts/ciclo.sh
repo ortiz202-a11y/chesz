@@ -1,12 +1,12 @@
 #!/bin/bash
 echo "🚀 INICIANDO CICLO DE TRABAJO: CHESZ ENGINE"
 echo "🕵️ Ejecutando Fisgón..."
-~/chesz/scripts/fisgon.sh
+~/chesz/Scripts/fisgon.sh
 echo "🛡️ Ejecutando Check de Seguridad..."
-~/chesz/scripts/check.sh
+~/chesz/Scripts/check.sh
 if [ $? -eq 0 ]; then
     echo "✅ VALIDACIÓN EXITOSA. Sincronizando..."
-    ~/chesz/scripts/vigilante.sh
+    ~/chesz/Scripts/vigilante.sh
 else
     echo "❌ CICLO ABORTADO: Hay errores de sintaxis."
     exit 1
