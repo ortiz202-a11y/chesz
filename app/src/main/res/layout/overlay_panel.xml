@@ -74,6 +74,19 @@
             android:visibility="gone"
             android:text="" />
 
-    </LinearLayout>
+      <!-- Cerrar panel -->
+        <TextView
+            android:id="2787 2787id/btnClose"
+            android:layout_width="match_parent"
+            android:layout_height="26dp"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="Cerrar"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:background="#66000000"
+            android:includeFontPadding="false" />
+
+</LinearLayout>
 
 </FrameLayout>
