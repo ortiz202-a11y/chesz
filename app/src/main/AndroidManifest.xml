@@ -27,9 +27,9 @@
 
         <!-- SERVICIO OVERLAY -->
         <service
-            android:name=".bubble.BubbleService"
-            android:exported="false"
-            />
+        android:name=".bubble.BubbleService"
+        android:exported="false"
+        android:foregroundServiceType="specialUse" />
 
     </application>
 
