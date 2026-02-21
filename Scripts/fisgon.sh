@@ -1,17 +1,18 @@
-#!/bin/bash
-# Script Fisgón: Genera un reporte completo del estado actual del proyecto
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
 
 REPORT_NAME="fisgon.txt"
-DESTINATION="~/storage/downloads/$REPORT_NAME"
+DEST_DIR="$HOME/storage/shared/Download"
+OUT="$DEST_DIR/$REPORT_NAME"
+
+mkdir -p "$DEST_DIR"
 
 echo "🔍 El Fisgón está recorriendo el proyecto..."
+find "$HOME/chesz" -maxdepth 10 -not -path '*/.*' -type f \( -name "*.kt" -o -name "*.xml" -o -name "build.gradle" -o -name "AndroidManifest.xml" \) \
+  -exec echo "FILE: {}" \; \
+  -exec cat {} \; \
+  -exec printf "\n---\n\n" \; > "$OUT"
 
-# Buscar archivos .kt, .xml y build.gradle, ignorando carpetas ocultas
-find ~/chesz -maxdepth 10 -not -path '*/.*' -type f \( -name "*.kt" -o -name "*.xml" -o -name "build.gradle" \) \
--exec echo "FILE: {}" \; \
--exec cat {} \; \
--exec echo -e "\n---\n" \; > ~/storage/downloads/fisgon.txt
-
-echo "✅ Reporte generado en: $DESTINATION"
-echo "Contenido del reporte:"
-cat ~/storage/downloads/fisgon.txt
+echo "✅ Reporte generado en: $OUT"
+echo "Contenido del reporte (primeras líneas):"
+head -n 40 "$OUT" || true
