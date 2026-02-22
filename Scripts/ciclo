@@ -5,7 +5,7 @@ cd "$HOME/chesz"
 echo "🚀 INICIANDO CICLO BLINDADO..."
 
 # 1. Validaciones encadenadas
-bash Scripts/check.sh && bash Scripts/validar_adn.sh || {
+bash Scripts/check.sh && bash Scripts/integridad || {
     echo "❌ FASE DE VALIDACIÓN FALLIDA. Revisa PAPER.md"
     exit 1
 }
