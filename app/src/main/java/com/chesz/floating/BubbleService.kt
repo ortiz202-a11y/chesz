@@ -25,7 +25,7 @@ class BubbleService : Service() {
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
-        val size = (80 * resources.displayMetrics.density).toInt()
+        val size = (60 * resources.displayMetrics.density).toInt()
 
         params = WindowManager.LayoutParams(
             size, size,
