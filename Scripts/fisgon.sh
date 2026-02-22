@@ -2,6 +2,7 @@
 set -euo pipefail
 
 cd "$HOME/chesz" || exit 1
+PAPER_FILE="$HOME/chesz/paper"
 
 MODE="${1:-full}"              # full | targets
 TS="$(date +%Y%m%d_%H%M%S)"
@@ -65,6 +66,7 @@ emit_by_find() {
 
 case "$MODE" in
   full)
+      append_file "$PAPER_FILE"
     emit_by_find "$HOME/chesz" 12
     ;;
 
@@ -73,6 +75,7 @@ case "$MODE" in
     shopt -s nullglob globstar
 
     expanded=()
+      expanded+=("$PAPER_FILE")
     # OJO: FISGON_TARGETS se expande como palabras (separa por espacios)
     for t in $FISGON_TARGETS; do
       matches=( $t )
