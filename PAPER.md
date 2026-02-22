@@ -1,7 +1,7 @@
 # 📋 PAPER CHESZ
 
 ## 🛠️ EN PROCESO
-- [ ] Lanzar ciclo con botón de 60dp y sin marco blanco
+- [x] Lanzar ciclo con botón de 60dp y sin marco blanco
 - [ ] Validar exclusión de lista de recientes
 
 ## ✅ TERMINADO
