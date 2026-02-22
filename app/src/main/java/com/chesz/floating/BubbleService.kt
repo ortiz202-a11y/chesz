@@ -5,7 +5,8 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.IBinder
 import android.view.*
-import android.widget.FrameLayout
+import android.widget.ImageView
+import com.chesz.R
 
 class BubbleService : Service() {
     private lateinit var windowManager: WindowManager
@@ -17,20 +18,24 @@ class BubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        bubbleView = LayoutInflater.from(this).inflate(com.chesz.R.layout.layout_bubble, null)
+        
+        // Creamos el contenedor del botón directamente
+        bubbleView = ImageView(this).apply {
+            setImageResource(R.drawable.bubble_icon)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+
+        val size = (80 * resources.displayMetrics.density).toInt()
 
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            size, size,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 100
             y = 100
-            width = (80 * resources.displayMetrics.density).toInt()
-            height = (80 * resources.displayMetrics.density).toInt()
         }
 
         bubbleView.setOnTouchListener(object : View.OnTouchListener {
