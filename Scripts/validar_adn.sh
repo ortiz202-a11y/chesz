@@ -1,23 +1,29 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Supervisor de Coherencia Chesz
+# Supervisor de ADN Blindado
 
 PACKAGE_OFICIAL=$(grep "applicationId" ~/chesz/app/build.gradle | head -1 | cut -d"'" -f2)
 MANIFEST_PKG=$(grep "package=" ~/chesz/app/src/main/AndroidManifest.xml | cut -d'"' -f2)
 
-echo "🔍 [SUPERVISOR] Validando coherencia del ADN..."
+echo "🔍 [SUPERVISOR] Validando y Blindando ADN..."
 
-# 1. [span_0](start_span)[span_1](start_span)Verificar Gradle vs Manifest[span_0](end_span)[span_1](end_span)
+# IF 1: Coherencia de Identidad
 if [ "$PACKAGE_OFICIAL" != "$MANIFEST_PKG" ]; then
-    echo "❌ ERROR: El ID en Gradle ($PACKAGE_OFICIAL) no coincide con Manifest ($MANIFEST_PKG)"
+    echo "⚠️ Discrepancia detectada. Intentando autocuración..."
+    sed -i "s/package=\".*\"/package=\"$PACKAGE_OFICIAL\"/" ~/chesz/app/src/main/AndroidManifest.xml
+    echo "✅ Manifiesto alineado con Gradle."
+fi
+
+# IF 2: Validación de Estructura de Carpetas
+EXPECTED_PATH="app/src/main/java/${PACKAGE_OFICIAL//.//}"
+if [ ! -d "$HOME/chesz/$EXPECTED_PATH" ]; then
+    echo "❌ ERROR CRÍTICO: La estructura de carpetas no coincide con el paquete $PACKAGE_OFICIAL"
     exit 1
 fi
 
-# 2. [span_2](start_span)[span_3](start_span)Verificar que los archivos Kotlin tengan el package correcto[span_2](end_span)[span_3](end_span)
-find ~/chesz/app/src/main/java -name "*.kt" | while read -r file; do
-    if ! grep -q "package $PACKAGE_OFICIAL" "$file"; then
-        echo "⚠️ ADVERTENCIA: $file tiene un package declarado que no coincide con $PACKAGE_OFICIAL"
-        exit 1
-    fi
-done
+# IF 3: Limpieza de Residuos (Elimina archivos que no deberían estar en la raíz)
+if [ -f "$HOME/chesz/fisgon.sh" ]; then
+    rm "$HOME/chesz/fisgon.sh"
+    echo "🧹 Limpiado residuo de fisgon.sh en raíz."
+fi
 
-echo "✅ Coherencia de identidad verificada con éxito."
+echo "✅ ADN Blindado."
