@@ -3,21 +3,28 @@ set -euo pipefail
 
 ROOT="$HOME/chesz"
 ICON_SRC="$ROOT/iconos/boton.png"
+# El destino se mantiene, pero solo si existe la carpeta drawable
+mkdir -p "$ROOT/app/src/main/res/drawable"
 ICON_DEST="$ROOT/app/src/main/res/drawable/bubble_icon.png"
-BUBBLE="$ROOT/app/src/main/java/com/chesz/analyzer/bubble/BubbleService.kt"
 
 echo "🛡️ [CHECK] Validando integridad..."
 
 if [[ ! -f "$ICON_SRC" ]]; then
-    echo -e "\n❌ [ERROR]: Falta $ICON_SRC"
+    echo -e "\n❌ [ERROR]: No se encuentra el icono en $ICON_SRC"
     exit 1
 fi
-cp "$ICON_SRC" "$ICON_DEST" && echo "✅ Icono sincronizado."
 
-if [[ -f "$BUBBLE" ]]; then
-    OPEN=$(grep -o "{" "$BUBBLE" | wc -l)
-    CLOSE=$(grep -o "}" "$BUBBLE" | wc -l)
-    [ "$OPEN" -ne "$CLOSE" ] && { echo "❌ Error: Llaves {$OPEN vs }$CLOSE"; exit 1; }
-    echo "✅ Sintaxis Kotlin OK."
-fi
-echo "✅ CHECK PASADO."
+cp "$ICON_SRC" "$ICON_DEST" && echo "✅ Icono sincronizado en drawable."
+
+# Buscamos cualquier archivo .kt para validar llaves sin importar la carpeta
+KOTLIN_FILES=$(find "$ROOT/app/src/main/java" -name "*.kt")
+for f in $KOTLIN_FILES; do
+    OPEN=$(grep -o "{" "$f" | wc -l)
+    CLOSE=$(grep -o "}" "$f" | wc -l)
+    if [ "$OPEN" -ne "$CLOSE" ]; then
+        echo "❌ Error en $f: Llaves {$OPEN vs }$CLOSE"
+        exit 1
+    fi
+done
+
+echo "✅ CHECK PASADO: Todo en orden para compilar."
