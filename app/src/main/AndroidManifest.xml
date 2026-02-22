@@ -10,8 +10,13 @@
 
 
     <application
+        android:icon="@drawable/icon"
+
+        android:roundIcon="@drawable/icon"
         android:allowBackup="true"
         android:label="CHESZ"
+        android:icon="@drawable/icon"
+        android:roundIcon="@drawable/icon"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar">
 
