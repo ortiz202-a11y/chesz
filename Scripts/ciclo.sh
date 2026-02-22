@@ -1,43 +1,26 @@
 #!/data/data/com.termux/files/usr/bin/bash
-set -euo pipefail
+set -e
+cd "$HOME/chesz"
 
-cd "$HOME/chesz" || exit 1
+abort() {
+  echo -e "\n***********************************************"
+  echo -e "❌ ABORTANDO: $1"
+  echo -e "***********************************************"
+  exit 1
+}
 
-echo "==========================================="
-echo "🚀 CICLO: CHESZ"
-echo "==========================================="
-echo "🧭 Branch: $(git branch --show-current)"
-echo "🧾 SHA:    $(git rev-parse --short HEAD)"
-echo
+echo "🚀 INICIANDO CICLO..."
+bash Scripts/check.sh || abort "El CHECK detectó errores."
+bash Scripts/fisgon.sh full > /dev/null || abort "El FISGÓN falló."
 
-echo "== 1) STATUS =="
-git status -sb || true
-echo
-
-echo "== 2) FISGÓN (full) =="
-"$HOME/chesz/Scripts/fisgon.sh" full
-echo
-
-echo "== 3) CHECK =="
-"$HOME/chesz/Scripts/check.sh"
-echo
-
-echo "== 4) COMMIT+PUSH (si hay cambios) =="
+echo "📡 Subiendo a GitHub..."
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "📝 Hay cambios. Preparando commit..."
-  git add -A
-
-  MSG="${CICLO_MSG:-"chore(ciclo): update"}"
-  git commit -m "$MSG"
-  git push
-
-  echo "✅ Push OK."
+    git add -A
+    git commit -m "chore: update $(date +%T)" || abort "Fallo al crear COMMIT."
+    git push || abort "Fallo en el PUSH (revisa internet)."
 else
-  echo "ℹ️ No hay cambios para commitear."
+    echo "ℹ️ Sin cambios locales."
 fi
-echo
 
-echo "== 5) VIGILANTE =="
-"$HOME/chesz/Scripts/vigilante.sh"
-echo
-echo "✅ CICLO COMPLETO"
+bash Scripts/vigilante.sh || abort "El VIGILANTE falló."
+echo -e "\n✨ [CICLO COMPLETADO EXITOSAMENTE] ✨"
