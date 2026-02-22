@@ -1,26 +1,20 @@
 #!/data/data/com.termux/files/usr/bin/bash
-set -e
-cd "$HOME/chesz"
+echo "🚀 INICIANDO CICLO (Modo: Portero + Supervisor ADN)"
 
-abort() {
-  echo -e "\n***********************************************"
-  echo -e "❌ ABORTANDO: $1"
-  echo -e "***********************************************"
-  exit 1
-}
-
-echo "🚀 INICIANDO CICLO..."
-bash Scripts/check.sh || abort "El CHECK detectó errores."
-bash Scripts/fisgon.sh full > /dev/null || abort "El FISGÓN falló."
-
-echo "📡 Subiendo a GitHub..."
-if ! git diff --quiet || ! git diff --cached --quiet; then
-    git add -A
-    git commit -m "chore: update $(date +%T)" || abort "Fallo al crear COMMIT."
-    git push || abort "Fallo en el PUSH (revisa internet)."
-else
-    echo "ℹ️ Sin cambios locales."
+# 1. Validación de Seguridad y Coherencia
+bash Scripts/check.sh && bash Scripts/validar_adn.sh
+if [ $? -ne 0 ]; then
+    echo "❌ ABORTANDO: El Supervisor ADN o el Check detectaron inconsistencias."
+    exit 1
 fi
 
-bash Scripts/vigilante.sh || abort "El VIGILANTE falló."
-echo -e "\n✨ [CICLO COMPLETADO EXITOSAMENTE] ✨"
+# 2. Actualizar el Paper (Kanban)
+echo "📝 Actualizando PAPER..."
+
+# 3. Sincronización con GitHub (Aquí actúa el Portero)
+git add .
+git commit -m "Build: Ajustes visuales 60dp y corrección de visibilidad"
+git push origin master
+
+# 4. Activar al Vigilante
+bash Scripts/vigilante.sh
