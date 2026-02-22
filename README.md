@@ -57,3 +57,4 @@ Reglas:
 - No ejecutar Vigilante sin push.
 - Siempre pasar Check antes de commit.
 
+
