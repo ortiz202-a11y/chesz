@@ -1,10 +1,10 @@
 # 📋 PAPER CHESZ
 
 ## 🛠️ EN PROCESO
-- [x] Lanzar ciclo con botón de 60dp y sin marco blanco
-- [ ] Validar exclusión de lista de recientes
+- [ ] Validar botón de 60dp y visibilidad (excludeFromRecents)
+- [ ] Probar autocuración del Supervisor de ADN
 
 ## ✅ TERMINADO
-- [x] [span_5](start_span)Unificación de identidad com.chesz[span_5](end_span)
-- [x] Configuración del Portero (Git Hooks)
-- [x] Supervisor de ADN (Scripts/validar_adn.sh)
+- [x] Estructura de Scripts centralizada en Scripts/
+- [x] Portero (Git Hook) configurado y activo
+- [x] Identidad com.chesz unificada
