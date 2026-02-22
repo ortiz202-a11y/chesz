@@ -17,7 +17,7 @@ class BubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        bubbleView = LayoutInflater.from(this).inflate(chesz.R.layout.layout_bubble, null)
+        bubbleView = LayoutInflater.from(this).inflate(com.chesz.R.layout.layout_bubble, null)
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
