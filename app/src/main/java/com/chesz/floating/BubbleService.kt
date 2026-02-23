@@ -195,15 +195,24 @@ class BubbleService : Service() {
   }
 
   private fun setKillHover(hover: Boolean) {
-    if (hover == killHover) return
-    killHover = hover
-    val target = if (hover) 1.30f else 1.0f
-    killRoot.animate().cancel()
-    killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
-  }
+      val target = if (hover) 1.30f else 1.0f
+      killRoot.animate().cancel()
+      killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
+    }
 
-  private fun bubbleCenterX(): Float = bubbleLp.x + bubbleRoot.width / 2f
-  private fun bubbleCenterY(): Float = bubbleLp.y + bubbleRoot.height / 2f
+  private fun bubbleCenterX(): Float {
+      val loc = IntArray(2)
+      bubbleRoot.getLocationOnScreen(loc)
+      val w = if (bubbleRoot.width > 0) bubbleRoot.width else dp(60)
+      return loc[0] + (w / 2f)
+    }
+
+    private fun bubbleCenterY(): Float {
+      val loc = IntArray(2)
+      bubbleRoot.getLocationOnScreen(loc)
+      val h = if (bubbleRoot.height > 0) bubbleRoot.height else dp(60)
+      return loc[1] + (h / 2f)
+    }
 
   private fun killCenterOnScreen(): Pair<Float, Float> {
     val size = Point()
@@ -216,10 +225,21 @@ class BubbleService : Service() {
   }
 
   private fun isOverKillCenter(x: Float, y: Float): Boolean {
-    val (cx, cy) = killCenterOnScreen()
-    val r = (killLp.width / 2f) * 1.10f
-    return hypot(x - cx, y - cy) <= r
-  }
+      if (!killShown) return false
+
+      val loc = IntArray(2)
+      killRoot.getLocationOnScreen(loc)
+      val left = loc[0]
+      val top = loc[1]
+      val right = left + killRoot.width
+      val bottom = top + killRoot.height
+
+      // margen extra para que "encima" sea fácil de activar (tuneable)
+      val pad = dp(18)
+
+      return (x >= (left - pad) && x <= (right + pad) &&
+              y >= (top - pad) && y <= (bottom + pad))
+    }
 
   private fun performKill() {
     // cierre determinista (sin depender de animaciones)
