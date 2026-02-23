@@ -37,14 +37,4 @@ for f in $KOTLIN_FILES; do
     fi
 done
 
-
-# --- PROTECCIÓN: no permitir backups dentro de res/ ---
-BAD_RES=$(find "$ROOT/app/src/main/res" -type f \( -name "*.bak" -o -name "*.bak_*" -o -name "*.xml.bak*" -o -name "*~" \) 2>/dev/null || true)
-if [[ -n "${BAD_RES:-}" ]]; then
-  echo "❌ [CHECK] Basura detectada dentro de app/src/main/res (esto rompe el build):"
-  echo "$BAD_RES"
-  exit 1
-fi
-# --- FIN PROTECCIÓN ---
-
 echo "✅ CHECK PASADO: Todo en orden para compilar."
