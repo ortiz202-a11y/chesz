@@ -32,6 +32,7 @@ class BubbleService : Service() {
   private lateinit var killCircle: FrameLayout
   private lateinit var killLp: WindowManager.LayoutParams
   private var killShown = false
+  private var killHovered = false
   private var killHover = false
 
   // Drag state
@@ -117,7 +118,10 @@ class BubbleService : Service() {
 
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-            setKillHover(over)
+            if (over != killHovered) {
+              killHovered = over
+              setKillHover(over)
+            }
           }
           true
         }
