@@ -7,16 +7,6 @@ ICON_SRC="$ROOT/iconos/boton.png"
 mkdir -p "$ROOT/app/src/main/res/drawable"
 ICON_DEST="$ROOT/app/src/main/res/drawable/bubble_icon.png"
 
-# === PROTECCION: prohibir backups/temporales dentro de res/ ===
-RES_DIR="$ROOT/app/src/main/res"
-if find "$RES_DIR" -type f \( -name "*.bak" -o -name "*.bak_*" -o -name "*.xml.bak*" -o -name "*~" \) -print -quit | grep -q .; then
-  echo "❌ [CHECK] Basura detectada dentro de res/ (*.bak*, *~). Borra antes de commit/build:"
-  find "$RES_DIR" -type f \( -name "*.bak" -o -name "*.bak_*" -o -name "*.xml.bak*" -o -name "*~" \) -print
-  exit 1
-fi
-# === FIN PROTECCION ===
-
-
 echo "🛡️ [CHECK] Validando integridad..."
 
 if [[ ! -f "$ICON_SRC" ]]; then
@@ -36,15 +26,5 @@ for f in $KOTLIN_FILES; do
         exit 1
     fi
 done
-
-
-# --- PROTECCIÓN: no permitir backups dentro de res/ ---
-BAD_RES=$(find "$ROOT/app/src/main/res" -type f \( -name "*.bak" -o -name "*.bak_*" -o -name "*.xml.bak*" -o -name "*~" \) 2>/dev/null || true)
-if [[ -n "${BAD_RES:-}" ]]; then
-  echo "❌ [CHECK] Basura detectada dentro de app/src/main/res (esto rompe el build):"
-  echo "$BAD_RES"
-  exit 1
-fi
-# --- FIN PROTECCIÓN ---
 
 echo "✅ CHECK PASADO: Todo en orden para compilar."

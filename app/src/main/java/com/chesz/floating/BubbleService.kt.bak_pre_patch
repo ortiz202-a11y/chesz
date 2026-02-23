@@ -210,7 +210,7 @@ class BubbleService : Service() {
 
   private fun isOverKillCenter(x: Float, y: Float): Boolean {
     val (cx, cy) = killCenterOnScreen()
-    val r = (killLp.width / 2f) * 1.6f
+    val r = (killLp.width / 2f) * 1.05f
     return hypot(x - cx, y - cy) <= r
   }
 
