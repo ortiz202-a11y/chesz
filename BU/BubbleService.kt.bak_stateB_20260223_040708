@@ -17,8 +17,6 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import android.graphics.Outline
 import android.view.ViewOutlineProvider
-import android.graphics.Color
-import android.widget.TextView
 
 class BubbleService : Service() {
 
@@ -28,12 +26,6 @@ class BubbleService : Service() {
   private lateinit var bubbleRoot: FrameLayout
   private lateinit var bubbleIcon: ImageView
   private lateinit var bubbleLp: WindowManager.LayoutParams
-
-
-  // Panel (Estado B)
-  private lateinit var panelRoot: FrameLayout
-  private lateinit var panelLp: WindowManager.LayoutParams
-  private var panelShown = false
 
   // Kill area
   private lateinit var killRoot: FrameLayout
@@ -57,7 +49,6 @@ class BubbleService : Service() {
     wm = getSystemService(WINDOW_SERVICE) as WindowManager
     createBubble()
     createKillArea()
-      createPanel()
   }
 
   override fun onDestroy() {
@@ -157,152 +148,6 @@ class BubbleService : Service() {
   }
 
   // ---------- Kill Area (standard: bottom center) ----------
-
-  // ---------- Panel (Estado B) ----------
-  private fun createPanel() {
-    // Panel simple (negro translúcido + textos grises + botón Close)
-    panelRoot = FrameLayout(this).apply {
-      setBackgroundColor(0xCC000000.toInt())
-      alpha = 1f
-    }
-
-    val content = FrameLayout(this).apply {
-      setPadding(dp(10), dp(10), dp(10), dp(10))
-    }
-
-    fun mkLine(t: String): TextView = TextView(this).apply {
-      text = t
-      setTextColor(0xFFB0B0B0.toInt())
-      textSize = 12f
-    }
-
-    // Texto de prueba del README (lo dejamos fijo por ahora)
-    val t1 = mkLine("Apertura italiana boca")
-    val t2 = mkLine("Defensa nórdica Ase 12 100%")
-    val t3 = mkLine("Defensa Nápoles variante coaboanca termux ase 10 90%")
-    val t4 = mkLine("Defensa fuck becerro asesino papaya sangrienta 80%")
-
-    // Close minimalista (vuelve a Estado A)
-    val close = TextView(this).apply {
-      text = "Close"
-      gravity = Gravity.CENTER
-      setTextColor(Color.WHITE)
-      textSize = 12f
-      setBackgroundColor(0x66000000)
-      setPadding(0, dp(6), 0, dp(6))
-      setOnClickListener { hidePanel() }
-    }
-
-    // Layout vertical simple (sin XML)
-    val col = android.widget.LinearLayout(this).apply {
-      orientation = android.widget.LinearLayout.VERTICAL
-    }
-    col.addView(t1)
-    col.addView(space(dp(6)))
-    col.addView(t2)
-    col.addView(space(dp(6)))
-    col.addView(t3)
-    col.addView(space(dp(6)))
-    col.addView(t4)
-    col.addView(space(dp(10)))
-    col.addView(close, android.widget.LinearLayout.LayoutParams(
-      android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-      android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-    ))
-
-    content.addView(col)
-    panelRoot.addView(content)
-
-    // size: 60% x 25% de pantalla
-    val dm = resources.displayMetrics
-    val panelW = (dm.widthPixels * 0.60f).toInt()
-    val panelH = (dm.heightPixels * 0.25f).toInt()
-
-    panelLp = WindowManager.LayoutParams(
-      panelW,
-      panelH,
-      overlayType(),
-      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-        or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-      PixelFormat.TRANSLUCENT
-    ).apply {
-      gravity = Gravity.TOP or Gravity.START
-      x = 0
-      y = 0
-    }
-  }
-
-  private fun space(h: Int): View =
-    View(this).apply { layoutParams = FrameLayout.LayoutParams(1, h) }
-
-  private fun togglePanel() {
-    if (panelShown) hidePanel() else showPanelIfFits()
-  }
-
-  private fun showPanelIfFits() {
-    // Calcula geometría según README:
-    // rootX = buttonX
-    // rootY = buttonY - (panelH - buttonH)
-    // rootW = panelW + (buttonW/2)
-    // rootH = panelH
-    val dm = resources.displayMetrics
-    val panelW = panelLp.width
-    val panelH = panelLp.height
-    val btnW = if (bubbleRoot.width > 0) bubbleRoot.width else dp(60)
-    val btnH = if (bubbleRoot.height > 0) bubbleRoot.height else dp(60)
-
-    val rootX = bubbleLp.x
-    val rootY = bubbleLp.y - (panelH - btnH)
-    val rootW = panelW + (btnW / 2)
-    val rootH = panelH
-
-    val fits = rootX >= 0 &&
-               rootY >= 0 &&
-               (rootX + rootW) <= dm.widthPixels &&
-               (rootY + rootH) <= dm.heightPixels
-
-    if (!fits) {
-      flashBubbleRed()
-      return
-    }
-
-    // Posición del panel: a la derecha, solapando 50% del botón
-    panelLp.x = bubbleLp.x + (btnW / 2)
-    panelLp.y = bubbleLp.y - (panelH - btnH)
-
-    if (!panelShown) {
-      runCatching { wm.addView(panelRoot, panelLp) }
-      panelShown = true
-    } else {
-      runCatching { wm.updateViewLayout(panelRoot, panelLp) }
-    }
-  }
-
-  private fun hidePanel() {
-    if (!panelShown) return
-    runCatching { wm.removeViewImmediate(panelRoot) }
-    panelShown = false
-  }
-
-  private fun updatePanelPositionIfShown() {
-    if (!panelShown) return
-    // Solo reposiciona con la misma regla (sin revalidar "fits")
-    val panelH = panelLp.height
-    val btnW = if (bubbleRoot.width > 0) bubbleRoot.width else dp(60)
-    val btnH = if (bubbleRoot.height > 0) bubbleRoot.height else dp(60)
-    panelLp.x = bubbleLp.x + (btnW / 2)
-    panelLp.y = bubbleLp.y - (panelH - btnH)
-    runCatching { wm.updateViewLayout(panelRoot, panelLp) }
-  }
-
-  private fun flashBubbleRed() {
-    // feedback simple: tinte rojo 220ms
-    runCatching {
-      bubbleIcon.setColorFilter(0xFFFF3333.toInt())
-      bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, 220)
-    }
-  }
-
   private fun createKillArea() {
     // Contenedor (NO se escala)
     killRoot = FrameLayout(this).apply {
