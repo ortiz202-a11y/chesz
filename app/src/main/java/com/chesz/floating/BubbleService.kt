@@ -385,19 +385,19 @@ class BubbleService : Service() {
       killShown = false
     }
   }
-  private fun setKillHover(hover: Boolean) {
-    val target = if (hover) 1.40f else 1.0f
-    // Importante: animación rápida y consistente (sin “deformarse”)
-    killCircle.animate().cancel()
-    killCircle.scaleX = killCircle.scaleX // no-op (mantiene estado)
-    killCircle.scaleY = killCircle.scaleY
-    killCircle.animate()
-      .scaleX(target)
-      .scaleY(target)
-      .setDuration(60)
-      .withLayer()
-      .start()
-  }
+private fun setKillHover(hover: Boolean) {
+  val target = if (hover) 1.40f else 1.0f
+  // Debug visual: si detecta hover, sube alpha para que sea obvio
+  killCircle.alpha = if (hover) 1.0f else 0.90f
+
+  killCircle.animate().cancel()
+  killCircle.animate()
+    .scaleX(target)
+    .scaleY(target)
+    .setDuration(60)
+    .withLayer()
+    .start()
+}
 
 
 
