@@ -6,9 +6,12 @@ import android.graphics.PixelFormat
 import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.core.content.getSystemService
 import com.chesz.R
 import kotlin.math.hypot
 import kotlin.math.max
@@ -96,38 +99,39 @@ class BubbleService : Service() {
         }
 
         MotionEvent.ACTION_MOVE -> {
-            val dx = (e.rawX - downRawX).toInt()
-            val dy = (e.rawY - downRawY).toInt()
-
-            // Estándar: el kill SOLO aparece cuando ya es drag real (umbral)
-            if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) {
+          val dx = (e.rawX - downRawX).toInt()
+          val dy = (e.rawY - downRawY).toInt()
+          if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) {
               dragging = true
               showKill(true)
             }
 
-            bubbleLp.x = startX + dx
-            bubbleLp.y = startY + dy
-            wm.updateViewLayout(bubbleRoot, bubbleLp)
+          bubbleLp.x = startX + dx
+          bubbleLp.y = startY + dy
+          wm.updateViewLayout(bubbleRoot, bubbleLp)
 
-            // Hover solo durante drag
-            if (dragging) {
-              val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-              setKillHover(over)
-            }
-            true
-          }
+          // feedback visual si está “encima” del kill
+          val over = dragging && isOverKillCenter(e.rawX, e.rawY)
+          setKillHover(over)
+          true
+        }
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-            val shouldKill = dragging && isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-            showKill(false)
+          val over = dragging && isOverKillCenter(e.rawX, e.rawY)
+            val shouldKill = dragging && over
 
             if (shouldKill) {
-              stopSelf()
+              // mantener visible + crecer + vibrar + cerrar servicio
+              setKillHover(true)
+              performKill()
             } else {
-              // tap normal (no hace nada)
+              setKillHover(false)
+              showKill(false)
+              // tap normal (por ahora NO hace nada)
             }
-            true
-          }
+
+          true
+        }
 
         else -> false
       }
@@ -217,8 +221,14 @@ class BubbleService : Service() {
     return hypot(x - cx, y - cy) <= r
   }
 
-  
-
+  private fun vibrateKill() {
+    val vib = getSystemService<Vibrator>() ?: return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
+    } else {
+      @Suppress("DEPRECATION") vib.vibrate(80)
+    }
+  }
 
   
     private fun performKill() {
