@@ -95,34 +95,34 @@ class BubbleService : Service() {
           downRawY = e.rawY
           startX = bubbleLp.x
           startY = bubbleLp.y
-          showKill(true)
           true
         }
 
         MotionEvent.ACTION_MOVE -> {
           val dx = (e.rawX - downRawX).toInt()
           val dy = (e.rawY - downRawY).toInt()
-          if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) dragging = true
+          if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) {
+              dragging = true
+              showKill(true)
+            }
 
           bubbleLp.x = startX + dx
           bubbleLp.y = startY + dy
           wm.updateViewLayout(bubbleRoot, bubbleLp)
 
           // feedback visual si está “encima” del kill
-          val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+          val over = dragging && isOverKillCenter(e.rawX, e.rawY)
           setKillHover(over)
           true
         }
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-          val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+          val over = dragging && isOverKillCenter(e.rawX, e.rawY)
             val shouldKill = dragging && over
 
             if (shouldKill) {
               // mantener visible + crecer + vibrar + cerrar servicio
-              showKill(true)
               setKillHover(true)
-              vibrateKill()
               performKill()
             } else {
               setKillHover(false)
@@ -217,7 +217,7 @@ class BubbleService : Service() {
 
   private fun isOverKillCenter(x: Float, y: Float): Boolean {
     val (cx, cy) = killCenterOnScreen()
-    val r = (killLp.width / 2f) * 1.6f
+    val r = (killLp.width / 2f) * 1.35f
     return hypot(x - cx, y - cy) <= r
   }
 
