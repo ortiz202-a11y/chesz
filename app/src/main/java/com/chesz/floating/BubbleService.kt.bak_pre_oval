@@ -15,8 +15,6 @@ import android.widget.ImageView
 import com.chesz.R
 import kotlin.math.abs
 import kotlin.math.hypot
-import android.graphics.Outline
-import android.view.ViewOutlineProvider
 
 class BubbleService : Service() {
 
@@ -148,37 +146,34 @@ class BubbleService : Service() {
     // Contenedor (NO se escala)
     killRoot = FrameLayout(this).apply {
       alpha = 1f
+      scaleX = 1f
+      scaleY = 1f
       visibility = View.VISIBLE
       clipChildren = false
       clipToPadding = false
-      background = null
       setBackgroundColor(0x00000000) // transparente
     }
   
     val sizePx = dp(100)
   
-    // Círculo real (ESTE se escala) + outline oval para que JAMÁS sea cuadrado
+    // Círculo real (ESTE se escala)
     killCircle = FrameLayout(this).apply {
       background = android.graphics.drawable.GradientDrawable().apply {
         shape = android.graphics.drawable.GradientDrawable.OVAL
         setColor(0xCCFF0000.toInt())
       }
-      clipToOutline = true
-      outlineProvider = object : ViewOutlineProvider() {
-        override fun getOutline(view: View, outline: Outline) {
-          outline.setOval(0, 0, view.width, view.height)
-        }
-      }
       scaleX = 1f
       scaleY = 1f
     }
   
+    // Ícono X
     val xIcon = ImageView(this).apply {
       setImageResource(android.R.drawable.ic_delete)
       setColorFilter(0xFFFFFFFF.toInt())
       scaleType = ImageView.ScaleType.CENTER_INSIDE
     }
   
+    // Estructura: killRoot -> killCircle -> xIcon
     killRoot.addView(
       killCircle,
       FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER)
@@ -204,7 +199,6 @@ class BubbleService : Service() {
   }
 
 
-
   private fun showKill(show: Boolean) {
     if (show) {
       if (!killShown) {
@@ -227,7 +221,6 @@ class BubbleService : Service() {
     killCircle.animate().scaleX(target).scaleY(target).setDuration(90).start()
 
   }
-
 
 
   private fun bubbleCenterX(): Float {
