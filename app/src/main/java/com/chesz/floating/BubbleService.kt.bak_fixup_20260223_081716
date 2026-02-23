@@ -145,17 +145,18 @@ class BubbleService : Service() {
             val shouldKill = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
             if (shouldKill) {
               performKill()
-            }
-            setKillHover(false)
-            showKill(false)
-          } else {
+            } else {
             // TAP (sin drag): alterna Estado A/B
             togglePanel()
+          }
+          else {
+              setKillHover(false)
+              showKill(false)
+            }
           }
           dragging = false
           true
         }
-
 
         else -> false
       }
