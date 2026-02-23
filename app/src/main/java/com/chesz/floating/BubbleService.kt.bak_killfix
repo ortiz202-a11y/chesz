@@ -115,21 +115,15 @@ class BubbleService : Service() {
         }
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-          val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-            val shouldKill = dragging && over
+          val shouldKill = dragging && isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+          showKill(false)
 
-            if (shouldKill) {
-              // mantener visible + crecer + vibrar + cerrar servicio
-              showKill(true)
-              setKillHover(true)
-              vibrateKill()
-              performKill()
-            } else {
-              setKillHover(false)
-              showKill(false)
-              // tap normal (por ahora NO hace nada)
-            }
-
+          if (shouldKill) {
+            vibrateKill()
+            stopSelf()
+          } else {
+            // tap normal (por ahora NO hace nada)
+          }
           true
         }
 
@@ -198,10 +192,9 @@ class BubbleService : Service() {
   }
 
   private fun setKillHover(hover: Boolean) {
-      val target = if (hover) 1.85f else 1.0f
-      killRoot.animate().cancel()
-      killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
-    }
+    val target = if (hover) 1.25f else 1.0f
+    killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
+  }
 
   private fun bubbleCenterX(): Float = bubbleLp.x + bubbleRoot.width / 2f
   private fun bubbleCenterY(): Float = bubbleLp.y + bubbleRoot.height / 2f
@@ -230,33 +223,7 @@ class BubbleService : Service() {
     }
   }
 
-  
-    private fun performKill() {
-      // feedback fuerte tipo “succión”
-      runCatching {
-        killRoot.animate().cancel()
-        killRoot.animate()
-          .alpha(1f)
-          .scaleX(2.2f)
-          .scaleY(2.2f)
-          .setDuration(140)
-          .withEndAction {
-            runCatching { wm.removeView(bubbleRoot) }
-            runCatching { if (killShown) wm.removeView(killRoot) }
-            killShown = false
-            stopSelf()
-          }
-          .start()
-      }.onFailure {
-        // si algo falla, al menos intentamos cerrar
-        runCatching { wm.removeView(bubbleRoot) }
-        runCatching { if (killShown) wm.removeView(killRoot) }
-        killShown = false
-        stopSelf()
-      }
-    }
-
-private fun dp(v: Int): Int {
+  private fun dp(v: Int): Int {
     val d = resources.displayMetrics.density
     return (v * d).toInt()
   }
