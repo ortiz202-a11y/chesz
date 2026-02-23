@@ -48,3 +48,11 @@ fi
 # --- FIN PROTECCIÓN ---
 
 echo "✅ CHECK PASADO: Todo en orden para compilar."
+
+# ===== BLOQUEO_BAK_RES: no permitir basura en res/ =====
+if find "$ROOT/app/src/main/res" -type f -name "*bak*" | grep -q .; then
+  echo -e "\n❌ [ERROR]: Se detectaron archivos *bak* dentro de app/src/main/res (esto rompe AAPT)."
+  echo "Lista:"
+  find "$ROOT/app/src/main/res" -type f -name "*bak*" -print
+  exit 1
+fi
