@@ -27,7 +27,6 @@ class BubbleService : Service() {
 
   // Kill area
   private lateinit var killRoot: FrameLayout
-  private lateinit var killCircle: FrameLayout
   private lateinit var killLp: WindowManager.LayoutParams
   private var killShown = false
   private var killHover = false
@@ -143,61 +142,44 @@ class BubbleService : Service() {
 
   // ---------- Kill Area (standard: bottom center) ----------
   private fun createKillArea() {
-    // Contenedor (NO se escala)
     killRoot = FrameLayout(this).apply {
-      alpha = 1f
-      scaleX = 1f
-      scaleY = 1f
-      visibility = View.VISIBLE
-      clipChildren = false
-      clipToPadding = false
-      setBackgroundColor(0x00000000) // transparente
-    }
-  
-    val sizePx = dp(100)
-  
-    // Círculo real (ESTE se escala)
-    killCircle = FrameLayout(this).apply {
+      // círculo rojo (simple y estable)
       background = android.graphics.drawable.GradientDrawable().apply {
         shape = android.graphics.drawable.GradientDrawable.OVAL
         setColor(0xCCFF0000.toInt())
       }
+      alpha = 1f
       scaleX = 1f
       scaleY = 1f
+      visibility = View.VISIBLE
     }
-  
-    // Ícono X
+
     val xIcon = ImageView(this).apply {
       setImageResource(android.R.drawable.ic_delete)
       setColorFilter(0xFFFFFFFF.toInt())
       scaleType = ImageView.ScaleType.CENTER_INSIDE
     }
-  
-    // Estructura: killRoot -> killCircle -> xIcon
+
+    val sizePx = dp(100)
     killRoot.addView(
-      killCircle,
-      FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER)
-    )
-    killCircle.addView(
       xIcon,
       FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER)
     )
-  
+
     killLp = WindowManager.LayoutParams(
       sizePx,
       sizePx,
       overlayType(),
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-        or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+          or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+          or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
       x = 0
-      y = dp(40)
+      y = dp(40) // margen desde abajo
     }
   }
-
 
   private fun showKill(show: Boolean) {
     if (show) {
@@ -213,15 +195,10 @@ class BubbleService : Service() {
   }
 
   private fun setKillHover(hover: Boolean) {
-
-    val target = if (hover) 1.40f else 1.0f
-
-    killCircle.animate().cancel()
-
-    killCircle.animate().scaleX(target).scaleY(target).setDuration(90).start()
-
-  }
-
+      val target = if (hover) 1.30f else 1.0f
+      killRoot.animate().cancel()
+      killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
+    }
 
   private fun bubbleCenterX(): Float {
       val loc = IntArray(2)
