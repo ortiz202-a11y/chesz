@@ -125,6 +125,11 @@ class BubbleService : Service() {
           bubbleLp.y = startY + dy
           runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
 
+          
+
+          // Si el panel está abierto, que siga al botón durante el drag
+          if (panelShown) updatePanelPositionIfShown()
+
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
             if (over != killHovered) {
@@ -141,6 +146,10 @@ class BubbleService : Service() {
             if (shouldKill) {
               performKill()
             } else {
+            // TAP (sin drag): alterna Estado A/B
+            togglePanel()
+          }
+          else {
               setKillHover(false)
               showKill(false)
             }
