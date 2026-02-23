@@ -6,12 +6,9 @@ import android.graphics.PixelFormat
 import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
-import androidx.core.content.getSystemService
 import com.chesz.R
 import kotlin.math.hypot
 import kotlin.math.max
@@ -95,37 +92,42 @@ class BubbleService : Service() {
           downRawY = e.rawY
           startX = bubbleLp.x
           startY = bubbleLp.y
-          showKill(true)
           true
         }
 
         MotionEvent.ACTION_MOVE -> {
-          val dx = (e.rawX - downRawX).toInt()
-          val dy = (e.rawY - downRawY).toInt()
-          if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) dragging = true
+            val dx = (e.rawX - downRawX).toInt()
+            val dy = (e.rawY - downRawY).toInt()
 
-          bubbleLp.x = startX + dx
-          bubbleLp.y = startY + dy
-          wm.updateViewLayout(bubbleRoot, bubbleLp)
+            // Estándar: el kill SOLO aparece cuando ya es drag real (umbral)
+            if (!dragging && (kotlin.math.abs(dx) + kotlin.math.abs(dy) > dp(6))) {
+              dragging = true
+              showKill(true)
+            }
 
-          // feedback visual si está “encima” del kill
-          val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-          setKillHover(over)
-          true
-        }
+            bubbleLp.x = startX + dx
+            bubbleLp.y = startY + dy
+            wm.updateViewLayout(bubbleRoot, bubbleLp)
+
+            // Hover solo durante drag
+            if (dragging) {
+              val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+              setKillHover(over)
+            }
+            true
+          }
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-          val shouldKill = dragging && isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-          showKill(false)
+            val shouldKill = dragging && isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+            showKill(false)
 
-          if (shouldKill) {
-            vibrateKill()
-            stopSelf()
-          } else {
-            // tap normal (por ahora NO hace nada)
+            if (shouldKill) {
+              stopSelf()
+            } else {
+              // tap normal (no hace nada)
+            }
+            true
           }
-          true
-        }
 
         else -> false
       }
@@ -192,9 +194,10 @@ class BubbleService : Service() {
   }
 
   private fun setKillHover(hover: Boolean) {
-    val target = if (hover) 1.25f else 1.0f
-    killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
-  }
+      val target = if (hover) 1.85f else 1.0f
+      killRoot.animate().cancel()
+      killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
+    }
 
   private fun bubbleCenterX(): Float = bubbleLp.x + bubbleRoot.width / 2f
   private fun bubbleCenterY(): Float = bubbleLp.y + bubbleRoot.height / 2f
@@ -210,20 +213,40 @@ class BubbleService : Service() {
 
   private fun isOverKillCenter(x: Float, y: Float): Boolean {
     val (cx, cy) = killCenterOnScreen()
-    val r = (killLp.width / 2f) * 1.6f
+    val r = (killLp.width / 2f) * 1.35f
     return hypot(x - cx, y - cy) <= r
   }
 
-  private fun vibrateKill() {
-    val vib = getSystemService<Vibrator>() ?: return
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      vib.vibrate(VibrationEffect.createOneShot(80, VibrationEffect.DEFAULT_AMPLITUDE))
-    } else {
-      @Suppress("DEPRECATION") vib.vibrate(80)
-    }
-  }
+  
 
-  private fun dp(v: Int): Int {
+
+  
+    private fun performKill() {
+      // feedback fuerte tipo “succión”
+      runCatching {
+        killRoot.animate().cancel()
+        killRoot.animate()
+          .alpha(1f)
+          .scaleX(2.2f)
+          .scaleY(2.2f)
+          .setDuration(140)
+          .withEndAction {
+            runCatching { wm.removeView(bubbleRoot) }
+            runCatching { if (killShown) wm.removeView(killRoot) }
+            killShown = false
+            stopSelf()
+          }
+          .start()
+      }.onFailure {
+        // si algo falla, al menos intentamos cerrar
+        runCatching { wm.removeView(bubbleRoot) }
+        runCatching { if (killShown) wm.removeView(killRoot) }
+        killShown = false
+        stopSelf()
+      }
+    }
+
+private fun dp(v: Int): Int {
     val d = resources.displayMetrics.density
     return (v * d).toInt()
   }

@@ -119,7 +119,6 @@ class BubbleService : Service() {
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
             val shouldKill = dragging && isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-            showKill(false)
 
             if (shouldKill) {
               stopSelf()
@@ -198,9 +197,14 @@ class BubbleService : Service() {
       killRoot.animate().cancel()
       killRoot.animate().scaleX(target).scaleY(target).setDuration(90).start()
     }
-
-  private fun bubbleCenterX(): Float = bubbleLp.x + bubbleRoot.width / 2f
-  private fun bubbleCenterY(): Float = bubbleLp.y + bubbleRoot.height / 2f
+  private fun bubbleCenterX(): Float {
+    val w = if (bubbleRoot.width > 0) bubbleRoot.width else dp(60)
+    return bubbleLp.x + w / 2f
+  }
+  private fun bubbleCenterY(): Float {
+    val w = if (bubbleRoot.height > 0) bubbleRoot.height else dp(60)
+    return bubbleLp.y + w / 2f
+  }
 
   private fun killCenterOnScreen(): Pair<Float, Float> {
     val display = wm.defaultDisplay
