@@ -6,7 +6,7 @@ echo "🚀 INICIANDO CICLO BLINDADO..."
 
 # 1. Validaciones encadenadas
 bash Scripts/check.sh && bash Scripts/integridad || {
-    echo "❌ FASE DE VALIDACIÓN FALLIDA. Revisa PAPER.md"
+bash Scripts/check.sh || { echo "❌ FASE DE VALIDACIÓN FALLIDA. Revisa paper" && echo "- [ ] ⚠️ FALLO: Check detenido ($(date "+%H:%M"))" >> paper; exit 1; }
     exit 1
 }
 

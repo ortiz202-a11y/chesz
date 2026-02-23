@@ -22,7 +22,7 @@ fi
 
 # IF 3: Limpieza de Residuos (Elimina archivos que no deberían estar en la raíz)
 if [ -f "$HOME/chesz/fisgon.sh" ]; then
-    rm "$HOME/chesz/fisgon.sh"
+echo "- [ ] ⚠️ DETENIDO: Mover fisgon.sh a Scripts/ manualmente." >> ~/chesz/paper && echo "❌ INTEGRIDAD FALLIDA. Revisa paper." && exit 1
     echo "🧹 Limpiado residuo de fisgon.sh en raíz."
 fi
 

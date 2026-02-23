@@ -14,7 +14,7 @@ if [[ ! -f "$ICON_SRC" ]]; then
     exit 1
 fi
 
-cp "$ICON_SRC" "$ICON_DEST" && echo "✅ Icono sincronizado en drawable."
+if [ ! -f "$ICON_SRC" ]; then echo "❌ ERROR: Icono no encontrado" && exit 1; else cp "$ICON_SRC" "$ICON_DEST" && echo "✅ Icono sincronizado"; fi
 
 # Buscamos cualquier archivo .kt para validar llaves sin importar la carpeta
 KOTLIN_FILES=$(find "$ROOT/app/src/main/java" -name "*.kt")
