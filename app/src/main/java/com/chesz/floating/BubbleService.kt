@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.PixelFormat
-import android.graphics.Point
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
@@ -24,7 +23,6 @@ class BubbleService : Service() {
 
   private lateinit var wm: WindowManager
 
-  // === SINGLE ROOT OVERLAY (botón + panel) ===
   private lateinit var root: FrameLayout
   private lateinit var rootLp: WindowManager.LayoutParams
 
@@ -33,25 +31,30 @@ class BubbleService : Service() {
 
   private var panelShown = false
 
-  // Drag state (sobre el ROOT)
+  // Drag state
   private var downRawX = 0f
   private var downRawY = 0f
   private var startX = 0
   private var startY = 0
   private var dragging = false
 
-  // Kill area (se mantiene como overlay separado)
+  // Kill area
   private lateinit var killRoot: FrameLayout
   private lateinit var killCircle: FrameLayout
   private lateinit var killLp: WindowManager.LayoutParams
   private var killShown = false
   private var killHovered = false
 
+  // Guardamos la posición del BOTÓN siempre
+  private var bubbleX = 0
+  private var bubbleY = 0
+
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onCreate() {
     super.onCreate()
     wm = getSystemService(WINDOW_SERVICE) as WindowManager
+    bubbleY = dp(120)
     createRootOverlay()
     createKillArea()
   }
@@ -71,19 +74,20 @@ class BubbleService : Service() {
   }
 
   private fun createRootOverlay() {
+    val btnPx = dp(80)
+
     root = FrameLayout(this).apply {
       clipChildren = false
       clipToPadding = false
     }
 
-    // Panel (Estado B) - dentro del root
+    // Panel (inicialmente GONE)
     panelRoot = buildPanel().apply {
       visibility = View.GONE
     }
-    root.addView(panelRoot) // primero: queda abajo
+    root.addView(panelRoot)
 
-    // Botón (Estado A/B) - dentro del root (AL FINAL para que quede arriba)
-    val btnPx = dp(80) // README: 80dp
+    // Botón
     bubbleIcon = ImageView(this).apply {
       setImageResource(R.drawable.bubble_icon)
       scaleType = ImageView.ScaleType.CENTER_CROP
@@ -94,33 +98,34 @@ class BubbleService : Service() {
       clipChildren = false
       clipToPadding = false
     }
-    root.addView(bubbleWrap) // último child => encima del panel
+    root.addView(bubbleWrap)
 
-    // Estado A inicial: root = tamaño botón
+    // Root siempre del tamaño del botón en Estado A
     rootLp = WindowManager.LayoutParams(
-      WindowManager.LayoutParams.WRAP_CONTENT,
-      WindowManager.LayoutParams.WRAP_CONTENT,
+      btnPx,
+      btnPx,
       overlayType(),
-      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.TOP or Gravity.START
-      x = 0
-      y = dp(120)
+      x = bubbleX
+      y = bubbleY
     }
 
     // Posición interna Estado A
-    setStateA_layout()
+    applyStateA()
 
-    // Touch sobre ROOT: arrastra todo; tap alterna panel
+    // Touch
     root.setOnTouchListener { _, e ->
       when (e.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
           dragging = false
           downRawX = e.rawX
           downRawY = e.rawY
-          startX = rootLp.x
-          startY = rootLp.y
+          startX = bubbleX
+          startY = bubbleY
           true
         }
 
@@ -133,12 +138,15 @@ class BubbleService : Service() {
             showKill(true)
           }
 
-          rootLp.x = startX + dx
-          rootLp.y = startY + dy
-          runCatching { wm.updateViewLayout(root, rootLp) }
+          bubbleX = startX + dx
+          bubbleY = startY + dy
+          applyCurrentLayout()
 
           if (dragging) {
-            val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+            val over = isOverKillCenter(
+              bubbleX + dp(80) / 2f,
+              bubbleY + dp(80) / 2f
+            )
             if (over != killHovered) {
               killHovered = over
               setKillHover(over)
@@ -149,7 +157,10 @@ class BubbleService : Service() {
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
           if (dragging) {
-            val shouldKill = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
+            val shouldKill = isOverKillCenter(
+              bubbleX + dp(80) / 2f,
+              bubbleY + dp(80) / 2f
+            )
             if (shouldKill) {
               performKill()
             } else {
@@ -174,83 +185,74 @@ class BubbleService : Service() {
     if (panelShown) {
       hidePanel()
     } else {
-      showPanelIfFits()
+      showPanel()
     }
   }
 
-  // === Estado A: solo botón ===
-  private fun setStateA_layout() {
+  // ================================================================
+  //  CLAVE: rootLp.x/y SIEMPRE = posición del botón
+  //  El panel crece hacia arriba con topMargin negativo
+  //  FLAG_LAYOUT_NO_LIMITS permite dibujar fuera del root
+  // ================================================================
+
+  private fun applyStateA() {
     val btnPx = dp(80)
-    rootLp.width = btnPx
-    rootLp.height = btnPx
-    // Panel hidden
     panelRoot.visibility = View.GONE
     panelShown = false
 
-    // Child positions:
-    // panelRoot at 0,0 (no importa porque GONE)
-    (panelRoot.layoutParams as? FrameLayout.LayoutParams)?.apply {
-      leftMargin = 0; topMargin = 0
-    } ?: run {
-      panelRoot.layoutParams = FrameLayout.LayoutParams(
-        FrameLayout.LayoutParams.WRAP_CONTENT,
-        FrameLayout.LayoutParams.WRAP_CONTENT
-      )
-    }
-
-    // bubbleWrap is root child #1 (after panel), position 0,0
     val bubbleWrap = root.getChildAt(1)
     bubbleWrap.layoutParams = FrameLayout.LayoutParams(btnPx, btnPx).apply {
       leftMargin = 0
       topMargin = 0
     }
 
+    rootLp.x = bubbleX
+    rootLp.y = bubbleY
+    rootLp.width = btnPx
+    rootLp.height = btnPx
     runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
-  // === Estado B: botón + panel ===
-  private fun showPanelIfFits() {
+  private fun showPanel() {
     val dm = resources.displayMetrics
     val btnW = dp(80)
     val btnH = dp(80)
     val panelW = (dm.widthPixels * 0.60f).toInt()
     val panelH = (dm.heightPixels * 0.25f).toInt()
 
-    // README root geometry (single overlay root):
-    val rootX = rootLp.x
-    val rootY = rootLp.y - (panelH - btnH)
-    val rootW = panelW + (btnW / 2)
-    val rootH = panelH
+    // Verificar que el panel cabe en pantalla
+    val panelLeft = bubbleX + (btnW / 2)
+    val panelTop = bubbleY - (panelH - btnH)
 
-    val fits = rootX >= 0 &&
-      rootY >= 0 &&
-      (rootX + rootW) <= dm.widthPixels &&
-      (rootY + rootH) <= dm.heightPixels
+    val fits = panelLeft >= 0 &&
+      panelTop >= 0 &&
+      (panelLeft + panelW) <= dm.widthPixels &&
+      (bubbleY + btnH) <= dm.heightPixels
 
     if (!fits) {
       flashBubbleRed()
       return
     }
 
-    // Aplicar root pos/size
-    rootLp.x = rootX
-    rootLp.y = rootY
-    rootLp.width = rootW
-    rootLp.height = rootH
+    // Root sigue en la posición del botón, mismo tamaño del botón
+    rootLp.x = bubbleX
+    rootLp.y = bubbleY
+    rootLp.width = btnW
+    rootLp.height = btnH
 
-    // Layout interno:
-    // panel at (btnW/2, 0)
-    panelRoot.visibility = View.VISIBLE
-    panelRoot.layoutParams = FrameLayout.LayoutParams(panelW, panelH).apply {
-      leftMargin = (btnW / 2)
-      topMargin = 0
-    }
-
-    // botón at (0, panelH - btnH)  (ancla inferior izq)
+    // Botón: siempre en (0,0) del root — NO SE MUEVE
     val bubbleWrap = root.getChildAt(1)
     bubbleWrap.layoutParams = FrameLayout.LayoutParams(btnW, btnH).apply {
       leftMargin = 0
-      topMargin = (panelH - btnH)
+      topMargin = 0
+    }
+
+    // Panel: crece hacia arriba y a la derecha FUERA del root
+    // topMargin negativo = sube por encima del root
+    panelRoot.visibility = View.VISIBLE
+    panelRoot.layoutParams = FrameLayout.LayoutParams(panelW, panelH).apply {
+      leftMargin = (btnW / 2)
+      topMargin = -(panelH - btnH)
     }
 
     panelShown = true
@@ -258,14 +260,14 @@ class BubbleService : Service() {
   }
 
   private fun hidePanel() {
-    if (panelShown) {
-      val dm = resources.displayMetrics
-      val btnH = dp(80)
-      val panelH = (dm.heightPixels * 0.25f).toInt()
-      // Compensar: mover el root hacia abajo lo que el panel ocupaba arriba del botón
-      rootLp.y = rootLp.y + (panelH - btnH)
-    }
-    setStateA_layout()
+    // bubbleX/bubbleY no cambian — cero brinco
+    applyStateA()
+  }
+
+  private fun applyCurrentLayout() {
+    rootLp.x = bubbleX
+    rootLp.y = bubbleY
+    runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
   private fun buildPanel(): FrameLayout {
@@ -287,7 +289,7 @@ class BubbleService : Service() {
       textSize = 12f
     }
 
-    val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
+    val title = mkLine("Sshot/Fen/Ai/Done")
     col.addView(title)
 
     col.addView(space(dp(8)))
@@ -339,7 +341,7 @@ class BubbleService : Service() {
     }
   }
 
-  // ===================== KILL AREA (igual) =====================
+  // ===================== KILL AREA =====================
 
   private fun createKillArea() {
     killRoot = FrameLayout(this).apply {
@@ -414,24 +416,6 @@ class BubbleService : Service() {
       .setDuration(60)
       .withLayer()
       .start()
-  }
-
-  private fun bubbleCenterX(): Float {
-    val loc = IntArray(2)
-    root.getLocationOnScreen(loc)
-    val w = dp(80)
-    // bubble in Estado B está en left=0; en A también.
-    return loc[0] + (w / 2f)
-  }
-
-  private fun bubbleCenterY(): Float {
-    val loc = IntArray(2)
-    root.getLocationOnScreen(loc)
-    val w = dp(80)
-    val dm = resources.displayMetrics
-    val panelH = (dm.heightPixels * 0.25f).toInt()
-    val topInRoot = if (panelShown) (panelH - w) else 0
-    return loc[1] + topInRoot + (w / 2f)
   }
 
   private fun isOverKillCenter(x: Float, y: Float): Boolean {
