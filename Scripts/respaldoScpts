@@ -1,0 +1,111 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+ROOT="$HOME/chesz"
+OUT_DIR="$HOME/storage/downloads"
+TS="$(date +%m-%d_%H-%M)"
+OUT="$OUT_DIR/ReporteScpts_${TS}.txt"
+
+mkdir -p "$OUT_DIR"
+
+# Lista oficial a respaldar (incluye este mismo script)
+FILES=(
+  "$ROOT/Scripts/check.sh"
+  "$ROOT/Scripts/ciclo"
+  "$ROOT/Scripts/fisgon.sh"
+  "$ROOT/Scripts/integridad"
+  "$ROOT/Scripts/vigilante.sh"
+  "$ROOT/Scripts/respaldoScpts"
+  "$ROOT/paper"
+  "$ROOT/.git/hooks/pre-commit"
+)
+
+desc_of() {
+  case "$1" in
+    */Scripts/check.sh) echo "Valida integridad mínima + sincroniza icono del botón flotante + revisa llaves Kotlin." ;;
+    */Scripts/ciclo) echo "Orquesta el flujo completo (validaciones + commit/push + vigilante)." ;;
+    */Scripts/fisgon.sh) echo "Genera reporte de código (full/targets). Incluye paper automáticamente." ;;
+    */Scripts/integridad) echo "Supervisor ADN: valida coherencia package/estructura y limpia residuos." ;;
+    */Scripts/vigilante.sh) echo "Monitorea GitHub Actions y descarga APK cuando el run termina OK." ;;
+    */Scripts/respaldoScpts) echo "Genera ReporteScpts (descripción + comandos + cat de scripts) incluyendo este archivo." ;;
+    */paper) echo "PAPER: lista humana de pendientes/estado. No se ejecuta; es referencia." ;;
+    */.git/hooks/pre-commit) echo "PORTERO (hook pre-commit): corre check + integridad y bloquea commits si fallan." ;;
+    *) echo "Archivo." ;;
+  esac
+}
+
+cmd_of() {
+  case "$1" in
+    */Scripts/check.sh) echo "cd ~/chesz || exit 1 && bash Scripts/check.sh" ;;
+    */Scripts/ciclo) echo "cd ~/chesz || exit 1 && bash Scripts/ciclo" ;;
+    */Scripts/fisgon.sh) echo "cd ~/chesz || exit 1 && bash Scripts/fisgon.sh [full|targets]" ;;
+    */Scripts/integridad) echo "cd ~/chesz || exit 1 && bash Scripts/integridad" ;;
+    */Scripts/vigilante.sh) echo "cd ~/chesz || exit 1 && bash Scripts/vigilante.sh" ;;
+    */Scripts/respaldoScpts) echo "cd ~/chesz || exit 1 && bash Scripts/respaldoScpts" ;;
+    */paper) echo "cd ~/chesz || exit 1 && nl -ba paper" ;;
+    */.git/hooks/pre-commit) echo "Se ejecuta SOLO al hacer: git commit (no se llama manual)" ;;
+    *) echo "-" ;;
+  esac
+}
+
+relpath() {
+  local p="$1"
+  echo "${p#$ROOT/}"
+}
+
+{
+  echo "REPORTE SCRIPTS (CHESZ)"
+  echo "FECHA: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "ROOT:  $ROOT"
+  echo "OUT:   $OUT"
+  echo
+
+  echo "==========================================="
+  echo "1) NOMBRE / UBICACIÓN / DESCRIPCIÓN / COMANDO"
+  echo "==========================================="
+  echo
+
+  i=1
+  for f in "${FILES[@]}"; do
+    echo "$i) $(basename "$f")"
+    echo "   Ubicación: $(relpath "$f")"
+    echo "   Descripción: $(desc_of "$f")"
+    echo "   Comando: $(cmd_of "$f")"
+    echo
+    i=$((i+1))
+  done
+
+  echo "==========================================="
+  echo "2) LISTA ÚTIL (NOMBRE + CÓMO LLAMAR)"
+  echo "==========================================="
+  echo
+  i=1
+  for f in "${FILES[@]}"; do
+    echo "$i) $(basename "$f")"
+    echo "   $(cmd_of "$f")"
+    echo
+    i=$((i+1))
+  done
+
+  echo "==========================================="
+  echo "3) RESPALDO (CAT COMPLETO)"
+  echo "==========================================="
+  echo
+
+  for f in "${FILES[@]}"; do
+    echo "-------------------------------------------"
+    echo "FILE: $(relpath "$f")"
+    echo "-------------------------------------------"
+    if [[ -f "$f" ]]; then
+      nl -ba "$f" || true
+    else
+      echo "NO EXISTE"
+    fi
+    echo
+  done
+
+} > "$OUT"
+
+echo "✅ Reporte generado:"
+echo "$OUT"
+ls -la "$OUT" || true

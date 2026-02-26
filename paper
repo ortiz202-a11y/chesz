@@ -1,0 +1,35 @@
+# 📋 PAPER CHESZ
+
+## 🛠️ EN PROCESO
+- [ ] Validar botón de 60dp y visibilidad (excludeFromRecents)
+- [ ] Probar autocuración del Supervisor de ADN
+
+## ✅ TERMINADO
+- [x] Estructura de Scripts centralizada en Scripts/
+- [x] Portero (Git Hook) configurado y activo
+- [x] Identidad com.chesz unificada
+- [x] ADN e Integridad validados automáticamente (19:27)
+- [x] ADN e Integridad validados automáticamente (19:31)
+- [x] ADN e Integridad validados automáticamente (19:37)
+- [ ] ⚠️ FALLO: Check detenido (20:03)
+- [x] ADN e Integridad validados automáticamente (20:04)
+- [x] ADN e Integridad validados automáticamente (20:16)
+- [x] ADN e Integridad validados automáticamente (20:49)
+- [x] ADN e Integridad validados automáticamente (21:08)
+- [x] ADN e Integridad validados automáticamente (22:42)
+- [x] ADN e Integridad validados automáticamente (22:58)
+- [x] ADN e Integridad validados automáticamente (23:21)
+- [x] ADN e Integridad validados automáticamente (23:33)
+- [x] ADN e Integridad validados automáticamente (23:48)
+- [x] ADN e Integridad validados automáticamente (00:06)
+- [x] ADN e Integridad validados automáticamente (02:23)
+- [x] ADN e Integridad validados automáticamente (04:07)
+- [x] ADN e Integridad validados automáticamente (04:15)
+- [x] ADN e Integridad validados automáticamente (04:35)
+- [x] ADN e Integridad validados automáticamente (08:28)
+- [x] ADN e Integridad validados automáticamente (06:08)
+- [x] ADN e Integridad validados automáticamente (19:31)
+- [x] ADN e Integridad validados automáticamente (19:39)
+- [x] ADN e Integridad validados automáticamente (19:49)
+- [x] ADN e Integridad validados automáticamente (23:07)
+- [x] ADN e Integridad validados automáticamente (23:24)
