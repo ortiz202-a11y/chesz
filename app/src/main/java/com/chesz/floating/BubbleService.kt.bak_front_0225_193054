@@ -280,14 +280,10 @@ class BubbleService : Service() {
 
     if (!panelShown) {
       runCatching { wm.addView(panelRoot, panelLp) }
-      
-      bringBubbleToFront()
-panelShown = true
+      panelShown = true
     } else {
       runCatching { wm.updateViewLayout(panelRoot, panelLp) }
-    
-      bringBubbleToFront()
-}
+    }
   }
 
   private fun hidePanel() {
@@ -296,13 +292,6 @@ panelShown = true
     panelShown = false
   }
 
-
-
-  private fun bringBubbleToFront() {
-    // Button above panel: last addView wins
-    runCatching { wm.removeViewImmediate(bubbleRoot) }
-    runCatching { wm.addView(bubbleRoot, bubbleLp) }
-  }
   private fun updatePanelPositionIfShown() {
     if (!panelShown) return
     // Solo reposiciona con la misma regla (sin revalidar "fits")
@@ -312,9 +301,7 @@ panelShown = true
     panelLp.x = bubbleLp.x + (btnW / 2)
     panelLp.y = bubbleLp.y - (panelH - btnH)
     runCatching { wm.updateViewLayout(panelRoot, panelLp) }
-  
-      bringBubbleToFront()
-}
+  }
 
   private fun flashBubbleRed() {
     // feedback simple: tinte rojo 220ms
