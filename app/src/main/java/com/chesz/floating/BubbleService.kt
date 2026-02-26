@@ -258,6 +258,13 @@ class BubbleService : Service() {
   }
 
   private fun hidePanel() {
+    if (panelShown) {
+      val dm = resources.displayMetrics
+      val btnH = dp(80)
+      val panelH = (dm.heightPixels * 0.25f).toInt()
+      // Compensar: mover el root hacia abajo lo que el panel ocupaba arriba del botón
+      rootLp.y = rootLp.y + (panelH - btnH)
+    }
     setStateA_layout()
   }
 
