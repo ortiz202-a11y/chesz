@@ -300,16 +300,12 @@ class BubbleService : Service() {
     col.addView(space(dp(6)))
     col.addView(mkLine("Defensa fuck becerro asesino papaya sangrienta 80%"))
 
-    col.addView(space(dp(10)))
+    col.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f) })
 
-    val close = TextView(this).apply {
-      text = "Close"
-      gravity = Gravity.CENTER
-      setTextColor(Color.WHITE)
-      textSize = 12f
-      setBackgroundColor(0x66000000)
-      setPadding(0, dp(6), 0, dp(6))
-      setOnClickListener { hidePanel() }
+    val close = ImageView(this).apply {
+            setImageResource(R.drawable.close)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setOnClickListener { hidePanel() }
     }
     col.addView(
       close,
