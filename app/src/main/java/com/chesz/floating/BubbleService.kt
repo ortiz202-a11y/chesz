@@ -86,8 +86,8 @@ class BubbleService : Service() {
     val btnPx = dp(60) // README: 60dp
     bubbleIcon = ImageView(this).apply {
       setImageResource(R.drawable.bubble_icon)
-      scaleType = ImageView.ScaleType.CENTER_CROP
-      adjustViewBounds = true
+      scaleType = ImageView.ScaleType.FIT_XY
+      adjustViewBounds = false
     }
     val bubbleWrap = FrameLayout(this).apply {
       addView(bubbleIcon, FrameLayout.LayoutParams(btnPx, btnPx))
@@ -304,7 +304,7 @@ class BubbleService : Service() {
 
     val close = ImageView(this).apply {
             setImageResource(R.drawable.close)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            scaleType = ImageView.ScaleType.FIT_XY
             setOnClickListener { hidePanel() }
     }
     col.addView(
@@ -367,7 +367,7 @@ class BubbleService : Service() {
     val xIcon = ImageView(this).apply {
       setImageResource(android.R.drawable.ic_delete)
       setColorFilter(0xFFFFFFFF.toInt())
-      scaleType = ImageView.ScaleType.CENTER_INSIDE
+      scaleType = ImageView.ScaleType.FIT_XY
     }
 
     killRoot.addView(killCircle, FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER))
@@ -455,3 +455,6 @@ class BubbleService : Service() {
     return (v * d).toInt()
   }
 }
+
+// Update: Launcher expandido y Close mini
+// Update: Launcher expandido y Close mini
