@@ -17,12 +17,12 @@ comportamientos "mágicos" o rediseños improvisados.
 
 2. IDENTIDAD VISUAL Y RECURSOS
 - Launcher: ~/chesz/iconos/launcher.png
-- Botón Overlay: ~/chesz/iconos/boton.png (80dp)
+- Botón Overlay: ~/chesz/iconos/boton.png (60dp)
 - Calidad: Imágenes limpias, sin marcos blancos o negros.
 
 3. ESTADOS Y GEOMETRÍA DEL OVERLAY
 ESTADO A – BOTÓN SOLO:
-- Botón circular (80dp). Arrastrable 100% (sin magnetismo).
+- Botón circular (60dp). Arrastrable 100% (sin magnetismo).
 - Tap: Inicia captura y expansión al Estado B.
 
 ESTADO B – BOTÓN + PANEL:
@@ -76,7 +76,7 @@ PASO 2: ESTRUCTURA DE CARPETAS Y RECURSOS
 - Crear esqueleto oficial. Unificar iconos en ~/chesz/iconos/.
 
 PASO 3: BOTÓN FLOTANTE (ESTADO A)
-- Implementar BubbleService.kt (80dp) con arrastre libre.
+- Implementar BubbleService.kt (60dp) con arrastre libre.
 - Proceso: Modificar -> bash Scripts/ciclo.sh -> Probar APK.
 
 PASO 4: ÁREA DE CIERRE (KILL SWITCH)

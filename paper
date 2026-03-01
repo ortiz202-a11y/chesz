@@ -1,7 +1,7 @@
 # 📋 PAPER CHESZ
 
 ## 🛠️ EN PROCESO
-- [ ] Validar botón de 60dp y visibilidad (excludeFromRecents)
+- [x] Validar botón de 60dp y visibilidad (excludeFromRecents)
 - [ ] Probar autocuración del Supervisor de ADN
 
 ## ✅ TERMINADO
