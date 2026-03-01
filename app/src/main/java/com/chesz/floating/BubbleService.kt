@@ -83,7 +83,7 @@ class BubbleService : Service() {
     root.addView(panelRoot) // primero: queda abajo
 
     // Botón (Estado A/B) - dentro del root (AL FINAL para que quede arriba)
-    val btnPx = dp(80) // README: 80dp
+    val btnPx = dp(60) // README: 60dp
     bubbleIcon = ImageView(this).apply {
       setImageResource(R.drawable.bubble_icon)
       scaleType = ImageView.ScaleType.CENTER_CROP
@@ -180,7 +180,7 @@ class BubbleService : Service() {
 
   // === Estado A: solo botón ===
   private fun setStateA_layout() {
-    val btnPx = dp(80)
+    val btnPx = dp(60)
     rootLp.width = btnPx
     rootLp.height = btnPx
     // Panel hidden
@@ -211,8 +211,8 @@ class BubbleService : Service() {
   // === Estado B: botón + panel ===
   private fun showPanelIfFits() {
     val dm = resources.displayMetrics
-    val btnW = dp(80)
-    val btnH = dp(80)
+    val btnW = dp(60)
+    val btnH = dp(60)
     val panelW = (dm.widthPixels * 0.60f).toInt()
     val panelH = (dm.heightPixels * 0.25f).toInt()
 
@@ -260,7 +260,7 @@ class BubbleService : Service() {
   private fun hidePanel() {
     if (panelShown) {
       val dm = resources.displayMetrics
-      val btnH = dp(80)
+      val btnH = dp(60)
       val panelH = (dm.heightPixels * 0.25f).toInt()
       // Compensar: mover el root hacia abajo lo que el panel ocupaba arriba del botón
       rootLp.y = rootLp.y + (panelH - btnH)
@@ -419,7 +419,7 @@ class BubbleService : Service() {
   private fun bubbleCenterX(): Float {
     val loc = IntArray(2)
     root.getLocationOnScreen(loc)
-    val w = dp(80)
+    val w = dp(60)
     // bubble in Estado B está en left=0; en A también.
     return loc[0] + (w / 2f)
   }
@@ -427,7 +427,7 @@ class BubbleService : Service() {
   private fun bubbleCenterY(): Float {
     val loc = IntArray(2)
     root.getLocationOnScreen(loc)
-    val w = dp(80)
+    val w = dp(60)
     val dm = resources.displayMetrics
     val panelH = (dm.heightPixels * 0.25f).toInt()
     val topInRoot = if (panelShown) (panelH - w) else 0
