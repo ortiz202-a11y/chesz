@@ -10,3 +10,5 @@
 - [x] Identidad com.chesz unificada
 - [ ] ⚠️ FALLO: Check detenido (20:03)
 - [ ] ⚠️ FALLO: Detenido por Check/ADN (01:21)
+- [ ] Launcher: Se migró de CENTER_CROP a FIT_XY para forzar la expansión total de la imagen 
+
