@@ -32,6 +32,7 @@ class BubbleService : Service() {
   private lateinit var panelRoot: FrameLayout
 
   private var panelShown = false
+  private var panelDyPx: Int = 0
 
   // Drag state (sobre el ROOT)
   private var downRawX = 0f
