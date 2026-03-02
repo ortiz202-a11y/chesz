@@ -1,98 +1,132 @@
 ===========================================================
-        CHESZ - ESPECIFICACIÓN MAESTRA COMPLETA (V1)
+        CHESZ - ESPECIFICACIÓN MAESTRA COMPLETA (V2)
 ===========================================================
 Estado: DEFINIDO Y BLOQUEADO | Modelo: Determinista Humano
+Arquitectura: ZERO-JUMP PURO
 -----------------------------------------------------------
 
 0. PROPÓSITO DEL DOCUMENTO
-Este documento define el comportamiento oficial del overlay de CHESZ. 
-Garantiza que cualquier persona (o IA) pueda continuar el proyecto 
-siguiendo una ruta clara de acciones y protecciones, evitando 
-comportamientos "mágicos" o rediseños improvisados.
+Este documento define el comportamiento oficial del overlay de CHESZ.
+Garantiza continuidad técnica sin rediseños improvisados ni lógica
+"mágica".
 
+-----------------------------------------------------------
 1. PRINCIPIO FILOSÓFICO CENTRAL
-- EL USUARIO ES UN SER HUMANO: No necesita ajustes invisibles. Si 
-  algo no cabe, el usuario debe moverlo.
-- SI NO CABE -> NO ABRE: Comportamiento lógico y consistente.
+-----------------------------------------------------------
+- EL USUARIO ES UN SER HUMANO.
+- Si algo no cabe, el usuario debe mover el botón.
+- SI NO CABE -> NO ABRE.
+- No existen ajustes invisibles.
 
+-----------------------------------------------------------
 2. IDENTIDAD VISUAL Y RECURSOS
+-----------------------------------------------------------
 - Launcher: ~/chesz/iconos/launcher.png
 - Botón Overlay: ~/chesz/iconos/boton.png (60dp)
 - Calidad: Imágenes limpias, sin marcos blancos o negros.
 
-3. ESTADOS Y GEOMETRÍA DEL OVERLAY
-ESTADO A – BOTÓN SOLO:
-- Botón circular (60dp). Arrastrable 100% (sin magnetismo).
-- Tap: Inicia captura y expansión al Estado B.
-
-ESTADO B – BOTÓN + PANEL:
-- Panel abre a la derecha del botón. 
-- Solapamiento: 50% del botón invade el panel (ancla inferior izq).
-- Dimensiones: Ancho 60% / Alto 25% de la pantalla.
-- Apariencia: Fondo negro translúcido, letras grises.
-
-4. REGLA DE APERTURA (LÓGICA DETERMINISTA)
-Cálculo de posición del Root (Contenedor):
-   rootX = buttonX
-   rootY = buttonY - (panelH - buttonH)
-   rootW = panelW + (buttonW / 2)
-   rootH = panelH
-- REGLA: Si el Root se sale de la pantalla, el botón cambia a ROJO 
-  temporalmente y el panel NO abre.
-
-5. FLUJO DE ANÁLISIS Y SERVICIOS WEB
-1. Tap en Botón -> Transparencia 100%.
-2. Screenshot -> Envío a servicio web (FEN/Motor de Ajedrez).
-3. Restauración -> Botón recupera imagen normal.
-4. Indicadores de Proceso (Top Panel):
-   Sshot/ -> Sshot/Fen -> Sshot/Fen/Ai -> Sshot/Fen/Ai/Done
-5. Área Central: Resultados de táctica/apertura.
-6. Área Inferior: Botón "Close" minimalista (vuelve a Estado A).
-
-6. KILL SWITCH (CIERRE)
-Arrastre a área roja con "X" blanca (abajo centro). 
-Efecto succión (crece el círculo) + Vibración -> Destruye servicio.
-
-7. ARQUITECTURA DE SCRIPTS Y FLUJO DE TRABAJO (Scripts/)
-El desarrollo es estrictamente remoto (Compilación en GitHub):
-
-- check.sh: Validación local rápida (Manifest, IDs, sintaxis, iconos).
-- ciclo.sh: Automatización Total. Ejecuta: Check -> Git Push -> Vigilante.
-- vigilante.sh: Escucha a GitHub Actions. Cuando el Build termina, 
-  descarga el APK automáticamente en /storage/emulated/0/Download/apps/.
-- fisgon.sh: Auditoría de código. 
-    - `fisgon.sh full`: Escanea todo el proyecto.
-    - `fisgon.sh targets`: Escanea solo archivos críticos editados.
-
 -----------------------------------------------------------
-            🗺️ HOJA DE RUTA DE CONSTRUCCIÓN
+3. ARQUITECTURA DE OVERLAY (ZERO-JUMP PURO)
 -----------------------------------------------------------
 
-PASO 1: LIMPIEZA TÉCNICA Y AUDITORÍA
-- Revisar historial de archivos. Borrar basura (archivos .bak, .tmp).
-- Limpiar AndroidManifest y build.gradle de residuos antiguos.
+EXISTE UN SOLO OVERLAY PRINCIPAL:
 
-PASO 2: ESTRUCTURA DE CARPETAS Y RECURSOS
-- Crear esqueleto oficial. Unificar iconos en ~/chesz/iconos/.
+- root (WindowManager overlay)
+- Tamaño FIJO: 60dp x 60dp
+- Posición FIJA al hacer toggle
+- Nunca se redimensiona al abrir panel
+- Nunca se mueve automáticamente
 
-PASO 3: BOTÓN FLOTANTE (ESTADO A)
-- Implementar BubbleService.kt (60dp) con arrastre libre.
-- Proceso: Modificar -> bash Scripts/ciclo.sh -> Probar APK.
+El panel:
+- Vive dentro del root
+- Se posiciona con márgenes internos
+- Puede extenderse visualmente hacia arriba
+- NO modifica rootLp.x
+- NO modifica rootLp.y
+- NO modifica rootLp.width
+- NO modifica rootLp.height
 
-PASO 4: ÁREA DE CIERRE (KILL SWITCH)
-- Implementar zona de succión roja, colisión y vibración.
+Resultado:
+El botón nunca salta.
+El botón nunca parpadea.
+El overlay nunca cambia de tamaño al abrir panel.
 
-PASO 5: GEOMETRÍA DEL PANEL Y LÓGICA DE ERROR
-- Programar expansión y validación de bordes (Botón Rojo si no cabe).
+-----------------------------------------------------------
+4. REGLA DE APERTURA (VALIDACIÓN PROYECTADA)
+-----------------------------------------------------------
 
-PASO 6: MAQUETACIÓN DEL PANEL (ESTADO B)
-- Definir áreas y botones internos. Inyectar Texto de Prueba:
-  * Apertura italiana boca
-  * Defensa nórdica Ase 12 100%
-  * Defensa Nápoles variante coaboanca termux ase 10 90%
-  * Defensa fuck becerro asesino papaya sangrienta 80%
+Antes de mostrar el panel se calcula un rectángulo PROYECTADO
+(sin mover el overlay real).
 
-PASO 7: INTEGRACIÓN FINAL
-- Screenshot transparente, borrado de foto tras FEN y conexión API.
+Dimensiones:
+    panelW = 60% del ancho de pantalla
+    panelH = 25% del alto de pantalla
+    bw = 60dp
+    bh = 60dp
+
+Rectángulo proyectado:
+    projectedLeft   = buttonX
+    projectedTop    = buttonY - (panelH - bh)
+    projectedRight  = buttonX + (panelW + bw/2)
+    projectedBottom = buttonY + bh
+
+Si el rectángulo proyectado sale de pantalla:
+
+    - El botón se vuelve ROJO temporalmente.
+    - El panel NO abre.
+
+El usuario debe mover el botón manualmente.
+
+-----------------------------------------------------------
+5. ESTADOS
+-----------------------------------------------------------
+
+ESTADO A – BOTÓN SOLO
+- Botón circular 60dp.
+- Arrastre libre.
+- Tap inicia captura + expansión a Estado B.
+
+ESTADO B – BOTÓN + PANEL
+- Panel aparece a la derecha.
+- Solapamiento 50%.
+- Ancho 60% pantalla.
+- Alto 25% pantalla.
+- Fondo negro translúcido.
+- Texto gris.
+- Botón Close interno.
+
+-----------------------------------------------------------
+6. KILL SWITCH
+-----------------------------------------------------------
+
+Overlay independiente inferior:
+- Zona roja circular con X blanca.
+- Efecto succión.
+- Vibración.
+- Destruye servicio.
+
+-----------------------------------------------------------
+7. FLUJO DE DESARROLLO (REMOTO)
+-----------------------------------------------------------
+
+Scripts oficiales:
+
+- check.sh
+- ciclo.sh
+- vigilante.sh
+- fisgon.sh (full | targets)
+
+Compilación exclusivamente vía GitHub Actions.
+
+-----------------------------------------------------------
+HOJA DE RUTA
+-----------------------------------------------------------
+
+1) Limpieza técnica
+2) Botón flotante estable
+3) Kill switch
+4) Geometría panel validada
+5) Maquetación
+6) Integración FEN/API
 
 ===========================================================
