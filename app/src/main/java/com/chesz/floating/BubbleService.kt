@@ -304,9 +304,10 @@ class BubbleService : Service() {
 
     val close = ImageView(this).apply {
             setImageResource(R.drawable.close)
-            scaleType = ImageView.ScaleType.FIT_XY
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(16), dp(16), dp(16), dp(16))
             setOnClickListener { hidePanel() }
-    }
+        }
     col.addView(
       close,
       LinearLayout.LayoutParams(
@@ -458,3 +459,4 @@ class BubbleService : Service() {
 
 // Update: Launcher expandido y Close mini
 // Update: Launcher expandido y Close mini
+// UI Fix: Close Mini 1772415200
