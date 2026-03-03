@@ -561,5 +561,3 @@ panel.addView(
 
     return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
   }
-
-}

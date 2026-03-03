@@ -538,6 +538,7 @@ panel.addView(
       pt.x.coerceAtLeast(1) to pt.y.coerceAtLeast(1)
     }
   }
+  }
 
   private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
     val (sw, sh) = screenRealSize()
@@ -561,5 +562,11 @@ panel.addView(
 
     return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
   }
+
+  // Restamos bottomInset para que NO se salga por abajo
+  val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
+
+  return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+}
 
 }
