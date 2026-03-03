@@ -53,13 +53,20 @@ class BubbleService : Service() {
   private var mpData: Intent? = null
 
 
-  override fun onBind(intent: Intent?): IBinder? = null
+  
+  // ===== Panel UI refs (permiso captura) =====
+  private lateinit var panelTitle: TextView
+  private lateinit var permBar: FrameLayout
+  private lateinit var permText: TextView
+
+override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     if (intent?.action == "CHESZ_CAPTURE_PERMISSION_RESULT") {
       mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
       @Suppress("DEPRECATION")
       mpData = intent.getParcelableExtra("data")
+      updatePermUi()
       // feedback mínimo por ahora (en PASO 3 lo cambiamos por title en panel)
       runCatching { flashBubbleRed() }
     }
@@ -303,12 +310,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
 
     panelShown = true
 
-    // TEMP: pedir permiso de captura al abrir panel (se quita en PASO 3)
-    val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
-      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    startActivity(pi)
-
+    updatePermUi()
 
     root.requestLayout()
     root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
@@ -349,6 +351,42 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.includeFontPadding = false
       title.setPadding(0, 0, 0, 0)
     col.addView(title)
+
+
+
+    // ===== Barra permiso captura (manual) =====
+    panelTitle = title
+
+    permText = TextView(this).apply {
+      text = "Permiso captura: TOCAR"
+      setTextColor(0xFFFFFFFF.toInt())
+      textSize = 11f
+      includeFontPadding = false
+      gravity = android.view.Gravity.CENTER
+    }
+
+    permBar = FrameLayout(this).apply {
+      setBackgroundColor(0x66000000) // gris/transparente
+      setOnClickListener { requestCapturePermission() }
+    }
+
+    permBar.addView(
+      permText,
+      FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams.MATCH_PARENT
+      )
+    )
+
+    col.addView(
+      permBar,
+      LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        dp(26)
+      ).apply {
+        topMargin = dp(6)
+      }
+    )
 
 col.addView(mkLine("Apertura italiana").apply {
   textSize = 11f
@@ -441,6 +479,22 @@ panel.addView(
       bubbleIcon.setColorFilter(0xFFFF3333.toInt())
       bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, 220)
     }
+
+
+  private fun requestCapturePermission() {
+    val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    startActivity(pi)
+  }
+
+  private fun updatePermUi() {
+    if (!this::permBar.isInitialized) return
+    val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+    permBar.visibility = if (ok) View.GONE else View.VISIBLE
+    permText.text = if (ok) "Permiso OK" else "Permiso captura: TOCAR"
+    panelTitle.text = if (ok) "Sshot/Fen/Ai/Done" else "Sshot/Fen/Ai/Done (sin permiso)"
+  }
   }
 
   // ===================== KILL AREA (igual) =====================
