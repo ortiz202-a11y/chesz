@@ -135,7 +135,9 @@ class BubbleService : Service() {
           }
 
           
-val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
+val clamped = clampRootToScreen(startX + dx, startY + dy)
+          val cx = clamped.first
+          val cy = clamped.second
           rootLp.x = cx
           rootLp.y = cy
           runCatching { wm.updateViewLayout(root, rootLp) }
@@ -470,8 +472,29 @@ val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
     val d = resources.displayMetrics.density
     return (v * d).toInt()
   }
-}
 
-// Update: Launcher expandido y Close mini
-// Update: Launcher expandido y Close mini
-// UI Fix: Close Mini 1772415200
+  // ===== Helpers: límites reales de pantalla + clamp del overlay root =====
+  private fun screenRealSize(): kotlin.Pair<Int, Int> {
+    return if (android.os.Build.VERSION.SDK_INT >= 30) {
+      val b = wm.currentWindowMetrics.bounds
+      b.width().coerceAtLeast(1) to b.height().coerceAtLeast(1)
+    } else {
+      val pt = android.graphics.Point()
+      @Suppress("DEPRECATION")
+      wm.defaultDisplay.getRealSize(pt)
+      pt.x.coerceAtLeast(1) to pt.y.coerceAtLeast(1)
+    }
+  }
+
+  private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
+    val (sw, sh) = screenRealSize()
+    val w = if (rootLp.width > 0) rootLp.width else dp(60)
+    val h = if (rootLp.height > 0) rootLp.height else dp(60)
+
+    val maxX = (sw - w).coerceAtLeast(0)
+    val maxY = (sh - h).coerceAtLeast(0)
+
+    return x.coerceIn(0, maxX) to y.coerceIn(0, maxY)
+  }
+
+}
