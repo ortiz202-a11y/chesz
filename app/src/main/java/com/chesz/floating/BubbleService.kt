@@ -479,7 +479,7 @@ panel.addView(
       bubbleIcon.setColorFilter(0xFFFF3333.toInt())
       bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, 220)
     }
-
+  }
 
   private fun requestCapturePermission() {
     val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
@@ -495,9 +495,8 @@ panel.addView(
     permText.text = if (ok) "Permiso OK" else "Permiso captura: TOCAR"
     panelTitle.text = if (ok) "Sshot/Fen/Ai/Done" else "Sshot/Fen/Ai/Done (sin permiso)"
   }
-  }
 
-  // ===================== KILL AREA (igual) =====================
+// ===================== KILL AREA (igual) =====================
 
   private fun createKillArea() {
     killRoot = FrameLayout(this).apply {
