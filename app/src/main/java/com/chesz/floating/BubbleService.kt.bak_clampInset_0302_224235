@@ -102,7 +102,7 @@ class BubbleService : Service() {
       WindowManager.LayoutParams.WRAP_CONTENT,
       WindowManager.LayoutParams.WRAP_CONTENT,
       overlayType(),
-      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.TOP or Gravity.START
@@ -516,23 +516,14 @@ panel.addView(
   }
 
   private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
-  val (sw, sh) = screenRealSize()
-  val w = if (rootLp.width > 0) rootLp.width else dp(60)
-  val h = if (rootLp.height > 0) rootLp.height else dp(60)
+    val (sw, sh) = screenRealSize()
+    val w = if (rootLp.width > 0) rootLp.width else dp(60)
+    val h = if (rootLp.height > 0) rootLp.height else dp(60)
 
-  val maxX = (sw - w).coerceAtLeast(0)
-  val maxY = (sh - h).coerceAtLeast(0)
+    val maxX = (sw - w).coerceAtLeast(0)
+    val maxY = (sh - h).coerceAtLeast(0)
 
-  val minY = if (android.os.Build.VERSION.SDK_INT >= 30) {
-    val insets = wm.maximumWindowMetrics.windowInsets
-      .getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.statusBars() or
-          android.view.WindowInsets.Type.displayCutout()
-      )
-    -insets.top
-  } else 0
-
-  return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
-}
+    return x.coerceIn(0, maxX) to y.coerceIn(0, maxY)
+  }
 
 }
