@@ -346,7 +346,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       textSize = 12f
     }
 
-    val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
+    val title = mkLine("") // placeholder status (vacío por ahora)
       title.textSize = 11f
       title.includeFontPadding = false
       title.maxLines = 1
@@ -362,9 +362,9 @@ runCatching { wm.updateViewLayout(root, rootLp) }
 
     // Botón principal: 50dp alto, blanco, texto grande + ✓ verde
     permText = TextView(this).apply {
-      text = "Aceptar permisos"
+      text = "Permiso para Screenshot"
       setTextColor(0xFF000000.toInt())
-      textSize = 15f
+      textSize = 14f
       includeFontPadding = false
       maxLines = 1
       ellipsize = android.text.TextUtils.TruncateAt.END
@@ -500,10 +500,9 @@ panel.addView(
   private fun updatePermUi() {
     if (!this::permBar.isInitialized) return
     val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+    panelTitle.text = ""
     permBar.visibility = if (ok) View.GONE else View.VISIBLE
-    permText.text = if (ok) "Permiso OK" else "Permiso captura: TOCAR"
-    panelTitle.text = if (ok) "Sshot/Fen/Ai/Done" else "Sshot/Fen/Ai/Done (sin permiso)"
-  }
+          }
 
 // ===================== KILL AREA (igual) =====================
 
