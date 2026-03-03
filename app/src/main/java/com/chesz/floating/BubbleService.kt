@@ -349,6 +349,8 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
       title.textSize = 11f
       title.includeFontPadding = false
+      maxLines = 1
+      ellipsize = android.text.TextUtils.TruncateAt.END
       title.setPadding(0, 0, 0, 0)
       title.gravity = android.view.Gravity.CENTER_HORIZONTAL
     col.addView(title)
@@ -362,8 +364,10 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     permText = TextView(this).apply {
       text = "Aceptar permisos"
       setTextColor(0xFF000000.toInt())
-      textSize = 17f
+      textSize = 15f
       includeFontPadding = false
+      maxLines = 1
+      ellipsize = android.text.TextUtils.TruncateAt.END
     }
 
     val permIcon = ImageView(this).apply {
@@ -374,7 +378,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       orientation = LinearLayout.HORIZONTAL
       gravity = android.view.Gravity.CENTER
       addView(permText, LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT,
+        0,
         LinearLayout.LayoutParams.WRAP_CONTENT
       ))
       addView(permIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply {
