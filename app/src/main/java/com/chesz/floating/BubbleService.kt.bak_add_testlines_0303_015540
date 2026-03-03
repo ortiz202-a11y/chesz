@@ -326,24 +326,6 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.setPadding(0, 0, 0, 0)
     col.addView(title)
 
-col.addView(mkLine("Apertura italiana").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa carocan 90%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa escandinava 80%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa capablanca 77%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-
-
 
 // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
