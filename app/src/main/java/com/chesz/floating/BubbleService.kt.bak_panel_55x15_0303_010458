@@ -140,9 +140,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
           val cy = clamped.second
           rootLp.x = cx
           rootLp.y = cy
-          root.requestLayout()
-
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+          runCatching { wm.updateViewLayout(root, rootLp) }
 
 
           if (dragging) {
@@ -227,8 +225,8 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     val dm = resources.displayMetrics
     val btnW = dp(60)
     val btnH = dp(60)
-    val panelW = (dm.widthPixels * 0.55f).toInt()
-    val panelH = (dm.heightPixels * 0.15f).toInt()
+    val panelW = (dm.widthPixels * 0.60f).toInt()
+    val panelH = (dm.heightPixels * 0.25f).toInt()
 
     // README root geometry (single overlay root):
     val rootX = rootLp.x
@@ -285,16 +283,14 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     }
 
     panelShown = true
-
-    root.requestLayout()
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+    runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
   private fun hidePanel() {
     if (panelShown) {
       val dm = resources.displayMetrics
       val btnH = dp(60)
-      val panelH = (dm.heightPixels * 0.15f).toInt()
+      val panelH = (dm.heightPixels * 0.25f).toInt()
       // Compensar: mover el root hacia abajo lo que el panel ocupaba arriba del botón
       rootLp.y = rootLp.y + (panelH - btnH)
     }
@@ -499,7 +495,7 @@ panel.addView(
     root.getLocationOnScreen(loc)
     val w = dp(60)
     val dm = resources.displayMetrics
-    val panelH = (dm.heightPixels * 0.15f).toInt()
+    val panelH = (dm.heightPixels * 0.25f).toInt()
     val topInRoot = if (panelShown) (panelH - w) else 0
     return loc[1] + topInRoot + (w / 2f)
   }

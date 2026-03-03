@@ -59,8 +59,8 @@ Antes de mostrar el panel se calcula un rectángulo PROYECTADO
 (sin mover el overlay real).
 
 Dimensiones:
-    panelW = 55% del ancho de pantalla
-    panelH = 15% del alto de pantalla
+    panelW = 60% del ancho de pantalla
+    panelH = 25% del alto de pantalla
     bw = 60dp
     bh = 60dp
 
@@ -89,8 +89,8 @@ ESTADO A – BOTÓN SOLO
 ESTADO B – BOTÓN + PANEL
 - Panel aparece a la derecha.
 - Solapamiento 50%.
-- Ancho 55% pantalla.
-- Alto 15% pantalla.
+- Ancho 60% pantalla.
+- Alto 25% pantalla.
 - Fondo negro translúcido.
 - Texto gris.
 - Botón Close interno.
