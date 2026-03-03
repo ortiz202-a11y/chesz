@@ -134,12 +134,9 @@ class BubbleService : Service() {
             showKill(true)
           }
 
-          
-val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
-          rootLp.x = cx
-          rootLp.y = cy
+          rootLp.x = startX + dx
+          rootLp.y = startY + dy
           runCatching { wm.updateViewLayout(root, rootLp) }
-
 
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
@@ -302,35 +299,24 @@ val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
     col.addView(space(dp(6)))
     col.addView(mkLine("Defensa Nápoles variante coaboanca termux ase 10 90%"))
     col.addView(space(dp(6)))
-    col.addView(mkLine("Defensa fuck becerro asesino papaya sangrienta 80%"))    // Close: pegado abajo + icono centrado y sin recorte
-    val closeH = dp(28) // mitad aprox / barra delgada
+    col.addView(mkLine("Defensa fuck becerro asesino papaya sangrienta 80%"))
+
+    col.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f) })
 
     val close = ImageView(this).apply {
-      setImageResource(R.drawable.close)
-      scaleType = ImageView.ScaleType.CENTER_INSIDE
-        adjustViewBounds = true
-      setPadding(dp(4), dp(4), dp(4), dp(4))
-      setBackgroundColor(0x66000000) // sutil para diferenciar
-      setOnClickListener { hidePanel() }
-    }
-
-    // Empuja el Close al fondo del panel (LinearLayout vertical)
-    col.addView(
-      View(this),
-      LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.MATCH_PARENT,
-        0,
-        1f
-      )
-    )
-
+            setImageResource(R.drawable.close)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setOnClickListener { hidePanel() }
+        }
     col.addView(
       close,
       LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
-        closeH
+        LinearLayout.LayoutParams.WRAP_CONTENT
       )
     )
+
     panel.addView(
       col,
       FrameLayout.LayoutParams(

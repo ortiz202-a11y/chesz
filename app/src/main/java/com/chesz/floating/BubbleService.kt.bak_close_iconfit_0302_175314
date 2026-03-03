@@ -134,12 +134,9 @@ class BubbleService : Service() {
             showKill(true)
           }
 
-          
-val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
-          rootLp.x = cx
-          rootLp.y = cy
+          rootLp.x = startX + dx
+          rootLp.y = startY + dy
           runCatching { wm.updateViewLayout(root, rootLp) }
-
 
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
@@ -307,8 +304,7 @@ val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
 
     val close = ImageView(this).apply {
       setImageResource(R.drawable.close)
-      scaleType = ImageView.ScaleType.CENTER_INSIDE
-        adjustViewBounds = true
+      scaleType = ImageView.ScaleType.FIT_CENTER
       setPadding(dp(4), dp(4), dp(4), dp(4))
       setBackgroundColor(0x66000000) // sutil para diferenciar
       setOnClickListener { hidePanel() }
