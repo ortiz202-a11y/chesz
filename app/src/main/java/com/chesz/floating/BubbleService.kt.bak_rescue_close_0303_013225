@@ -326,8 +326,16 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.setPadding(0, 0, 0, 0)
     col.addView(title)
 
+    col.addView(space(dp(2)))
 
-// Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
+    col.addView(mkLine("Apertura italiana boca"))
+    col.addView(space(dp(6)))
+    col.addView(mkLine("Defensa nórdica Ase 12 100%"))
+    col.addView(space(dp(6)))
+    col.addView(mkLine("Defensa Nápoles variante coaboanca termux ase 10 90%"))
+    col.addView(space(dp(6)))
+    col.addView(mkLine("Defensa fuck becerro asesino papaya sangrienta 80%"))
+      // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
 
 
