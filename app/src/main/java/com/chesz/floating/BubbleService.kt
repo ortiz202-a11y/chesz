@@ -19,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.chesz.R
 import kotlin.math.abs
+import android.app.Activity
 
 class BubbleService : Service() {
 
@@ -47,8 +48,24 @@ class BubbleService : Service() {
   private lateinit var killLp: WindowManager.LayoutParams
   private var killShown = false
   private var killHovered = false
+  // ===== MediaProjection permission cache =====
+  private var mpResultCode: Int? = null
+  private var mpData: Intent? = null
+
 
   override fun onBind(intent: Intent?): IBinder? = null
+
+  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    if (intent?.action == "CHESZ_CAPTURE_PERMISSION_RESULT") {
+      mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
+      @Suppress("DEPRECATION")
+      mpData = intent.getParcelableExtra("data")
+      // feedback mínimo por ahora (en PASO 3 lo cambiamos por title en panel)
+      runCatching { flashBubbleRed() }
+    }
+    return START_STICKY
+  }
+
 
   override fun onCreate() {
     super.onCreate()
@@ -285,6 +302,13 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     }
 
     panelShown = true
+
+    // TEMP: pedir permiso de captura al abrir panel (se quita en PASO 3)
+    val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    startActivity(pi)
+
 
     root.requestLayout()
     root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
