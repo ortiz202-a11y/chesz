@@ -294,9 +294,6 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
     }
 
     val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
-      title.textSize = 11f
-      title.includeFontPadding = false
-      title.setPadding(0, 0, 0, 0)
     col.addView(title)
 
     col.addView(space(dp(2)))
