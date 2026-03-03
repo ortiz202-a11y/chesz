@@ -364,7 +364,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     permText = TextView(this).apply {
       text = "Permitir Screenshot"
       setTextColor(0xFF000000.toInt())
-      textSize = 13f
+      textSize = 12f
       includeFontPadding = false
       maxLines = 1
       ellipsize = android.text.TextUtils.TruncateAt.END
@@ -491,13 +491,20 @@ panel.addView(
     }
   }
 
-  private fun requestCapturePermission() {
+private fun requestCapturePermission() {
+
+  val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+
+  if (!ok) {
     val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     startActivity(pi)
+    return
   }
 
+  takeScreenshotOnce()
+}
   private fun updatePermUi() {
     if (!this::permBar.isInitialized) return
     val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
@@ -658,8 +665,90 @@ panel.addView(
     } else 0
 
     val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
+ 
+   return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+ 
 
-    return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+ }
+
+  // ===== SSHOT: captura 1 frame y guarda PNG (app-specific Pictures) =====
+  private fun takeScreenshotOnce() {
+
+    val rc = mpResultCode ?: return
+    val data = mpData ?: return
+
+    val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+    val mp = mgr.getMediaProjection(rc, data)
+
+    val dm = resources.displayMetrics
+    val w = dm.widthPixels
+    val h = dm.heightPixels
+    val density = dm.densityDpi
+
+    val reader = android.media.ImageReader.newInstance(
+      w,
+      h,
+      android.graphics.PixelFormat.RGBA_8888,
+      2
+    )
+
+    val vd = mp.createVirtualDisplay(
+      "chesz-shot",
+      w,
+      h,
+      density,
+      android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+      reader.surface,
+      null,
+      null
+    )
+
+    root.postDelayed({
+
+      val image = reader.acquireLatestImage() ?: run {
+        runCatching { vd.release() }
+        runCatching { reader.close() }
+        runCatching { mp.stop() }
+        return@postDelayed
+      }
+
+      try {
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+        val pixelStride = plane.pixelStride
+        val rowStride = plane.rowStride
+        val rowPadding = rowStride - pixelStride * w
+
+        val bitmap = android.graphics.Bitmap.createBitmap(
+          w + rowPadding / pixelStride,
+          h,
+          android.graphics.Bitmap.Config.ARGB_8888
+        )
+        bitmap.copyPixelsFromBuffer(buffer)
+
+        val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, w, h)
+        bitmap.recycle()
+
+        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        if (dir != null) {
+          val out = java.io.File(dir, "chesz_last.png")
+          java.io.FileOutputStream(out).use { fos ->
+            cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+          }
+        }
+
+        cropped.recycle()
+        runCatching { flashBubbleRed() } // feedback temporal
+
+      } finally {
+        runCatching { image.close() }
+        runCatching { vd.release() }
+        runCatching { reader.close() }
+        runCatching { mp.stop() }
+      }
+
+    }, 200)
   }
+
 
 }
