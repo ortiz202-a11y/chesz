@@ -379,7 +379,8 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       gravity = android.view.Gravity.CENTER
       addView(permText, LinearLayout.LayoutParams(
         0,
-        LinearLayout.LayoutParams.WRAP_CONTENT
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        1f
       ))
       addView(permIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply {
         leftMargin = dp(10)
