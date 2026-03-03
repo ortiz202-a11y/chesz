@@ -362,9 +362,9 @@ runCatching { wm.updateViewLayout(root, rootLp) }
 
     // Botón principal: 50dp alto, blanco, texto grande + ✓ verde
     permText = TextView(this).apply {
-      text = "Permiso para Screenshot"
+      text = "Permitir Screenshot"
       setTextColor(0xFF000000.toInt())
-      textSize = 14f
+      textSize = 13f
       includeFontPadding = false
       maxLines = 1
       ellipsize = android.text.TextUtils.TruncateAt.END
