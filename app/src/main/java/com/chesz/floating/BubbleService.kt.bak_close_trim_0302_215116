@@ -284,7 +284,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
 
     val col = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      setPadding(dp(10), dp(0), dp(10), dp(0))
+      setPadding(dp(10), dp(4), dp(10), dp(0))
     }
 
     fun mkLine(t: String): TextView = TextView(this).apply {
@@ -328,21 +328,21 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
           1f
         )
       )
-      // Contenedor del Close: RECORTE REAL con márgenes L/R (6dp) y centrado
-      val closeBar = FrameLayout(this)
 
+      // Contenedor para recortar ancho (padding 6dp a cada lado)
+      val closeBar = FrameLayout(this).apply {
+        setPadding(dp(6), 0, dp(6), 0)
+      }
       val closeBg = FrameLayout(this).apply {
         setBackgroundColor(0x66000000) // fondo del botón aquí (no en el ImageView)
       }
-
       closeBg.addView(
         close,
         FrameLayout.LayoutParams(
           FrameLayout.LayoutParams.MATCH_PARENT,
-          FrameLayout.LayoutParams.MATCH_PARENT
+          FrameLayout.LayoutParams.MATCH_PARENT,
         )
       )
-
       closeBar.addView(
         closeBg,
         FrameLayout.LayoutParams(
@@ -356,13 +356,9 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
         LinearLayout.LayoutParams(
           LinearLayout.LayoutParams.MATCH_PARENT,
           closeH
-        ).apply {
-          leftMargin = dp(6)
-          rightMargin = dp(6)
-          gravity = android.view.Gravity.CENTER_HORIZONTAL
-        }
+        )
       )
-      panel.addView(
+panel.addView(
       col,
       FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
