@@ -140,9 +140,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
           val cy = clamped.second
           rootLp.x = cx
           rootLp.y = cy
-          root.requestLayout()
-
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+          runCatching { wm.updateViewLayout(root, rootLp) }
 
 
           if (dragging) {
@@ -285,9 +283,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     }
 
     panelShown = true
-
-    root.requestLayout()
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+    runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
   private fun hidePanel() {
