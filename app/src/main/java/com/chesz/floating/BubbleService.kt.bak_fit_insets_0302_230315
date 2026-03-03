@@ -211,13 +211,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       topMargin = 0
     }
 
-    
-    // Clamp final: evita overflow al cambiar a Estado A
-    val clampedA = clampRootToScreen(rootLp.x, rootLp.y)
-    rootLp.x = clampedA.first
-    rootLp.y = clampedA.second
-
-runCatching { wm.updateViewLayout(root, rootLp) }
+    runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
   // === Estado B: botón + panel ===
@@ -233,23 +227,12 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     val rootY = rootLp.y - (panelH - btnH)
     val rootW = panelW + (btnW / 2)
     val rootH = panelH
-    // Bounds reales (misma lógica que clampRootToScreen)
-    val (sw, sh) = screenRealSize()
-    val minY = 0
-
-    val bottomInset = if (android.os.Build.VERSION.SDK_INT >= 30) {
-      val insets = wm.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.navigationBars()
-      )
-      insets.bottom
-    } else 0
-
-    val maxY = (sh - bottomInset).coerceAtLeast(minY)
 
     val fits = rootX >= 0 &&
-      rootY >= minY &&
-      (rootX + rootW) <= sw &&
-      (rootY + rootH) <= maxY
+      rootY >= 0 &&
+      (rootX + rootW) <= dm.widthPixels &&
+      (rootY + rootH) <= dm.heightPixels
+
     if (!fits) {
       flashBubbleRed()
       return
@@ -261,13 +244,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     rootLp.width = rootW
     rootLp.height = rootH
 
-    
-    // Clamp final (Estado B): con root ya redimensionado (panel incluido)
-    val clampedB = clampRootToScreen(rootLp.x, rootLp.y)
-    rootLp.x = clampedB.first
-    rootLp.y = clampedB.second
-
-// Layout interno:
+    // Layout interno:
     // panel at (btnW/2, 0)
     panelRoot.visibility = View.VISIBLE
     panelRoot.layoutParams = FrameLayout.LayoutParams(panelW, panelH).apply {
@@ -528,7 +505,6 @@ panel.addView(
   // ===== Helpers: límites reales de pantalla + clamp del overlay root =====
   private fun screenRealSize(): kotlin.Pair<Int, Int> {
     return if (android.os.Build.VERSION.SDK_INT >= 30) {
-      // Para overlays: máximo = área real completa (incluye system bars)
       val b = wm.maximumWindowMetrics.bounds
       b.width().coerceAtLeast(1) to b.height().coerceAtLeast(1)
     } else {
@@ -540,26 +516,29 @@ panel.addView(
   }
 
   private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
-    val (sw, sh) = screenRealSize()
-    val w = if (rootLp.width > 0) rootLp.width else dp(60)
-    val h = if (rootLp.height > 0) rootLp.height else dp(60)
+  val (sw, sh) = screenRealSize()
+  val w = if (rootLp.width > 0) rootLp.width else dp(60)
+  val h = if (rootLp.height > 0) rootLp.height else dp(60)
 
-    val maxX = (sw - w).coerceAtLeast(0)
+  val maxX = (sw - w).coerceAtLeast(0)
 
-    // Tu regla: el TOP real es 0 (no respetar status bar/cutout como límite)
-    val minY = 0
-
-    // Para no salir por abajo: restamos navegación (API30+)
-    val bottomInset = if (android.os.Build.VERSION.SDK_INT >= 30) {
-      val insets = wm.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.navigationBars()
+  // Insets (API30+) para corregir top y bottom
+  val (minY, bottomInset) = if (android.os.Build.VERSION.SDK_INT >= 30) {
+    val insets = wm.currentWindowMetrics.windowInsets
+      .getInsetsIgnoringVisibility(
+        android.view.WindowInsets.Type.statusBars() or
+          android.view.WindowInsets.Type.navigationBars() or
+          android.view.WindowInsets.Type.displayCutout()
       )
-      insets.bottom
-    } else 0
-
-    val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
-
-    return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+    (-insets.top) to insets.bottom
+  } else {
+    0 to 0
   }
+
+  // Restamos bottomInset para que NO se salga por abajo
+  val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
+
+  return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+}
 
 }
