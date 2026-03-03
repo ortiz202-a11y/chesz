@@ -505,3 +505,39 @@ Determinista.
 
 --------------------------------------
 --------------------------------------
+
+
+-----------------------------------------------------------
+CAPA DE PERMISO – MEDIA PROJECTION (SSHOT)
+-----------------------------------------------------------
+
+Filosofía
+- El permiso NO es automático.
+- El usuario lo otorga desde el panel.
+- ZERO-JUMP se mantiene.
+
+Ciclo
+1. Usuario toca "Permitir Screenshot" (botón blanco).
+2. Panel se cierra.
+3. Se solicita permiso mediante CapturePermissionActivity.
+4. Al regresar:
+   - Si permiso OK → el botón blanco desaparece.
+   - El panel queda listo para Screenshot.
+
+Regla de Tap en Burbuja
+- Con panel cerrado → abre panel (si cabe).
+- Con panel abierto → NO cierra panel.
+- Si permiso válido → toma screenshot.
+- Tap siempre reinicia ciclo de captura.
+
+Vida del Permiso
+- Válido mientras BubbleService esté vivo.
+- Si proceso muere o reinicia dispositivo → debe solicitarse nuevamente.
+
+Botón Permitir Screenshot
+- Altura: 50dp
+- Fondo: blanco
+- Corner radius: 12dp
+- Texto: 13sp
+- Icono: ✓ verde (#22C55E)
+- Se oculta automáticamente cuando el permiso es válido.
