@@ -349,8 +349,8 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
       title.textSize = 11f
       title.includeFontPadding = false
-      maxLines = 1
-      ellipsize = android.text.TextUtils.TruncateAt.END
+      title.maxLines = 1
+      title.ellipsize = android.text.TextUtils.TruncateAt.END
       title.setPadding(0, 0, 0, 0)
       title.gravity = android.view.Gravity.CENTER_HORIZONTAL
     col.addView(title)
