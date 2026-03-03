@@ -350,6 +350,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.textSize = 11f
       title.includeFontPadding = false
       title.setPadding(0, 0, 0, 0)
+      title.gravity = android.view.Gravity.CENTER_HORIZONTAL
     col.addView(title)
 
 
@@ -357,55 +358,59 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     // ===== Barra permiso captura (manual) =====
     panelTitle = title
 
+    // Botón principal: 50dp alto, blanco, texto grande + ✓ verde
     permText = TextView(this).apply {
-      text = "Permiso captura: TOCAR"
-      setTextColor(0xFFFFFFFF.toInt())
-      textSize = 11f
+      text = "Aceptar permisos"
+      setTextColor(0xFF000000.toInt())
+      textSize = 17f
       includeFontPadding = false
+    }
+
+    val permIcon = ImageView(this).apply {
+      setImageResource(R.drawable.ic_check_green)
+    }
+
+    val permRow = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
       gravity = android.view.Gravity.CENTER
+      addView(permText, LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT
+      ))
+      addView(permIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply {
+        leftMargin = dp(10)
+      })
+    }
+
+    val bg = android.graphics.drawable.GradientDrawable().apply {
+      shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+      cornerRadius = dp(12).toFloat()
+      setColor(0xFFFFFFFF.toInt())
     }
 
     permBar = FrameLayout(this).apply {
-      setBackgroundColor(0x66000000) // gris/transparente
+      background = bg
       setOnClickListener { requestCapturePermission() }
+      setPadding(dp(16), 0, dp(16), 0)
     }
 
     permBar.addView(
-      permText,
+      permRow,
       FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
         FrameLayout.LayoutParams.MATCH_PARENT
-      )
+      ).apply { gravity = android.view.Gravity.CENTER }
     )
 
     col.addView(
       permBar,
       LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
-        dp(26)
+        dp(50)
       ).apply {
-        topMargin = dp(6)
+        topMargin = dp(8)
       }
     )
-
-col.addView(mkLine("Apertura italiana").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa carocan 90%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa escandinava 80%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-col.addView(mkLine("Defensa capablanca 77%").apply {
-  textSize = 11f
-  includeFontPadding = false
-})
-
-
 
 // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
