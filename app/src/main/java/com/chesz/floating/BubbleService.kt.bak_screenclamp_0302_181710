@@ -134,12 +134,9 @@ class BubbleService : Service() {
             showKill(true)
           }
 
-          
-val (cx, cy) = clampRootToScreen(startX + dx, startY + dy)
-          rootLp.x = cx
-          rootLp.y = cy
+          rootLp.x = startX + dx
+          rootLp.y = startY + dy
           runCatching { wm.updateViewLayout(root, rootLp) }
-
 
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
