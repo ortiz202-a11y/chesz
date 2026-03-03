@@ -326,6 +326,12 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.setPadding(0, 0, 0, 0)
     col.addView(title)
 
+// Texto mínimo (para que SIEMPRE quepa con panelH=15%)
+col.addView(mkLine("Estado: listo").apply {
+  textSize = 11f
+  includeFontPadding = false
+  setPadding(0, 0, 0, 2)
+})
 
 // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
