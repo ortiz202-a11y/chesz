@@ -284,7 +284,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
 
     val col = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      setPadding(dp(10), dp(4), dp(10), dp(0))
+      setPadding(dp(10), dp(10), dp(10), dp(10))
     }
 
     fun mkLine(t: String): TextView = TextView(this).apply {
@@ -296,7 +296,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
     val title = mkLine("Sshot/Fen/Ai/Done") // placeholder status
     col.addView(title)
 
-    col.addView(space(dp(2)))
+    col.addView(space(dp(8)))
 
     col.addView(mkLine("Apertura italiana boca"))
     col.addView(space(dp(6)))
@@ -311,7 +311,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       setImageResource(R.drawable.close)
       scaleType = ImageView.ScaleType.CENTER_INSIDE
         adjustViewBounds = true
-      setPadding(dp(4), dp(2), dp(4), dp(2))
+      setPadding(dp(4), dp(4), dp(4), dp(4))
       setBackgroundColor(0x66000000) // sutil para diferenciar
       setOnClickListener { hidePanel() }
     }
@@ -331,13 +331,9 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
         closeH
-      ).apply {
-        leftMargin = dp(6)
-        rightMargin = dp(6)
-        gravity = android.view.Gravity.CENTER_HORIZONTAL
-      }
+      )
     )
-panel.addView(
+    panel.addView(
       col,
       FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
