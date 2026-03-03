@@ -102,7 +102,7 @@ class BubbleService : Service() {
       WindowManager.LayoutParams.WRAP_CONTENT,
       WindowManager.LayoutParams.WRAP_CONTENT,
       overlayType(),
-      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+      WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.TOP or Gravity.START
@@ -311,8 +311,6 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
 
-
-      val closeW = (resources.displayMetrics.widthPixels * 0.30f).toInt()
       val close = ImageView(this).apply {
         setImageResource(R.drawable.close)
         scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -356,13 +354,15 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       col.addView(
         closeBar,
         LinearLayout.LayoutParams(
-          closeW,
+          LinearLayout.LayoutParams.MATCH_PARENT,
           closeH
         ).apply {
+          leftMargin = dp(6)
+          rightMargin = dp(6)
           gravity = android.view.Gravity.CENTER_HORIZONTAL
         }
       )
-panel.addView(
+      panel.addView(
       col,
       FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT,
@@ -516,23 +516,14 @@ panel.addView(
   }
 
   private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
-  val (sw, sh) = screenRealSize()
-  val w = if (rootLp.width > 0) rootLp.width else dp(60)
-  val h = if (rootLp.height > 0) rootLp.height else dp(60)
+    val (sw, sh) = screenRealSize()
+    val w = if (rootLp.width > 0) rootLp.width else dp(60)
+    val h = if (rootLp.height > 0) rootLp.height else dp(60)
 
-  val maxX = (sw - w).coerceAtLeast(0)
-  val maxY = (sh - h).coerceAtLeast(0)
+    val maxX = (sw - w).coerceAtLeast(0)
+    val maxY = (sh - h).coerceAtLeast(0)
 
-  val minY = if (android.os.Build.VERSION.SDK_INT >= 30) {
-    val insets = wm.maximumWindowMetrics.windowInsets
-      .getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.statusBars() or
-          android.view.WindowInsets.Type.displayCutout()
-      )
-    -insets.top
-  } else 0
-
-  return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
-}
+    return x.coerceIn(0, maxX) to y.coerceIn(0, maxY)
+  }
 
 }
