@@ -1,10 +1,3 @@
-Perfecto.
-Aquí tienes el README completamente formateado, coherente y listo para guardar, respetando tu especificación maestra y agregando la implementación Sshot/Fen/Ai/Done como bloque formal dentro del documento.
-
-Puedes reemplazar tu README completo por esto.
-
-
----
 
 ===========================================================
 
@@ -377,11 +370,11 @@ Si no existe permiso:
 
 Abrir panel
 
-Title → Sshot
+Title → Inicio
 
 Mostrar botón “Conceder permiso”
 
-Lanzar flujo sistema
+Lanzar flujo sistema y cierra el panel
 
 Tras conceder → siguiente tap inicia ciclo
 
