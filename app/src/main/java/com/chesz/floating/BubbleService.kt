@@ -490,7 +490,6 @@ panel.addView(
 
   private fun space(h: Int): View =
     View(this).apply { layoutParams = FrameLayout.LayoutParams(1, h) }
-
   private fun flashBubbleRed() {
     runCatching {
       bubbleIcon.setColorFilter(0xFFFF3333.toInt())
@@ -500,7 +499,7 @@ panel.addView(
 
     private fun requestCapturePermission() {
         hidePanel()
-        val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+        val ok = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
         if (!ok) {
             val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -508,20 +507,13 @@ panel.addView(
             startActivity(pi)
         }
     }
-    startActivity(pi)
-    return
-  }
-
-  takeScreenshotOnce()
-}
-  private fun updatePermUi() {
     if (!this::permBar.isInitialized) return
     val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+  private fun updatePermUi() {
     panelTitle.text = ""
     permBar.visibility = if (ok) View.GONE else View.VISIBLE
-          }
+    }
 
-// ===================== KILL AREA (igual) =====================
 
   private fun createKillArea() {
     killRoot = FrameLayout(this).apply {
@@ -745,9 +737,8 @@ panel.addView(
             cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
           }
         }
-
         cropped.recycle()
-        runCatching { flashBubbleRed() } // feedback temporal
+        runCatching { flashBubbleRed() }
 
       } finally {
         runCatching { image.close() }
@@ -755,6 +746,6 @@ panel.addView(
         runCatching { reader.close() }
         runCatching { mp.stop() }
       }
-
     }, 200)
-  
+  }
+}
