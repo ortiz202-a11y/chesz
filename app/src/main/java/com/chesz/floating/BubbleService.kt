@@ -189,7 +189,14 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
               showKill(false)
             }
           } else {
-            togglePanel()
+            if (!panelShown) {
+              showPanelIfFits()
+            }
+            
+            val hasPerm = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+            if (hasPerm) {
+              takeScreenshotOnce()
+            }
           }
           dragging = false
           true
@@ -491,13 +498,15 @@ panel.addView(
     }
   }
 
-private fun requestCapturePermission() {
-
-  val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
-
-  if (!ok) {
-    val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
-      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    private fun requestCapturePermission() {
+        hidePanel()
+        val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
+        if (!ok) {
+            val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(pi)
+        }
     }
     startActivity(pi)
     return
@@ -748,7 +757,4 @@ private fun requestCapturePermission() {
       }
 
     }, 200)
-  }
-
-
-}
+  
