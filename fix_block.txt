@@ -1,0 +1,20 @@
+        val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, w, h)
+        bitmap.recycle()
+        
+        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+        if (dir != null) {
+            val out = java.io.File(dir, "chesz_last.png")
+            java.io.FileOutputStream(out).use { fos ->
+                cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+            }
+        }
+        cropped.recycle()
+        runCatching { flashBubbleRed() }
+
+    } finally {
+        runCatching { image.close() }
+        runCatching { vd.release() }
+        runCatching { reader.close() }
+        runCatching { mp.stop() }
+    }
+}, 200)
