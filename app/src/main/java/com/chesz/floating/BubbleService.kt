@@ -85,6 +85,8 @@ override fun onBind(intent: Intent?): IBinder? = null
     super.onDestroy()
     runCatching { wm.removeViewImmediate(root) }
     runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
+    mpData = null
+    mpResultCode = null
     killShown = false
   }
 
