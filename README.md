@@ -7,7 +7,7 @@ CHESZ - ESPECIFICACIÓN MAESTRA COMPLETA (V3)
 
 Estado: DEFINIDO Y BLOQUEADO
 Modelo: Determinista Humano
-Arquitectura: ZERO-JUMP PURO
+Arquitectura: la Ai sigue ordenes
 
 
 ---
@@ -305,7 +305,9 @@ Si OK → paso 3
 
 Regla:
 
-El screenshot solo se borra cuando se recibe FEN.
+El screenshot solo se borra cuand
+
+o se recibe FEN.
 
 Guardar FEN
 
