@@ -185,8 +185,6 @@ X blanca centrada
 
 Efecto succión
 
-Vibración
-
 Destruye servicio completamente
 
 

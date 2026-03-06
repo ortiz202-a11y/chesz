@@ -70,8 +70,6 @@ override fun onBind(intent: Intent?): IBinder? = null
       @Suppress("DEPRECATION")
       mpData = intent.getParcelableExtra("data")
       updatePermUi()
-      // feedback mínimo por ahora (en PASO 3 lo cambiamos por title en panel)
-      runCatching { flashBubbleRed() }
     }
     return START_STICKY
   }
@@ -209,9 +207,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
   }
 
   private fun togglePanel() {
-    if (panelShown) {
-      hidePanel()
-    } else {
+    if (!panelShown) {
       showPanelIfFits()
     }
   }
@@ -363,9 +359,9 @@ runCatching { wm.updateViewLayout(root, rootLp) }
 
     // Botón principal: 50dp alto, blanco, texto grande + ✓ verde
     permText = TextView(this).apply {
-      text = "Aceptar permisos"
+      text = "Pedir Permiso"
       setTextColor(0xFF000000.toInt())
-      textSize = 15f
+      textSize = 13f
       includeFontPadding = false
       maxLines = 1
       ellipsize = android.text.TextUtils.TruncateAt.END
@@ -379,7 +375,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       orientation = LinearLayout.HORIZONTAL
       gravity = android.view.Gravity.CENTER
       addView(permText, LinearLayout.LayoutParams(
-        0,
+        LinearLayout.LayoutParams.WRAP_CONTENT,
         LinearLayout.LayoutParams.WRAP_CONTENT
       ))
       addView(permIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply {
@@ -492,6 +488,7 @@ panel.addView(
   }
 
   private fun requestCapturePermission() {
+    hidePanel()
     val pi = Intent(this, com.chesz.CapturePermissionActivity::class.java).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
