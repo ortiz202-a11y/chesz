@@ -77,16 +77,39 @@ override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onCreate() {
     super.onCreate()
+    startForegroundForMediaProjection()
     wm = getSystemService(WINDOW_SERVICE) as WindowManager
     createRootOverlay()
     createKillArea()
     updateScreenCache()
   }
 
+  private fun startForegroundForMediaProjection() {
+    val channelId = "chesz_channel"
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+      val channel = android.app.NotificationChannel(channelId, "Chesz Service", android.app.NotificationManager.IMPORTANCE_LOW)
+      val nm = getSystemService(android.app.NotificationManager::class.java)
+      nm.createNotificationChannel(channel)
+    }
+    val notif = android.app.Notification.Builder(this, channelId)
+      .setContentTitle("Chesz")
+      .setContentText("Servicio de captura activo")
+      .setSmallIcon(R.drawable.ic_check_green)
+      .build()
+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+      startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+    } else {
+      startForeground(1, notif)
+    }
+  }
+
   override fun onDestroy() {
     super.onDestroy()
     runCatching { wm.removeViewImmediate(root) }
     runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
+    runCatching { activeMediaProjection?.stop() }
+    activeMediaProjection = null
     mpData = null
     mpResultCode = null
     killShown = false
@@ -675,12 +698,17 @@ panel.addView(
     }
   }
 
+  private var activeMediaProjection: android.media.projection.MediaProjection? = null
+
   private fun takeScreenshotOnce() {
     val rc = mpResultCode ?: return
     val data = mpData ?: return
 
-    val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
-    val mp = mgr.getMediaProjection(rc, data)
+    if (activeMediaProjection == null) {
+      val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+      activeMediaProjection = mgr.getMediaProjection(rc, data)
+    }
+    val mp = activeMediaProjection ?: return
 
     val dm = resources.displayMetrics
     val density = dm.densityDpi
@@ -699,7 +727,6 @@ panel.addView(
       val image = reader.acquireLatestImage() ?: run {
         runCatching { vd.release() }
         runCatching { reader.close() }
-        runCatching { mp.stop() }
         return@postDelayed
       }
 
@@ -718,23 +745,35 @@ panel.addView(
         val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
         bitmap.recycle()
 
-        @Suppress("DEPRECATION")
-        val dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-        if (dir != null) {
-          if (!dir.exists()) dir.mkdirs()
-          val out = java.io.File(dir, "chesz_last.png")
-          java.io.FileOutputStream(out).use { fos ->
-            cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+        runCatching {
+          @Suppress("DEPRECATION")
+          val dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+          if (dir != null) {
+            if (!dir.exists()) dir.mkdirs()
+            val out = java.io.File(dir, "chesz_last.png")
+            java.io.FileOutputStream(out).use { fos ->
+              cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+            }
+          }
+        }.onFailure {
+          // Si Android bloquea Downloads por Scoped Storage, lo guarda en la app
+          val fallbackDir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+          if (fallbackDir != null) {
+            val out = java.io.File(fallbackDir, "chesz_last.png")
+            java.io.FileOutputStream(out).use { fos ->
+              cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+            }
           }
         }
+        
         cropped.recycle()
-        panelTitle.text = "Sshot/" 
+        panelTitle.text = "Sshot/"
 
       } finally {
         runCatching { image.close() }
         runCatching { vd.release() }
         runCatching { reader.close() }
-        runCatching { mp.stop() }
+        // Se extirpó el mp.stop() para no quemar el permiso
       }
     }, 200)
   }
