@@ -541,7 +541,7 @@ panel.addView(
   private fun updatePermUi() {
     if (!this::permBar.isInitialized) return
     val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
-    permBar.visibility = if (ok) View.GONE else View.VISIBLE
+    permBar.visibility = if (ok || mpData != null) View.GONE else View.VISIBLE
     panelTitle.text = ""
   }
 
