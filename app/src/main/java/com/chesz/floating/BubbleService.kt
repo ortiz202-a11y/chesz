@@ -168,7 +168,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
           rootLp.y = cy
           root.requestLayout()
 
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+    runCatching { wm.updateViewLayout(root, rootLp) }
 
 
           if (dragging) {
@@ -315,7 +315,7 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     updatePermUi()
 
     root.requestLayout()
-    root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
+    runCatching { wm.updateViewLayout(root, rootLp) }
   }
 
   private fun hidePanel() {
