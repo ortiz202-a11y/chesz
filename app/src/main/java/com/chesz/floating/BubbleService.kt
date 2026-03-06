@@ -69,6 +69,7 @@ override fun onBind(intent: Intent?): IBinder? = null
       mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
       @Suppress("DEPRECATION")
       mpData = intent.getParcelableExtra("data")
+      runCatching { upgradeToMediaProjection() }
       updatePermUi()
     }
     return START_STICKY
@@ -97,8 +98,8 @@ override fun onBind(intent: Intent?): IBinder? = null
       .setSmallIcon(R.drawable.ic_check_green)
       .build()
 
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-      startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+    if (android.os.Build.VERSION.SDK_INT >= 34) {
+      startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
     } else {
       startForeground(1, notif)
     }
@@ -522,6 +523,19 @@ panel.addView(
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
     startActivity(pi)
+  }
+
+
+  private fun upgradeToMediaProjection() {
+    val channelId = "chesz_channel"
+    val notif = android.app.Notification.Builder(this, channelId)
+      .setContentTitle("Chesz")
+      .setContentText("Captura de pantalla habilitada")
+      .setSmallIcon(R.drawable.ic_check_green)
+      .build()
+    if (android.os.Build.VERSION.SDK_INT >= 29) {
+      startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+    }
   }
 
   private fun updatePermUi() {
