@@ -272,8 +272,8 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
     
     // Clamp final: evita overflow al cambiar a Estado A
     val clampedA = clampRootToScreen(rootLp.x, rootLp.y)
-    rootLp.x = dp(60)
-    rootLp.y = dp(180)
+    // rootLp.x = dp(60) // ELIMINADO: Evita brinco
+    // rootLp.y = dp(180) // ELIMINADO: Mantiene posición
 
 runCatching { wm.updateViewLayout(root, rootLp) }
   }
@@ -541,7 +541,7 @@ panel.addView(
   private fun updatePermUi() {
     if (!this::permBar.isInitialized) return
     val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
-    permBar.visibility = if (ok || mpData != null) View.GONE else View.VISIBLE
+    permBar.visibility = if (mpData != null) View.GONE else View.VISIBLE
     panelTitle.text = ""
   }
 
@@ -594,7 +594,7 @@ panel.addView(
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-      x = dp(60)
+      x = 0 // CORREGIDO: Centro matemático
       y = dp(40)
     }
   }
@@ -731,6 +731,7 @@ panel.addView(
       sw, sh, android.graphics.PixelFormat.RGBA_8888, 2
     )
 
+    mp.registerCallback(object : android.media.projection.MediaProjection.Callback() {}, null)
     val vd = mp.createVirtualDisplay(
       "chesz-shot", sw, sh, density,
       android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
