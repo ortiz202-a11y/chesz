@@ -69,7 +69,7 @@ override fun onBind(intent: Intent?): IBinder? = null
       mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
       @Suppress("DEPRECATION")
       mpData = intent.getParcelableExtra("data")
-      runCatching { upgradeToMediaProjection() }
+      root.postDelayed({ runCatching { upgradeToMediaProjection() } }, 500)
       updatePermUi()
     }
     return START_STICKY
@@ -272,8 +272,8 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
     
     // Clamp final: evita overflow al cambiar a Estado A
     val clampedA = clampRootToScreen(rootLp.x, rootLp.y)
-    rootLp.x = clampedA.first
-    rootLp.y = clampedA.second
+    rootLp.x = dp(60)
+    rootLp.y = dp(180)
 
 runCatching { wm.updateViewLayout(root, rootLp) }
   }
@@ -594,7 +594,7 @@ panel.addView(
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-      x = 0
+      x = dp(60)
       y = dp(40)
     }
   }
