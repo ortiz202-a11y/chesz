@@ -716,6 +716,7 @@ panel.addView(
 
   private fun takeScreenshotOnce() {
     val rc = mpResultCode ?: return
+    panelTitle.text = "Sshot/"
     val data = mpData ?: return
 
     if (activeMediaProjection == null) {
@@ -762,7 +763,7 @@ panel.addView(
 
         runCatching {
           @Suppress("DEPRECATION")
-          val dir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+          val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
           if (dir != null) {
             if (!dir.exists()) dir.mkdirs()
             val out = java.io.File(dir, "chesz_last.png")
