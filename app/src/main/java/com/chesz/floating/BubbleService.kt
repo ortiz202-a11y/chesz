@@ -158,8 +158,8 @@ override fun onBind(intent: Intent?): IBinder? = null
       PixelFormat.TRANSLUCENT
     ).apply {
       gravity = Gravity.TOP or Gravity.START
-      x = 0
-      y = dp(120)
+      x = dp(60)
+      y = dp(180)
     }
 
     // Posición interna Estado A
@@ -169,7 +169,7 @@ override fun onBind(intent: Intent?): IBinder? = null
     root.setOnTouchListener { _, e ->
       when (e.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
-          root.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100).start()
+          
           dragging = false
           downRawX = e.rawX
           downRawY = e.rawY
@@ -209,7 +209,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
         }
 
         MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-          root.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+          
           if (dragging) {
             val shouldKill = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
             if (shouldKill) {
