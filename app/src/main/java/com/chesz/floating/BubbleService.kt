@@ -41,6 +41,9 @@ class BubbleService : Service() {
   private var startX = 0
   private var startY = 0
   private var dragging = false
+  private var sw = 0
+  private var sh = 0
+  private var bottomInsetCache = 0
 
   // Kill area (se mantiene como overlay separado)
   private lateinit var killRoot: FrameLayout
@@ -79,6 +82,7 @@ override fun onBind(intent: Intent?): IBinder? = null
     wm = getSystemService(WINDOW_SERVICE) as WindowManager
     createRootOverlay()
     createKillArea()
+    updateScreenCache()
   }
 
   override fun onDestroy() {
@@ -262,15 +266,10 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     val rootW = panelW + (btnW / 2)
     val rootH = panelH
     // Bounds reales (misma lógica que clampRootToScreen)
-    val (sw, sh) = screenRealSize()
+    val (sw, sh) = this.sw to this.sh
     val minY = 0
 
-    val bottomInset = if (android.os.Build.VERSION.SDK_INT >= 30) {
-      val insets = wm.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.navigationBars()
-      )
-      insets.bottom
-    } else 0
+    val bottomInset = bottomInsetCache
 
     val maxY = (sh - bottomInset).coerceAtLeast(minY)
 
@@ -510,6 +509,7 @@ panel.addView(
 // ===================== KILL AREA (igual) =====================
 
   private fun createKillArea() {
+    updateScreenCache()
     killRoot = FrameLayout(this).apply {
       alpha = 1f
       visibility = View.VISIBLE
@@ -642,7 +642,7 @@ panel.addView(
   }
 
   private fun clampRootToScreen(x: Int, y: Int): kotlin.Pair<Int, Int> {
-    val (sw, sh) = screenRealSize()
+    val (sw, sh) = this.sw to this.sh
     val w = if (rootLp.width > 0) rootLp.width else dp(60)
     val h = if (rootLp.height > 0) rootLp.height else dp(60)
 
@@ -652,16 +652,24 @@ panel.addView(
     val minY = 0
 
     // Para no salir por abajo: restamos navegación (API30+)
-    val bottomInset = if (android.os.Build.VERSION.SDK_INT >= 30) {
-      val insets = wm.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
-        android.view.WindowInsets.Type.navigationBars()
-      )
-      insets.bottom
-    } else 0
+    val bottomInset = bottomInsetCache
 
     val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
 
     return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
   }
 
+
+  private fun updateScreenCache() {
+    val size = screenRealSize()
+    sw = size.first
+    sh = size.second
+    if (android.os.Build.VERSION.SDK_INT >= 30) {
+        val metrics = wm.maximumWindowMetrics
+        val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+            android.view.WindowInsets.Type.navigationBars()
+        )
+        bottomInsetCache = insets.bottom
+    }
+  }
 }
