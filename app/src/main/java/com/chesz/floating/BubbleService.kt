@@ -88,7 +88,7 @@ override fun onBind(intent: Intent?): IBinder? = null
   private fun startForegroundForMediaProjection() {
     val channelId = "chesz_channel"
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-      val channel = android.app.NotificationChannel(channelId, "Chesz Service", android.app.NotificationManager.IMPORTANCE_LOW)
+      val channel = android.app.NotificationChannel(channelId, "Chesz Service", android.app.NotificationManager.IMPORTANCE_HIGH)
       val nm = getSystemService(android.app.NotificationManager::class.java)
       nm.createNotificationChannel(channel)
     }
@@ -238,6 +238,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       showPanelIfFits()
     }
     if (hasPerm) {
+            if (panelTitle.text == "Sshot/") return@setOnTouchListener true // Bloqueo anti-spam
       takeScreenshotOnce()
     }
   }
@@ -766,6 +767,7 @@ panel.addView(
           val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
           if (dir != null) {
             if (!dir.exists()) dir.mkdirs()
+          if (dir != null && !dir.exists()) dir.mkdirs()
             val out = java.io.File(dir, "chesz_last.png")
             java.io.FileOutputStream(out).use { fos ->
               cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
@@ -786,7 +788,7 @@ panel.addView(
         panelTitle.text = "Sshot/"
 
       } finally {
-        runCatching { image.close() }
+        image.close()
         runCatching { vd.release() }
         runCatching { reader.close() }
         // Se extirpó el mp.stop() para no quemar el permiso
