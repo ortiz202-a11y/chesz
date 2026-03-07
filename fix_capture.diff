@@ -1,0 +1,15 @@
+diff --git a/app/src/main/java/com/chesz/floating/BubbleService.kt b/app/src/main/java/com/chesz/floating/BubbleService.kt
+index 27c6ff8..f4d90e2 100644
+--- a/app/src/main/java/com/chesz/floating/BubbleService.kt
++++ b/app/src/main/java/com/chesz/floating/BubbleService.kt
+@@ -779,8 +779,8 @@
+           }
+           vd.release()
+           reader.close()
+-          runCatching { activeMediaProjection?.stop() }
+-          activeMediaProjection = null
++          Thread { runCatching { activeMediaProjection?.stop() }
++          activeMediaProjection = null }.start()
+         }.onFailure {
+           updateDebug("Err: ${it.javaClass.simpleName}")
+         }
