@@ -1,0 +1,16 @@
+--- a/app/src/main/java/com/chesz/floating/BubbleService.kt
++++ b/app/src/main/java/com/chesz/floating/BubbleService.kt
+@@ -775,12 +775,12 @@
+             java.io.FileOutputStream(out).use { cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+             cropped.recycle()
+             updateDebug("Sshot/ OK")
+           }
+           vd.release()
+           reader.close()
+-          runCatching { activeMediaProjection?.stop() }
+-          activeMediaProjection = null
++          Thread { runCatching { activeMediaProjection?.stop() }
++          activeMediaProjection = null }.start()
+         }.onFailure {
+           updateDebug("Err: ${it.javaClass.simpleName}")
+         }

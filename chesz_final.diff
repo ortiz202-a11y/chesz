@@ -1,0 +1,13 @@
+--- a/app/src/main/java/com/chesz/floating/BubbleService.kt
++++ b/app/src/main/java/com/chesz/floating/BubbleService.kt
+@@ -779,8 +779,8 @@
+           }
+           vd.release()
+           reader.close()
+-          runCatching { activeMediaProjection?.stop() }
+-          activeMediaProjection = null
++          Thread { runCatching { activeMediaProjection?.stop() }
++          activeMediaProjection = null }.start()
+         }.onFailure {
+           updateDebug("Err: ${it.javaClass.simpleName}")
+         }
