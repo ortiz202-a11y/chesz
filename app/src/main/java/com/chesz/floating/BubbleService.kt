@@ -716,8 +716,10 @@ panel.addView(
   private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
   private fun takeScreenshotOnce() {
+    runCatching {
     val rc = mpResultCode ?: return
     panelTitle.text = "Sshot/"
+        root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
 
         val internalFile = java.io.File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "chesz_last.png")
         if (internalFile.exists()) {
@@ -793,6 +795,7 @@ panel.addView(
         
         cropped.recycle()
         panelTitle.text = "Sshot/"
+        root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
 
       } finally {
         image.close()
@@ -801,5 +804,6 @@ panel.addView(
         // Se extirpó el mp.stop() para no quemar el permiso
       }
     }, 200)
+    }.onFailure { panelTitle.text = "Sshot/Err" }
   }
 }
