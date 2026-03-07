@@ -718,7 +718,14 @@ panel.addView(
   private fun takeScreenshotOnce() {
     val rc = mpResultCode ?: return
     panelTitle.text = "Sshot/"
-    val data = mpData ?: return
+
+        val internalFile = java.io.File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "chesz_last.png")
+        if (internalFile.exists()) {
+            panelTitle.text = "Exist: ${internalFile.length() / 1024}KB"
+        } else {
+            panelTitle.text = "Exist: NO"
+        }
+            val data = mpData ?: return
 
     if (activeMediaProjection == null) {
       val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
