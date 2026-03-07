@@ -769,8 +769,8 @@ panel.addView(
           bitmap.copyPixelsFromBuffer(buffer)
           val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
           bitmap.recycle()
-          updateDebug("Step 4: Escribiendo PNG...")
-          val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+          updateDebug("Guardando en Ruta Segura...")
+          val dir = getExternalFilesDir(null)
           if (dir != null) {
             if (!dir.exists()) dir.mkdirs()
             val out = java.io.File(dir, "chesz_last.png")
