@@ -219,6 +219,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
               showKill(false)
             }
           } else {
+            if (panelTitle.text == "Sshot/") return@setOnTouchListener true
             togglePanel()
           }
           dragging = false
@@ -238,7 +239,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       showPanelIfFits()
     }
     if (hasPerm) {
-            if (panelTitle.text == "Sshot/") return@setOnTouchListener true // Bloqueo anti-spam
+            
       takeScreenshotOnce()
     }
   }
@@ -715,95 +716,61 @@ panel.addView(
 
   private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
-  private fun takeScreenshotOnce() {
-    runCatching {
+    private fun takeScreenshotOnce() {
     val rc = mpResultCode ?: return
+    val data = mpData ?: return
+
     panelTitle.text = "Sshot/"
-        root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
+    root.postDelayed({ if(panelTitle.text == "Sshot/") panelTitle.text = "Chesz" }, 3000)
 
-        val internalFile = java.io.File(getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES), "chesz_last.png")
-        if (internalFile.exists()) {
-            panelTitle.text = "Exist: ${internalFile.length() / 1024}KB"
-        } else {
-            panelTitle.text = "Exist: NO"
-        }
-            val data = mpData ?: return
-
-    if (activeMediaProjection == null) {
-      val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
-      activeMediaProjection = mgr.getMediaProjection(rc, data)
-    }
-    val mp = activeMediaProjection ?: return
-
-    val dm = resources.displayMetrics
-    val density = dm.densityDpi
-
-    val reader = android.media.ImageReader.newInstance(
-      sw, sh, android.graphics.PixelFormat.RGBA_8888, 2
-    )
-
-    mp.registerCallback(object : android.media.projection.MediaProjection.Callback() {}, null)
-    val vd = mp.createVirtualDisplay(
-      "chesz-shot", sw, sh, density,
-      android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-      reader.surface, null, null
-    )
-
-    root.postDelayed({
-      val image = reader.acquireLatestImage() ?: run {
-        runCatching { vd.release() }
-        runCatching { reader.close() }
-        return@postDelayed
+    runCatching {
+      if (activeMediaProjection == null) {
+        val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+        activeMediaProjection = mgr.getMediaProjection(rc, data)
       }
+      val mp = activeMediaProjection ?: return@runCatching
 
-      try {
-        val plane = image.planes[0]
-        val buffer = plane.buffer
-        val pixelStride = plane.pixelStride
-        val rowStride = plane.rowStride
-        val rowPadding = rowStride - pixelStride * sw
+      val dm = resources.displayMetrics
+      val reader = android.media.ImageReader.newInstance(sw, sh, android.graphics.PixelFormat.RGBA_8888, 2)
+      val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, dm.densityDpi,
+        android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+        reader.surface, null, null)
 
-        val bitmap = android.graphics.Bitmap.createBitmap(
-          sw + rowPadding / pixelStride, sh, android.graphics.Bitmap.Config.ARGB_8888
-        )
-        bitmap.copyPixelsFromBuffer(buffer)
-
-        val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
-        bitmap.recycle()
-
-        runCatching {
-          @Suppress("DEPRECATION")
+      root.postDelayed({
+        val image = reader.acquireLatestImage() ?: run {
+          runCatching { vd.release() }; runCatching { reader.close() }
+          return@postDelayed
+        }
+        try {
+          val plane = image.planes[0]
+          val buffer = plane.buffer
+          val rowStride = plane.rowStride
+          val pixelStride = plane.pixelStride
+          val rowPadding = rowStride - pixelStride * sw
+          val bitmap = android.graphics.Bitmap.createBitmap(sw + rowPadding / pixelStride, sh, android.graphics.Bitmap.Config.ARGB_8888)
+          bitmap.copyPixelsFromBuffer(buffer)
+          val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
+          bitmap.recycle()
           val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
           if (dir != null) {
             if (!dir.exists()) dir.mkdirs()
-          if (dir != null && !dir.exists()) dir.mkdirs()
             val out = java.io.File(dir, "chesz_last.png")
             java.io.FileOutputStream(out).use { fos ->
               cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
             }
           }
-        }.onFailure {
-          // Si Android bloquea Downloads por Scoped Storage, lo guarda en la app
-          val fallbackDir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-          if (fallbackDir != null) {
-            val out = java.io.File(fallbackDir, "chesz_last.png")
-            java.io.FileOutputStream(out).use { fos ->
-              cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
-            }
-          }
+          cropped.recycle()
+          panelTitle.text = "Sshot/"
+          root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
+        } finally {
+          image.close()
+          runCatching { vd.release() }
+          runCatching { reader.close() }
         }
-        
-        cropped.recycle()
-        panelTitle.text = "Sshot/"
-        root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
-
-      } finally {
-        image.close()
-        runCatching { vd.release() }
-        runCatching { reader.close() }
-        // Se extirpó el mp.stop() para no quemar el permiso
-      }
-    }, 200)
-    }.onFailure { panelTitle.text = "Sshot/Err" }
+      }, 200)
+    }.onFailure {
+      panelTitle.text = "Sshot/Err"
+      root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
+    }
   }
 }
