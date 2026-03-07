@@ -61,6 +61,7 @@ class BubbleService : Service() {
   private lateinit var panelTitle: TextView
   private lateinit var permBar: FrameLayout
   private lateinit var permText: TextView
+  private lateinit var debugText: TextView
 
 override fun onBind(intent: Intent?): IBinder? = null
 
@@ -383,6 +384,13 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.setPadding(0, 0, 0, 0)
       title.gravity = android.view.Gravity.CENTER_HORIZONTAL
     col.addView(title)
+    debugText = TextView(this).apply {
+      setTextColor(0xFFD1D1D1.toInt())
+      textSize = 10f
+      gravity = android.view.Gravity.CENTER
+      visibility = android.view.View.GONE
+    }
+    col.addView(debugText)
 
 
 
@@ -716,28 +724,38 @@ panel.addView(
 
   private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
-    private fun takeScreenshotOnce() {
+      private fun updateDebug(msg: String) {
+    root.post {
+      debugText.visibility = android.view.View.VISIBLE
+      debugText.text = msg
+    }
+  }
+
+  private fun takeScreenshotOnce() {
     val rc = mpResultCode ?: return
     val data = mpData ?: return
 
-    panelTitle.text = "Sshot/"
+    updateDebug("Step 1: Init...")
     root.postDelayed({ if(panelTitle.text == "Sshot/") panelTitle.text = "Chesz" }, 3000)
 
     runCatching {
       if (activeMediaProjection == null) {
         val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
         activeMediaProjection = mgr.getMediaProjection(rc, data)
+        updateDebug("Step 1: OK")
       }
       val mp = activeMediaProjection ?: return@runCatching
 
       val dm = resources.displayMetrics
       val reader = android.media.ImageReader.newInstance(sw, sh, android.graphics.PixelFormat.RGBA_8888, 2)
+      updateDebug("Step 2: VirtualDisplay...")
       val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, dm.densityDpi,
         android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
         reader.surface, null, null)
 
       root.postDelayed({
-        val image = reader.acquireLatestImage() ?: run {
+        updateDebug("Step 3: Recibiendo Buffer...")
+            val image = reader.acquireLatestImage() ?: run {
           runCatching { vd.release() }; runCatching { reader.close() }
           return@postDelayed
         }
@@ -751,6 +769,7 @@ panel.addView(
           bitmap.copyPixelsFromBuffer(buffer)
           val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
           bitmap.recycle()
+          updateDebug("Step 4: Escribiendo PNG...")
           val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
           if (dir != null) {
             if (!dir.exists()) dir.mkdirs()
@@ -760,7 +779,7 @@ panel.addView(
             }
           }
           cropped.recycle()
-          panelTitle.text = "Sshot/"
+          updateDebug("Step 1: Init...")
           root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
         } finally {
           image.close()
@@ -769,7 +788,7 @@ panel.addView(
         }
       }, 200)
     }.onFailure {
-      panelTitle.text = "Sshot/Err"
+      updateDebug("Err: ${it.javaClass.simpleName}")
       root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
     }
   }
