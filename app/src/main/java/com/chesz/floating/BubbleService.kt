@@ -566,10 +566,10 @@ class BubbleService : Service() {
         y: Int,
     ): Pair<Int, Int> {
         val w = if (rootLp.width > 0) rootLp.width else dp(60)
-        val h = if (rootLp.height > 0) rootLp.height else dp(60)
-        return x.coerceIn(0, sw - w) to y.coerceIn(0, sh - h - bottomInsetCache)
+        val maxX = (sw - w).coerceAtLeast(0)
+        val maxY = (sh - h - bottomInsetCache).coerceAtLeast(0)
+        return x.coerceIn(0, maxX) to y.coerceIn(0, maxY)
     }
-
     private fun updateScreenCache() {
         val size = screenRealSize()
         sw = size.first
