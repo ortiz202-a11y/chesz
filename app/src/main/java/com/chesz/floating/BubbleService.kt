@@ -220,7 +220,6 @@ class BubbleService : Service() {
                             showKill(false)
                         }
                     } else {
-                        if (panelTitle.text == "Sshot/") return@setOnTouchListener true
                         togglePanel()
                     }
                     dragging = false
