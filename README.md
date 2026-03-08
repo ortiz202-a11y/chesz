@@ -227,109 +227,48 @@ Toda respuesta vieja se ignora mediante runId
 
 ---
 
-Estados del Title
-
-Estado	Significado
-
-Sshot	Captura solicitada
-Sshot/Fen	Screenshot enviado a FEN API
-Sshot/Fen/Ai	FEN recibido, enviado a AI
-Sshot/Fen/Ai/Done	Resultado AI renderizado
-
-
-
----
-
-Flujo Técnico Completo
-
-0) Tap = START / RESTART
-
-En cualquier estado:
-
-0.1 Cancelación dura
-
-Cancelar captura
-
-Cancelar FEN API
-
-Cancelar AI API
-
-Incrementar currentRunId
-
-Limpiar UI
-
-Mantener panel abierto si ya lo estaba
-
-
-0.2 Inicio inmediato
-
-Asegurar panel visible
-
-Title → Sshot
-
-Iniciar captura
-
-
-
----
-
-1) Captura → Sshot
-
-Ejecutar MediaProjection
-
-Guardar screenshot temporal
-
-
-Si falla → error captura
-Si OK → paso 2
-
-
----
-
-2) FEN API → Sshot/Fen
-
-Cambiar title
-
-Enviar screenshot
-
-
-Si falla → error FEN
-Si OK → paso 3
-
-
----
-
-3) Recibir FEN → borrar screenshot → AI → Sshot/Fen/Ai
-
-Regla:
-
-El screenshot solo se borra cuand
-
-o se recibe FEN.
-
-Guardar FEN
-
-Borrar imagen
-
-Enviar FEN a AI
-
-
-
----
-
-4) Recibir AI → Render → Done
 
 Procesar respuesta
 
 Reemplazar contenido panel
 
-Title → Done
+Consola → Finalizado
 
 
 Tap reinicia todo.
 
 
 ---
+
+
+---
+
+### 🖥️ CONSOLA DE DIAGNÓSTICO (debugText)
+El sistema utiliza un área de texto dedicada para informar al usuario en tiempo real sin estados crípticos.
+
+1. **Estado Inicial**: Consola limpia / Esperando.
+2. **Proceso de Captura**: ⚙️ Iniciando motor de captura...
+3. **Bloqueo de Sistema**: ❌ Android bloqueó el acceso (Falta Permiso).
+4. **Fallo Técnico**: ❌ Error: El motor de captura falló al arrancar.
+5. **Fallo de Archivos**: 📂 Error: No se pudo guardar la foto en /Pictures.
+
+---
+
+### ⚙️ FLUJO TÉCNICO ACTUALIZADO
+0) **Tap = START / RESTART**
+   - Se activa el candado lógico de 3 segundos (isCapturing).
+   - El panel se mantiene abierto al 20% de altura para visibilidad.
+   - Mensaje: Iniciando motor...
+
+1) **Captura → Sshot**
+   - Ejecutar MediaProjection (Motor de Android).
+   - Captura de Frame mediante ImageReader.
+   - Guardado en: /Android/data/com.chesz/files/Pictures/chesz_last.png.
+
+2) **Procesamiento**
+   - Se envía la imagen a la API de FEN (Pendiente).
+   - Se recibe el análisis de la AI (Pendiente).
+   - La Consola informa el éxito o el error específico de la etapa.
 
 Control de Concurrencia
 
@@ -370,7 +309,7 @@ Si no existe permiso:
 
 Abrir panel
 
-Title → Inicio
+Consola → Esperando
 
 Mostrar botón “Conceder permiso”
 
@@ -484,10 +423,7 @@ Sin estados cruzados
 RESULTADO FINAL ESPERADO
 
 Tap →
-Sshot →
-Sshot/Fen →
-Sshot/Fen/Ai →
-Sshot/Fen/Ai/Done →
+Captura → Procesamiento → Done
 Tap reinicia
 
 Sin saltos.

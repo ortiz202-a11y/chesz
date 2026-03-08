@@ -58,7 +58,6 @@ class BubbleService : Service() {
     private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
     // ===== Panel UI refs =====
-    private lateinit var panelTitle: TextView
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
     private lateinit var debugText: TextView
@@ -276,7 +275,7 @@ class BubbleService : Service() {
         val btnW = dp(60)
         val btnH = dp(60)
         val panelW = (dm.widthPixels * 0.55f).toInt()
-        val panelH = (dm.heightPixels * 0.15f).toInt()
+        val panelH = (dm.heightPixels * 0.20f).toInt()
 
         val rootX = rootLp.x
         val rootY = rootLp.y - (panelH - btnH)
@@ -329,7 +328,7 @@ class BubbleService : Service() {
         if (panelShown) {
             val dm = resources.displayMetrics
             val btnH = dp(60)
-            val panelH = (dm.heightPixels * 0.15f).toInt()
+            val panelH = (dm.heightPixels * 0.20f).toInt()
             rootLp.y = rootLp.y + (panelH - btnH)
         }
         setStateA_layout()
@@ -349,14 +348,6 @@ class BubbleService : Service() {
                 setPadding(dp(10), dp(0), dp(10), dp(0))
             }
 
-        panelTitle =
-            TextView(this).apply {
-                text = ""
-                setTextColor(0xFFB0B0B0.toInt())
-                textSize = 11f
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-            }
-        col.addView(panelTitle)
         debugText =
             TextView(this).apply {
                 setTextColor(0xFFD1D1D1.toInt())
@@ -467,7 +458,6 @@ class BubbleService : Service() {
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
         permBar.visibility = if (mpData != null) View.GONE else View.VISIBLE
-        panelTitle.text = ""
     }
 
     private fun createKillArea() {
@@ -534,7 +524,7 @@ class BubbleService : Service() {
     private fun bubbleCenterY(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.15f).toInt() - dp(60)) else 0
+        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.20f).toInt() - dp(60)) else 0
         return loc[1] + offset + (dp(60) / 2f)
     }
 
@@ -593,10 +583,9 @@ class BubbleService : Service() {
     private fun takeScreenshotOnce() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
-        updateDebug("Step 1: Init...")
+        updateDebug("⚙️ Iniciando motor de captura...")
         isCapturing = true
         root.postDelayed({ isCapturing = false }, 3000)
-        root.postDelayed({ if (panelTitle.text == "Sshot/") panelTitle.text = "Chesz" }, 3000)
 
         runCatching {
             if (activeMediaProjection == null) {
@@ -605,7 +594,7 @@ class BubbleService : Service() {
             }
             val mp = activeMediaProjection ?: return@runCatching
             val reader = android.media.ImageReader.newInstance(sw, sh, PixelFormat.RGBA_8888, 2)
-            val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, resources.displayMetrics.densityDpi, 16, reader.surface, null, null)
+            val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, resources.displayMetrics.densityDpi, android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
 
             root.postDelayed({
                 try {
@@ -646,7 +635,7 @@ class BubbleService : Service() {
                             }
                             cropped.recycle()
                         } catch (e: Exception) {
-                            updateDebug("Err Loop: ${e.javaClass.simpleName}")
+                            updateDebug("📂 Error: No se pudo guardar la foto en /Pictures")
                         } finally {
                             image.close()
                             runCatching { vd.release() }
@@ -654,13 +643,16 @@ class BubbleService : Service() {
                         }
                     }.start()
                 } catch (e: IllegalStateException) {
-                    updateDebug("Err Sync: IllegalState")
+                    updateDebug("❌ Android bloqueó el acceso (Falta Permiso)")
                     runCatching { vd.release() }
                     runCatching { reader.close() }
                 }
         }, 1000) // Delay de 1s para hardware Xiaomi
         }.onFailure {
-            updateDebug("Err Root: ${it.javaClass.simpleName}")
+            updateDebug("❌ Error: El motor de captura falló al arrancar")
+            mpData = null
+            mpResultCode = null
+            updatePermUi()
         }
     }
 }
