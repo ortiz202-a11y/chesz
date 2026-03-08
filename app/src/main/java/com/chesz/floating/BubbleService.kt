@@ -648,7 +648,7 @@ class BubbleService : Service() {
                 }
         }, 1000) // Delay de 1s para hardware Xiaomi
         }.onFailure {
-            updateDebug("❌ Error: El motor de captura falló al arrancar")
+            updateDebug("❌ " + it.javaClass.simpleName + ": " + it.message)
             mpData = null
             mpResultCode = null
             updatePermUi()
