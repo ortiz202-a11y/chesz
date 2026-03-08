@@ -44,7 +44,7 @@ class BubbleService : Service() {
     private var sh = 0
     private var bottomInsetCache = 0
 
-    // Kill area (se mantiene como overlay separado)
+    // Kill area
     private lateinit var killRoot: FrameLayout
     private lateinit var killCircle: FrameLayout
     private lateinit var killLp: WindowManager.LayoutParams
@@ -54,8 +54,9 @@ class BubbleService : Service() {
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
+    private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
-    // ===== Panel UI refs (permiso captura) =====
+    // ===== Panel UI refs =====
     private lateinit var panelTitle: TextView
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
@@ -137,15 +138,13 @@ class BubbleService : Service() {
                 clipToPadding = false
             }
 
-        // Panel (Estado B) - dentro del root
         panelRoot =
             buildPanel().apply {
                 visibility = View.GONE
             }
-        root.addView(panelRoot) // primero: queda abajo
+        root.addView(panelRoot)
 
-        // Botón (Estado A/B) - dentro del root (AL FINAL para que quede arriba)
-        val btnPx = dp(60) // README: 60dp
+        val btnPx = dp(60)
         bubbleIcon =
             ImageView(this).apply {
                 setImageResource(R.drawable.bubble_icon)
@@ -158,9 +157,8 @@ class BubbleService : Service() {
                 clipChildren = false
                 clipToPadding = false
             }
-        root.addView(bubbleWrap) // último child => encima del panel
+        root.addView(bubbleWrap)
 
-        // Estado A inicial: root = tamaño botón
         rootLp =
             WindowManager
                 .LayoutParams(
@@ -176,10 +174,8 @@ class BubbleService : Service() {
                     y = dp(180)
                 }
 
-        // Posición interna Estado A
         setStateA_layout()
 
-        // Touch sobre ROOT: arrastra todo; tap alterna panel
         root.setOnTouchListener { _, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
@@ -201,12 +197,8 @@ class BubbleService : Service() {
                     }
 
                     val clamped = clampRootToScreen(startX + dx, startY + dy)
-                    val cx = clamped.first
-                    val cy = clamped.second
-                    rootLp.x = cx
-                    rootLp.y = cy
-                    root.requestLayout()
-
+                    rootLp.x = clamped.first
+                    rootLp.y = clamped.second
                     runCatching { wm.updateViewLayout(root, rootLp) }
 
                     if (dragging) {
@@ -221,8 +213,7 @@ class BubbleService : Service() {
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (dragging) {
-                        val shouldKill = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
-                        if (shouldKill) {
+                        if (isOverKillCenter(bubbleCenterX(), bubbleCenterY())) {
                             performKill()
                         } else {
                             setKillHover(false)
@@ -236,9 +227,7 @@ class BubbleService : Service() {
                     true
                 }
 
-                else -> {
-                    false
-                }
+                else -> false
             }
         }
 
@@ -255,29 +244,17 @@ class BubbleService : Service() {
         }
     }
 
-    // === Estado A: solo botón ===
     private fun setStateA_layout() {
         val btnPx = dp(60)
         rootLp.width = btnPx
         rootLp.height = btnPx
-        // Panel hidden
         panelRoot.visibility = View.GONE
         panelShown = false
 
-        // Child positions:
-        // panelRoot at 0,0 (no importa porque GONE)
         (panelRoot.layoutParams as? FrameLayout.LayoutParams)?.apply {
             leftMargin = 0
             topMargin = 0
-        } ?: run {
-            panelRoot.layoutParams =
-                FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                )
         }
-
-        // bubbleWrap is root child #1 (after panel), position 0,0
         val bubbleWrap = root.getChildAt(1)
         bubbleWrap.layoutParams =
             FrameLayout.LayoutParams(btnPx, btnPx).apply {
@@ -285,15 +262,13 @@ class BubbleService : Service() {
                 topMargin = 0
             }
 
-        // Clamp final: evita overflow al cambiar a Estado A
         val clampedA = clampRootToScreen(rootLp.x, rootLp.y)
-        // rootLp.x = dp(60) // ELIMINADO: Evita brinco
-        // rootLp.y = dp(180) // ELIMINADO: Mantiene posición
+        rootLp.x = clampedA.first
+        rootLp.y = clampedA.second
 
         runCatching { wm.updateViewLayout(root, rootLp) }
     }
 
-    // === Estado B: botón + panel ===
     private fun showPanelIfFits() {
         val dm = resources.displayMetrics
         val btnW = dp(60)
@@ -301,22 +276,17 @@ class BubbleService : Service() {
         val panelW = (dm.widthPixels * 0.55f).toInt()
         val panelH = (dm.heightPixels * 0.15f).toInt()
 
-        // README root geometry (single overlay root):
         val rootX = rootLp.x
         val rootY = rootLp.y - (panelH - btnH)
         val rootW = panelW + (btnW / 2)
         val rootH = panelH
-        // Bounds reales (misma lógica que clampRootToScreen)
         val (sw, sh) = this.sw to this.sh
-        val minY = 0
 
-        val bottomInset = bottomInsetCache
-
-        val maxY = (sh - bottomInset).coerceAtLeast(minY)
+        val maxY = (sh - bottomInsetCache).coerceAtLeast(0)
 
         val fits =
             rootX >= 0 &&
-                rootY >= minY &&
+                rootY >= 0 &&
                 (rootX + rootW) <= sw &&
                 (rootY + rootH) <= maxY
         if (!fits) {
@@ -324,19 +294,15 @@ class BubbleService : Service() {
             return
         }
 
-        // Aplicar root pos/size
         rootLp.x = rootX
         rootLp.y = rootY
         rootLp.width = rootW
         rootLp.height = rootH
 
-        // Clamp final (Estado B): con root ya redimensionado (panel incluido)
         val clampedB = clampRootToScreen(rootLp.x, rootLp.y)
         rootLp.x = clampedB.first
         rootLp.y = clampedB.second
 
-// Layout interno:
-        // panel at (btnW/2, 0)
         panelRoot.visibility = View.VISIBLE
         panelRoot.layoutParams =
             FrameLayout.LayoutParams(panelW, panelH).apply {
@@ -344,7 +310,6 @@ class BubbleService : Service() {
                 topMargin = 0
             }
 
-        // botón at (0, panelH - btnH)  (ancla inferior izq)
         val bubbleWrap = root.getChildAt(1)
         bubbleWrap.layoutParams =
             FrameLayout.LayoutParams(btnW, btnH).apply {
@@ -353,9 +318,7 @@ class BubbleService : Service() {
             }
 
         panelShown = true
-
         updatePermUi()
-
         root.requestLayout()
         runCatching { wm.updateViewLayout(root, rootLp) }
     }
@@ -365,7 +328,6 @@ class BubbleService : Service() {
             val dm = resources.displayMetrics
             val btnH = dp(60)
             val panelH = (dm.heightPixels * 0.15f).toInt()
-            // Compensar: mover el root hacia abajo lo que el panel ocupaba arriba del botón
             rootLp.y = rootLp.y + (panelH - btnH)
         }
         setStateA_layout()
@@ -375,7 +337,6 @@ class BubbleService : Service() {
         val panel =
             FrameLayout(this).apply {
                 setBackgroundColor(0xCC000000.toInt())
-                alpha = 1f
                 clipChildren = false
                 clipToPadding = false
             }
@@ -386,21 +347,14 @@ class BubbleService : Service() {
                 setPadding(dp(10), dp(0), dp(10), dp(0))
             }
 
-        fun mkLine(t: String): TextView =
+        panelTitle =
             TextView(this).apply {
-                text = t
+                text = ""
                 setTextColor(0xFFB0B0B0.toInt())
-                textSize = 12f
+                textSize = 11f
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
             }
-
-        val title = mkLine("") // placeholder status
-        title.textSize = 11f
-        title.includeFontPadding = false
-        title.maxLines = 1
-        title.ellipsize = android.text.TextUtils.TruncateAt.END
-        title.setPadding(0, 0, 0, 0)
-        title.gravity = android.view.Gravity.CENTER_HORIZONTAL
-        col.addView(title)
+        col.addView(panelTitle)
         debugText =
             TextView(this).apply {
                 setTextColor(0xFFD1D1D1.toInt())
@@ -410,18 +364,11 @@ class BubbleService : Service() {
             }
         col.addView(debugText)
 
-        // ===== Barra permiso captura (manual) =====
-        panelTitle = title
-
-        // Botón principal: 50dp alto, blanco, texto grande + ✓ verde
         permText =
             TextView(this).apply {
                 text = "Pedir Permiso"
                 setTextColor(0xFF000000.toInt())
                 textSize = 13f
-                includeFontPadding = false
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
             }
 
         val permIcon =
@@ -433,13 +380,7 @@ class BubbleService : Service() {
             LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER
-                addView(
-                    permText,
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
+                addView(permText)
                 addView(
                     permIcon,
                     LinearLayout.LayoutParams(dp(22), dp(22)).apply {
@@ -448,107 +389,48 @@ class BubbleService : Service() {
                 )
             }
 
-        val bg =
-            android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                cornerRadius = dp(12).toFloat()
-                setColor(0xFFFFFFFF.toInt())
-            }
-
         permBar =
             FrameLayout(this).apply {
-                background = bg
+                background =
+                    android.graphics.drawable.GradientDrawable().apply {
+                        cornerRadius = dp(12).toFloat()
+                        setColor(0xFFFFFFFF.toInt())
+                    }
                 setOnClickListener { requestCapturePermission() }
                 setPadding(dp(16), 0, dp(16), 0)
+                addView(
+                    permRow,
+                    FrameLayout.LayoutParams(-1, -1, android.view.Gravity.CENTER),
+                )
             }
-
-        permBar.addView(
-            permRow,
-            FrameLayout
-                .LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                    FrameLayout.LayoutParams.MATCH_PARENT,
-                ).apply { gravity = android.view.Gravity.CENTER },
-        )
 
         col.addView(
             permBar,
-            LinearLayout
-                .LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(50),
-                ).apply {
-                    topMargin = dp(8)
-                },
+            LinearLayout.LayoutParams(-1, dp(50)).apply {
+                topMargin = dp(8)
+            },
         )
 
-// Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
-        val closeH = dp(28) // barra delgada
-
-        val closeW = (resources.displayMetrics.widthPixels * 0.30f).toInt()
         val close =
             ImageView(this).apply {
                 setImageResource(R.drawable.close)
-                scaleType = ImageView.ScaleType.CENTER_INSIDE
-                adjustViewBounds = true
                 setPadding(dp(4), dp(2), dp(4), dp(2))
                 setOnClickListener { hidePanel() }
             }
 
-        // Empuja el Close al fondo del panel (LinearLayout vertical)
-        col.addView(
-            View(this),
-            LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f,
-            ),
-        )
-        // Contenedor del Close: RECORTE REAL con márgenes L/R (6dp) y centrado
-        val closeBar = FrameLayout(this)
-
-        val closeBg =
+        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
+        val closeBar =
             FrameLayout(this).apply {
-                setBackgroundColor(0x66000000) // fondo del botón aquí (no en el ImageView)
+                addView(
+                    close,
+                    FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.30f).toInt(), dp(28), Gravity.CENTER),
+                )
             }
+        col.addView(closeBar)
 
-        closeBg.addView(
-            close,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            ),
-        )
-
-        closeBar.addView(
-            closeBg,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                closeH,
-            ),
-        )
-
-        col.addView(
-            closeBar,
-            LinearLayout
-                .LayoutParams(
-                    closeW,
-                    closeH,
-                ).apply {
-                    gravity = android.view.Gravity.CENTER_HORIZONTAL
-                },
-        )
-        panel.addView(
-            col,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            ),
-        )
+        panel.addView(col, FrameLayout.LayoutParams(-1, -1))
         return panel
     }
-
-    private fun space(h: Int): View = View(this).apply { layoutParams = FrameLayout.LayoutParams(1, h) }
 
     private fun flashBubbleRed() {
         runCatching {
@@ -572,7 +454,7 @@ class BubbleService : Service() {
             android.app.Notification
                 .Builder(this, channelId)
                 .setContentTitle("Chesz")
-                .setContentText("Captura de pantalla habilitada")
+                .setContentText("Captura habilitada")
                 .setSmallIcon(R.drawable.ic_check_green)
                 .build()
         if (android.os.Build.VERSION.SDK_INT >= 29) {
@@ -582,27 +464,17 @@ class BubbleService : Service() {
 
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
-        val ok = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
         permBar.visibility = if (mpData != null) View.GONE else View.VISIBLE
         panelTitle.text = ""
     }
 
-// ===================== KILL AREA (igual) =====================
-
     private fun createKillArea() {
-        updateScreenCache()
         killRoot =
             FrameLayout(this).apply {
-                alpha = 1f
-                visibility = View.VISIBLE
-                clipChildren = false
-                clipToPadding = false
-                background = null
-                setBackgroundColor(0x00000000)
+                setBackgroundColor(0)
             }
 
         val sizePx = dp(100)
-
         killCircle =
             FrameLayout(this).apply {
                 background =
@@ -610,25 +482,12 @@ class BubbleService : Service() {
                         shape = android.graphics.drawable.GradientDrawable.OVAL
                         setColor(0xCCFF0000.toInt())
                     }
-                clipToOutline = true
-                outlineProvider =
-                    object : ViewOutlineProvider() {
-                        override fun getOutline(
-                            view: View,
-                            outline: Outline,
-                        ) {
-                            outline.setOval(0, 0, view.width, view.height)
-                        }
-                    }
-                scaleX = 1f
-                scaleY = 1f
             }
 
         val xIcon =
             ImageView(this).apply {
                 setImageResource(android.R.drawable.ic_delete)
                 setColorFilter(0xFFFFFFFF.toInt())
-                scaleType = ImageView.ScaleType.FIT_XY
             }
 
         killRoot.addView(killCircle, FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER))
@@ -640,25 +499,20 @@ class BubbleService : Service() {
                     sizePx,
                     sizePx,
                     overlayType(),
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                        or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    x = 0 // CORREGIDO: Centro matemático
                     y = dp(40)
                 }
     }
 
     private fun showKill(show: Boolean) {
-        if (show) {
-            if (!killShown) {
-                runCatching { wm.addView(killRoot, killLp) }
-                killShown = true
-            }
-        } else {
-            if (!killShown) return
+        if (show && !killShown) {
+            runCatching { wm.addView(killRoot, killLp) }
+            killShown = true
+        } else if (!show && killShown) {
             runCatching { wm.removeViewImmediate(killRoot) }
             killShown = false
         }
@@ -666,32 +520,20 @@ class BubbleService : Service() {
 
     private fun setKillHover(hover: Boolean) {
         val target = if (hover) 1.40f else 1.0f
-        killCircle.animate().cancel()
-        killCircle
-            .animate()
-            .scaleX(target)
-            .scaleY(target)
-            .setDuration(60)
-            .withLayer()
-            .start()
+        killCircle.animate().scaleX(target).scaleY(target).setDuration(60).start()
     }
 
     private fun bubbleCenterX(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        val w = dp(60)
-        // bubble in Estado B está en left=0; en A también.
-        return loc[0] + (w / 2f)
+        return loc[0] + (dp(60) / 2f)
     }
 
     private fun bubbleCenterY(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        val w = dp(60)
-        val dm = resources.displayMetrics
-        val panelH = (dm.heightPixels * 0.15f).toInt()
-        val topInRoot = if (panelShown) (panelH - w) else 0
-        return loc[1] + topInRoot + (w / 2f)
+        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.15f).toInt() - dp(60)) else 0
+        return loc[1] + offset + (dp(60) / 2f)
     }
 
     private fun isOverKillCenter(
@@ -701,83 +543,47 @@ class BubbleService : Service() {
         if (!killShown) return false
         val loc = IntArray(2)
         killRoot.getLocationOnScreen(loc)
-        val left = loc[0]
-        val top = loc[1]
-        val right = left + killRoot.width
-        val bottom = top + killRoot.height
         val pad = dp(18)
-        return (
-            x >= (left - pad) && x <= (right + pad) &&
-                y >= (top - pad) && y <= (bottom + pad)
-        )
+        return x in (loc[0] - pad).toFloat()..(loc[0] + killRoot.width + pad).toFloat() &&
+            y in (loc[1] - pad).toFloat()..(loc[1] + killRoot.height + pad).toFloat()
     }
 
     private fun performKill() {
         runCatching { wm.removeViewImmediate(root) }
         runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
-        killShown = false
         stopSelf()
     }
 
-    private fun dp(v: Int): Int {
-        val d = resources.displayMetrics.density
-        return (v * d).toInt()
-    }
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    // ===== Helpers: límites reales de pantalla + clamp del overlay root =====
-    private fun screenRealSize(): kotlin.Pair<Int, Int> =
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            // Para overlays: máximo = área real completa (incluye system bars)
-            val b = wm.maximumWindowMetrics.bounds
-            b.width().coerceAtLeast(1) to b.height().coerceAtLeast(1)
-        } else {
-            val pt = android.graphics.Point()
-            @Suppress("DEPRECATION")
-            wm.defaultDisplay.getRealSize(pt)
-            pt.x.coerceAtLeast(1) to pt.y.coerceAtLeast(1)
-        }
+    private fun screenRealSize(): Pair<Int, Int> {
+        val b = wm.maximumWindowMetrics.bounds
+        return b.width() to b.height()
+    }
 
     private fun clampRootToScreen(
         x: Int,
         y: Int,
-    ): kotlin.Pair<Int, Int> {
-        val (sw, sh) = this.sw to this.sh
+    ): Pair<Int, Int> {
         val w = if (rootLp.width > 0) rootLp.width else dp(60)
         val h = if (rootLp.height > 0) rootLp.height else dp(60)
-
-        val maxX = (sw - w).coerceAtLeast(0)
-
-        // Tu regla: el TOP real es 0 (no respetar status bar/cutout como límite)
-        val minY = 0
-
-        // Para no salir por abajo: restamos navegación (API30+)
-        val bottomInset = bottomInsetCache
-
-        val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
-
-        return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
+        return x.coerceIn(0, sw - w) to y.coerceIn(0, sh - h - bottomInsetCache)
     }
 
     private fun updateScreenCache() {
         val size = screenRealSize()
         sw = size.first
         sh = size.second
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            val metrics = wm.maximumWindowMetrics
-            val insets =
-                metrics.windowInsets.getInsetsIgnoringVisibility(
-                    android.view.WindowInsets.Type
-                        .navigationBars(),
-                )
-            bottomInsetCache = insets.bottom
-        }
+        val insets =
+            wm.maximumWindowMetrics.windowInsets.getInsetsIgnoringVisibility(
+                android.view.WindowInsets.Type.navigationBars(),
+            )
+        bottomInsetCache = insets.bottom
     }
-
-    private var activeMediaProjection: android.media.projection.MediaProjection? = null
 
     private fun updateDebug(msg: String) {
         root.post {
-            debugText.visibility = android.view.View.VISIBLE
+            debugText.visibility = View.VISIBLE
             debugText.text = msg
         }
     }
@@ -785,7 +591,6 @@ class BubbleService : Service() {
     private fun takeScreenshotOnce() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
-
         updateDebug("Step 1: Init...")
         root.postDelayed({ if (panelTitle.text == "Sshot/") panelTitle.text = "Chesz" }, 3000)
 
@@ -793,68 +598,65 @@ class BubbleService : Service() {
             if (activeMediaProjection == null) {
                 val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
                 activeMediaProjection = mgr.getMediaProjection(rc, data)
-                updateDebug("Step 1: OK")
             }
             val mp = activeMediaProjection ?: return@runCatching
-
-            val dm = resources.displayMetrics
-            val reader = android.media.ImageReader.newInstance(sw, sh, android.graphics.PixelFormat.RGBA_8888, 2)
-            updateDebug("Step 2: VirtualDisplay...")
-            val vd =
-                mp.createVirtualDisplay(
-                    "chesz-shot",
-                    sw,
-                    sh,
-                    dm.densityDpi,
-                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    reader.surface,
-                    null,
-                    null,
-                )
+            val reader = android.media.ImageReader.newInstance(sw, sh, PixelFormat.RGBA_8888, 2)
+            val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, resources.displayMetrics.densityDpi, 16, reader.surface, null, null)
 
             root.postDelayed({
-                updateDebug("Step 3: Recibiendo Buffer...")
-                val image =
-                    reader.acquireLatestImage() ?: run {
-                    Thread { runCatching { vd.release() }; runCatching { reader.close() }; activeMediaProjection?.stop(); activeMediaProjection = null }.start()
-                    // Cierre asincronizado arriba
-                        return@postDelayed
-                    }
                 try {
-                    val plane = image.planes[0]
-                    val buffer = plane.buffer
-                    val rowStride = plane.rowStride
-                    val pixelStride = plane.pixelStride
-                    val rowPadding = rowStride - pixelStride * sw
-                    val bitmap =
-                        android.graphics.Bitmap.createBitmap(
-                            sw + rowPadding / pixelStride,
-                            sh,
-                            android.graphics.Bitmap.Config.ARGB_8888,
-                        )
-                    bitmap.copyPixelsFromBuffer(buffer)
-                    val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
-                    bitmap.recycle()
-                    updateDebug("Guardando en Ruta Segura...")
-                    val dir = getExternalFilesDir(null)
-                    if (dir != null) {
-                        if (!dir.exists()) dir.mkdirs()
-                        val out = java.io.File(dir, "chesz_last.png")
-                        java.io.FileOutputStream(out).use { fos ->
-                            cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+                    val image =
+                        reader.acquireLatestImage() ?: run {
+                            Thread {
+                                runCatching { vd.release() }
+                                runCatching { reader.close() }
+                            }.start()
+                            return@postDelayed
                         }
-                    }
-                    cropped.recycle()
-                    updateDebug("Step 1: Init...")
-                    root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
-                } finally {
-                    image.close()
-                    // Cierre asincronizado arriba
+
+                    Thread {
+                        try {
+                            val plane = image.planes[0]
+                            val buffer = plane.buffer
+                            val rowStride = plane.rowStride
+                            val pixelStride = plane.pixelStride
+                            val rowPadding = rowStride - pixelStride * sw
+
+                            val bitmap =
+                                android.graphics.Bitmap.createBitmap(
+                                    sw + rowPadding / pixelStride,
+                                    sh,
+                                    android.graphics.Bitmap.Config.ARGB_8888,
+                                )
+                            bitmap.copyPixelsFromBuffer(buffer)
+                            val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
+                            bitmap.recycle()
+
+                            val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                            if (dir != null) {
+                                if (!dir.exists()) dir.mkdirs()
+                                val file = java.io.File(dir, "chesz_last.png")
+                                java.io.FileOutputStream(file).use {
+                                    cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                                }
+                            }
+                            cropped.recycle()
+                        } catch (e: Exception) {
+                            updateDebug("Err Loop: ${e.javaClass.simpleName}")
+                        } finally {
+                            image.close()
+                            runCatching { vd.release() }
+                            runCatching { reader.close() }
+                        }
+                    }.start()
+                } catch (e: IllegalStateException) {
+                    updateDebug("Err Sync: IllegalState")
+                    runCatching { vd.release() }
+                    runCatching { reader.close() }
                 }
-            }, 200)
+            }, 400) // Aumentado para estabilidad en Xiaomi
         }.onFailure {
-            updateDebug("Err: ${it.javaClass.simpleName}")
-            root.postDelayed({ panelTitle.text = "Chesz" }, 3000)
+            updateDebug("Err Root: ${it.javaClass.simpleName}")
         }
     }
 }
