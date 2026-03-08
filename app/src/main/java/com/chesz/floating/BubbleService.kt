@@ -391,16 +391,17 @@ class BubbleService : Service() {
                         setColor(0xFFFFFFFF.toInt())
                     }
                 setOnClickListener { requestCapturePermission() }
-                setPadding(dp(16), 0, dp(16), 0)
+                setPadding(dp(24), 0, dp(24), 0)
                 addView(
                     permRow,
-                    FrameLayout.LayoutParams(-1, -1, android.view.Gravity.CENTER),
+                    FrameLayout.LayoutParams(-2, -1, android.view.Gravity.CENTER),
                 )
             }
 
         col.addView(
             permBar,
-            LinearLayout.LayoutParams(-1, dp(50)).apply {
+            LinearLayout.LayoutParams(-2, dp(50)).apply {
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
                 topMargin = dp(8)
             },
         )
