@@ -56,6 +56,8 @@ class BubbleService : Service() {
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
     private var activeMediaProjection: android.media.projection.MediaProjection? = null
+    private var activeVirtualDisplay: android.hardware.display.VirtualDisplay? = null
+    private var activeImageReader: android.media.ImageReader? = null
 
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
@@ -582,7 +584,7 @@ class BubbleService : Service() {
     private fun takeScreenshotOnce() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
-        updateDebug("⚙️ Iniciando motor de captura...")
+        updateDebug("⚙ Iniciando captura...")
         isCapturing = true
         root.postDelayed({ isCapturing = false }, 3000)
 
@@ -590,21 +592,43 @@ class BubbleService : Service() {
             if (activeMediaProjection == null) {
                 val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
                 activeMediaProjection = mgr.getMediaProjection(rc, data)
+                
+                // 🛡️ LEY DE ANDROID 14: Callback OBLIGATORIO
+                activeMediaProjection?.registerCallback(object : android.media.projection.MediaProjection.Callback() {
+                    override fun onStop() {
+                        activeVirtualDisplay?.release()
+                        activeVirtualDisplay = null
+                        activeImageReader?.close()
+                        activeImageReader = null
+                        activeMediaProjection = null
+                        mpData = null
+                        mpResultCode = null
+                        updatePermUi()
+                    }
+                }, android.os.Handler(android.os.Looper.getMainLooper()))
+                
+                val safeW = if (sw % 2 != 0) sw - 1 else sw
+                val safeH = if (sh % 2 != 0) sh - 1 else sh
+                activeImageReader = android.media.ImageReader.newInstance(safeW, safeH, android.graphics.PixelFormat.RGBA_8888, 2)
+                activeVirtualDisplay = activeMediaProjection!!.createVirtualDisplay(
+                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi, 
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, 
+                    activeImageReader!!.surface, null, null
+                )
             }
-            val mp = activeMediaProjection ?: return@runCatching
-            val reader = android.media.ImageReader.newInstance(sw, sh, PixelFormat.RGBA_8888, 2)
-            val vd = mp.createVirtualDisplay("chesz-shot", sw, sh, resources.displayMetrics.densityDpi, android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.surface, null, null)
+
+            val reader = activeImageReader ?: return@runCatching
 
             root.postDelayed({
                 try {
-                    val image =
-                        reader.acquireLatestImage() ?: run {
-                            Thread {
-                                runCatching { vd.release() }
-                                runCatching { reader.close() }
-                            }.start()
-                            return@postDelayed
-                        }
+                    val image = reader.acquireLatestImage()
+                    if (image == null) {
+                        updateDebug("⏳ Esperando frame (Toca de nuevo)")
+                        return@postDelayed
+                    }
+
+                    val safeW = if (sw % 2 != 0) sw - 1 else sw
+                    val safeH = if (sh % 2 != 0) sh - 1 else sh
 
                     Thread {
                         try {
@@ -612,16 +636,15 @@ class BubbleService : Service() {
                             val buffer = plane.buffer
                             val rowStride = plane.rowStride
                             val pixelStride = plane.pixelStride
-                            val rowPadding = rowStride - pixelStride * sw
+                            val rowPadding = rowStride - pixelStride * safeW
 
-                            val bitmap =
-                                android.graphics.Bitmap.createBitmap(
-                                    sw + rowPadding / pixelStride,
-                                    sh,
-                                    android.graphics.Bitmap.Config.ARGB_8888,
-                                )
+                            val bitmap = android.graphics.Bitmap.createBitmap(
+                                safeW + rowPadding / pixelStride,
+                                safeH,
+                                android.graphics.Bitmap.Config.ARGB_8888,
+                            )
                             bitmap.copyPixelsFromBuffer(buffer)
-                            val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, sw, sh)
+                            val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, safeW, safeH)
                             bitmap.recycle()
 
                             val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
@@ -631,24 +654,28 @@ class BubbleService : Service() {
                                 java.io.FileOutputStream(file).use {
                                     cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
+                                updateDebug("✅ Foto guardada en /Pictures")
                             }
                             cropped.recycle()
                         } catch (e: Exception) {
-                            updateDebug("📂 Error: No se pudo guardar la foto en /Pictures")
+                            updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
                             image.close()
-                            runCatching { vd.release() }
-                            runCatching { reader.close() }
                         }
                     }.start()
-                } catch (e: IllegalStateException) {
-                    updateDebug("❌ Android bloqueó el acceso (Falta Permiso)")
-                    runCatching { vd.release() }
-                    runCatching { reader.close() }
+                } catch (e: Exception) {
+                    updateDebug("❌ Error de lectura: ${e.message}")
                 }
-        }, 1000) // Delay de 1s para hardware Xiaomi
+            }, 600)
+
         }.onFailure {
             updateDebug("❌ " + it.javaClass.simpleName + ": " + it.message)
+            activeVirtualDisplay?.release()
+            activeVirtualDisplay = null
+            activeImageReader?.close()
+            activeImageReader = null
+            activeMediaProjection?.stop()
+            activeMediaProjection = null
             mpData = null
             mpResultCode = null
             updatePermUi()
