@@ -84,9 +84,9 @@ class BubbleService : Service() {
         super.onCreate()
         startForegroundForMediaProjection()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        updateScreenCache()
         createRootOverlay()
         createKillArea()
-        updateScreenCache()
     }
 
     private fun startForegroundForMediaProjection() {
