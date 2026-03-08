@@ -74,7 +74,7 @@ class BubbleService : Service() {
             mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
             @Suppress("DEPRECATION")
             mpData = intent.getParcelableExtra("data")
-            root.postDelayed({ runCatching { upgradeToMediaProjection() } }, 800)
+            runCatching { upgradeToMediaProjection() }
             updatePermUi()
         }
         return START_STICKY
@@ -171,7 +171,7 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
-                    x = dp(60)
+                    x = dp(30)
                     y = dp(180)
                 }
 
