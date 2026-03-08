@@ -40,6 +40,7 @@ class BubbleService : Service() {
     private var startX = 0
     private var startY = 0
     private var dragging = false
+    private var isCapturing = false
     private var sw = 0
     private var sh = 0
     private var bottomInsetCache = 0
@@ -235,6 +236,7 @@ class BubbleService : Service() {
     }
 
     private fun togglePanel() {
+        if (isCapturing) return
         val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
         if (!panelShown) {
             showPanelIfFits()
@@ -592,6 +594,8 @@ class BubbleService : Service() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
         updateDebug("Step 1: Init...")
+        isCapturing = true
+        root.postDelayed({ isCapturing = false }, 3000)
         root.postDelayed({ if (panelTitle.text == "Sshot/") panelTitle.text = "Chesz" }, 3000)
 
         runCatching {
@@ -654,7 +658,7 @@ class BubbleService : Service() {
                     runCatching { vd.release() }
                     runCatching { reader.close() }
                 }
-            }, 400) // Aumentado para estabilidad en Xiaomi
+        }, 1000) // Delay de 1s para hardware Xiaomi
         }.onFailure {
             updateDebug("Err Root: ${it.javaClass.simpleName}")
         }
