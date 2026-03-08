@@ -360,7 +360,7 @@ class BubbleService : Service() {
 
         permText =
             TextView(this).apply {
-                text = "Pedir Permiso"
+                text = "Permitir"
                 setTextColor(0xFF000000.toInt())
                 textSize = 13f
             }
@@ -391,7 +391,7 @@ class BubbleService : Service() {
                         setColor(0xFFFFFFFF.toInt())
                     }
                 setOnClickListener { requestCapturePermission() }
-                setPadding(dp(24), 0, dp(24), 0)
+                setPadding(dp(14), 0, dp(14), 0)
                 addView(
                     permRow,
                     FrameLayout.LayoutParams(-2, -1, android.view.Gravity.CENTER),
@@ -400,7 +400,7 @@ class BubbleService : Service() {
 
         col.addView(
             permBar,
-            LinearLayout.LayoutParams(-2, dp(50)).apply {
+            LinearLayout.LayoutParams(-2, dp(40)).apply {
                 gravity = android.view.Gravity.CENTER_HORIZONTAL
                 topMargin = dp(8)
             },
