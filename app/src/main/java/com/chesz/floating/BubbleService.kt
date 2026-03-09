@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(30)
-                    y = dp(180)
+                    y = dp(177)
                 }
 
         setStateA_layout()
@@ -357,6 +357,7 @@ class BubbleService : Service() {
                 visibility = android.view.View.GONE
             }
         col.addView(debugText)
+        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
 
         permText =
             TextView(this).apply {
@@ -398,13 +399,15 @@ class BubbleService : Service() {
                 )
             }
 
+        
         col.addView(
             permBar,
             LinearLayout.LayoutParams(-2, dp(40)).apply {
                 gravity = android.view.Gravity.CENTER_HORIZONTAL
-                topMargin = dp(8)
+                topMargin = dp(0)
             },
         )
+        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
 
         val close =
             ImageView(this).apply {
