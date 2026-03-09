@@ -655,7 +655,7 @@ class BubbleService : Service() {
                                 java.io.FileOutputStream(file).use {
                                     cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
-                                updateDebug("✅ Foto guardada en /Pictures")
+                                updateDebug("📡 Enviando a API Soberana..."); sendToCheszEngine(file)
                             }
                             cropped.recycle()
                         } catch (e: Exception) {
@@ -682,4 +682,44 @@ class BubbleService : Service() {
             updatePermUi()
         }
     }
+
+    private fun sendToCheszEngine(file: java.io.File) {
+        Thread {
+            try {
+                val url = java.net.URL("https://Daxer2-chesz-engine.hf.space/predict")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                val boundary = "Boundary-" + System.currentTimeMillis()
+                
+                conn.requestMethod = "POST"
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+
+                conn.outputStream.use { out ->
+                    val writer = java.io.PrintWriter(out.writer())
+                    writer.println("--$boundary")
+                    writer.println("Content-Disposition: form-data; name=\"file\"; filename=\"${file.name}\"")
+                    writer.println("Content-Type: image/png")
+                    writer.println()
+                    writer.flush()
+                    
+                    file.inputStream().use { it.copyTo(out) }
+                    
+                    writer.println()
+                    writer.println("--$boundary--")
+                    writer.flush()
+                }
+
+                if (conn.responseCode == 200) {
+                    val response = conn.inputStream.bufferedReader().readText()
+                    val fen = response.substringAfter("\"fen\":\"").substringBefore("\"")
+                    updateDebug("✅ FEN: $fen")
+                } else {
+                    updateDebug("❌ Error API: ${conn.responseCode}")
+                }
+            } catch (e: Exception) {
+                updateDebug("❌ Error Red: ${e.message}")
+            }
+        }.start()
+    }
+
 }
