@@ -470,3 +470,6 @@ Botón Permitir Screenshot
 - Texto: 13sp
 - Icono: ✓ verde (#22C55E)
 - Se oculta automáticamente cuando el permiso es válido.
+
+--------------------------------------------------------------------------------------------------
+se esta utlizando la funciom git diff desoues de cada cambio oaea veeificar canbios si no pasa se reviza hasta avanzae
