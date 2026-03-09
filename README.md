@@ -1,4 +1,4 @@
-
+ 
 ===========================================================
 
 CHESZ - ESPECIFICACIÓN MAESTRA COMPLETA (V3)
@@ -472,4 +472,4 @@ Botón Permitir Screenshot
 - Se oculta automáticamente cuando el permiso es válido.
 
 --------------------------------------------------------------------------------------------------
-se esta utlizando la funciom git diff desoues de cada cambio oaea veeificar canbios si no pasa se reviza hasta avanzae
+se esta utlizando la funciom git diff desoues de cada cambio oaea veeificar canbios si no pasa se reviza hasta avanzar de modo que se tenfa rotal control sobre los cambios efecruados
