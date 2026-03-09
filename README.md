@@ -473,3 +473,10 @@ Botón Permitir Screenshot
 
 --------------------------------------------------------------------------------------------------
 se esta utlizando la funciom git diff desoues de cada cambio oaea veeificar canbios si no pasa se reviza hasta avanzar de modo que se tenfa rotal control sobre los cambios efecruados
+
+
+--------------------------------------> 
+
+
+ya estoy por terminar lq conecion con 
+el servidor.
