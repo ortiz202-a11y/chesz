@@ -279,7 +279,7 @@ class BubbleService : Service() {
         val panelH = (dm.heightPixels * 0.20f).toInt()
 
         val rootX = rootLp.x
-        val rootY = rootLp.y - (panelH - btnH)
+        val rootY = rootLp.y - (panelH / 2 - dp(60) / 2)
         val rootW = panelW + (btnW / 2)
         val rootH = panelH
         val (sw, sh) = this.sw to this.sh
@@ -316,7 +316,7 @@ class BubbleService : Service() {
         bubbleWrap.layoutParams =
             FrameLayout.LayoutParams(btnW, btnH).apply {
                 leftMargin = 0
-                topMargin = (panelH - btnH)
+                topMargin = (panelH / 2 - dp(60) / 2)
             }
 
         panelShown = true
@@ -338,7 +338,7 @@ class BubbleService : Service() {
     private fun buildPanel(): FrameLayout {
         val panel =
             FrameLayout(this).apply {
-                setBackgroundColor(0xCC000000.toInt())
+                setBackgroundColor(0x33000000.toInt())
                 clipChildren = false
                 clipToPadding = false
             }
