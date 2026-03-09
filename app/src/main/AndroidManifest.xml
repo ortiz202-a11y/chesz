@@ -18,7 +18,6 @@
         <activity
             android:name=".CapturePermissionActivity"
             android:excludeFromRecents="true"
-            android:noHistory="true"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
 
