@@ -5,6 +5,9 @@
 - [ ] Probar autocuración del Supervisor de ADN
 
 ## ✅ TERMINADO
+- [x] FASE 2 (Código): Motor FEN (Hugging Face) soldado al trigger de captura.
+- [x] FASE 2 (Aduana): Permiso INTERNET inyectado y validado en Manifest.
+- [x] Crisis de ADN resuelta: Integridad 1:1 restaurada en Kotlin y XML (SHA f3d3b31).
 - [x] Estructura de Scripts centralizada en Scripts/
 - [x] Portero (Git Hook) configurado y activo
 - [x] Identidad com.chesz unificada
