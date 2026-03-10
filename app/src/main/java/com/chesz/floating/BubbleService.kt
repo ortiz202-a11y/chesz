@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(172)
+                    y = dp(171)
                 }
 
         setStateA_layout()
@@ -338,7 +338,7 @@ class BubbleService : Service() {
     private fun buildPanel(): FrameLayout {
         val panel =
             FrameLayout(this).apply {
-                setBackgroundColor(0x66004400.toInt())
+                setBackgroundColor(0x99000000.toInt())
                 clipChildren = false
                 clipToPadding = false
             }
@@ -351,7 +351,7 @@ class BubbleService : Service() {
 
         debugText =
             TextView(this).apply {
-                setTextColor(0xFFD1D1D1.toInt())
+                setTextColor(0xFF00FF00.toInt())
                 textSize = 10f
                 gravity = android.view.Gravity.CENTER
                 visibility = android.view.View.GONE
@@ -362,7 +362,7 @@ class BubbleService : Service() {
         permText =
             TextView(this).apply {
                 text = "Permitir"
-                setTextColor(0xFF000000.toInt())
+                setTextColor(0xFF00FF00.toInt())
                 textSize = 13f
             }
 
@@ -399,7 +399,6 @@ class BubbleService : Service() {
                 )
             }
 
-        
         col.addView(
             permBar,
             LinearLayout.LayoutParams(-2, dp(40)).apply {
@@ -500,7 +499,7 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    y = dp(40)
+                    y = dp(171)
                 }
     }
 
@@ -595,7 +594,7 @@ class BubbleService : Service() {
             if (activeMediaProjection == null) {
                 val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
                 activeMediaProjection = mgr.getMediaProjection(rc, data)
-                
+
                 // 🛡️ LEY DE ANDROID 14: Callback OBLIGATORIO
                 activeMediaProjection?.registerCallback(object : android.media.projection.MediaProjection.Callback() {
                     override fun onStop() {
@@ -609,13 +608,13 @@ class BubbleService : Service() {
                         updatePermUi()
                     }
                 }, android.os.Handler(android.os.Looper.getMainLooper()))
-                
+
                 val safeW = if (sw % 2 != 0) sw - 1 else sw
                 val safeH = if (sh % 2 != 0) sh - 1 else sh
                 activeImageReader = android.media.ImageReader.newInstance(safeW, safeH, android.graphics.PixelFormat.RGBA_8888, 2)
                 activeVirtualDisplay = activeMediaProjection!!.createVirtualDisplay(
-                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi, 
-                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, 
+                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     activeImageReader!!.surface, null, null
                 )
             }
@@ -691,7 +690,7 @@ class BubbleService : Service() {
                 val url = java.net.URL("https://Daxer2-chesz-engine.hf.space/predict")
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 val boundary = "Boundary-" + System.currentTimeMillis()
-                
+
                 conn.requestMethod = "POST"
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
@@ -703,9 +702,9 @@ class BubbleService : Service() {
                     writer.print("Content-Type: image/png\r\n")
                     writer.print("\r\n")
                     writer.flush()
-                    
+
                     file.inputStream().use { it.copyTo(out) }
-                    
+
                     writer.print("\r\n")
                     writer.print("--$boundary--\r\n")
                     writer.flush()
