@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(174)
+                    y = dp(172)
                 }
 
         setStateA_layout()
@@ -338,7 +338,7 @@ class BubbleService : Service() {
     private fun buildPanel(): FrameLayout {
         val panel =
             FrameLayout(this).apply {
-                setBackgroundColor(0x66000000.toInt())
+                setBackgroundColor(0x66004400.toInt())
                 clipChildren = false
                 clipToPadding = false
             }
