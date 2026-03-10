@@ -699,16 +699,16 @@ class BubbleService : Service() {
 
                 conn.outputStream.use { out ->
                     val writer = java.io.PrintWriter(out.writer())
-                    writer.println("--$boundary")
-                    writer.println("Content-Disposition: form-data; name=\"image\"; filename=\"${file.name}\"")
-                    writer.println("Content-Type: image/png")
-                    writer.println()
+                    writer.print("--$boundary\r\n")
+                    writer.print("Content-Disposition: form-data; name=\"image\"; filename=\"${file.name}\"\r\n")
+                    writer.print("Content-Type: image/png\r\n")
+                    writer.print("\r\n")
                     writer.flush()
                     
                     file.inputStream().use { it.copyTo(out) }
                     
-                    writer.println()
-                    writer.println("--$boundary--")
+                    writer.print("\r\n")
+                    writer.print("--$boundary--\r\n")
                     writer.flush()
                 }
 
