@@ -172,8 +172,8 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
-                    x = dp(30)
-                    y = dp(177)
+                    x = dp(35)
+                    y = dp(174)
                 }
 
         setStateA_layout()
@@ -338,7 +338,7 @@ class BubbleService : Service() {
     private fun buildPanel(): FrameLayout {
         val panel =
             FrameLayout(this).apply {
-                setBackgroundColor(0x1A000000.toInt())
+                setBackgroundColor(0x66000000.toInt())
                 clipChildren = false
                 clipToPadding = false
             }
@@ -407,7 +407,6 @@ class BubbleService : Service() {
                 topMargin = dp(0)
             },
         )
-        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
 
         val close =
             ImageView(this).apply {
@@ -700,7 +699,7 @@ class BubbleService : Service() {
                 conn.outputStream.use { out ->
                     val writer = java.io.PrintWriter(out.writer())
                     writer.print("--$boundary\r\n")
-                    writer.print("Content-Disposition: form-data; name=\"image\"; filename=\"${file.name}\"\r\n")
+                    writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${file.name}\"\r\n")
                     writer.print("Content-Type: image/png\r\n")
                     writer.print("\r\n")
                     writer.flush()
