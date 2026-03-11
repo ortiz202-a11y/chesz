@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(171)
+                    y = dp(60)
                 }
 
         setStateA_layout()
@@ -336,6 +336,7 @@ class BubbleService : Service() {
     }
 
     private fun buildPanel(): FrameLayout {
+        val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         val panel =
             FrameLayout(this).apply {
                 setBackgroundColor(0x99000000.toInt())
@@ -351,7 +352,8 @@ class BubbleService : Service() {
 
         debugText =
             TextView(this).apply {
-                setTextColor(0xFF00FF00.toInt())
+                typeface = customFont
+                setTextColor(0xFF33FF00.toInt())
                 textSize = 10f
                 gravity = android.view.Gravity.CENTER
                 visibility = android.view.View.GONE
@@ -362,7 +364,8 @@ class BubbleService : Service() {
         permText =
             TextView(this).apply {
                 text = "Permitir"
-                setTextColor(0xFF00FF00.toInt())
+                typeface = customFont
+                setTextColor(0xFF33FF00.toInt())
                 textSize = 13f
             }
 
@@ -499,7 +502,7 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    y = dp(171)
+                    y = dp(60)
                 }
     }
 
