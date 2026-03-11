@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(165)
+                    y = dp(167)
                 }
 
         setStateA_layout()
@@ -365,6 +365,7 @@ class BubbleService : Service() {
             adjustViewBounds = true
         }
         permBar = FrameLayout(this).apply {
+            setBackgroundColor(0xFF000000.toInt())
             setOnClickListener { requestCapturePermission() }
             addView(permIcon, FrameLayout.LayoutParams(-2, -1, Gravity.CENTER))
         }
