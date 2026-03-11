@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(71)
+                    y = dp(200)
                 }
 
         setStateA_layout()
@@ -339,7 +339,7 @@ class BubbleService : Service() {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         val panel =
             FrameLayout(this).apply {
-                setBackgroundColor(0x99000000.toInt())
+                setBackgroundColor(0xA8000000.toInt())
                 clipChildren = false
                 clipToPadding = false
             }
@@ -354,7 +354,7 @@ class BubbleService : Service() {
             TextView(this).apply {
                 typeface = customFont
                 setTextColor(0xFF33FF00.toInt())
-                textSize = 10f
+                textSize = 15f
                 gravity = android.view.Gravity.CENTER
                 visibility = android.view.View.GONE
             }
