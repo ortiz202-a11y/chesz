@@ -465,7 +465,7 @@ Vida del Permiso
 
 Botón Permitir Screenshot
 - Altura: 50dp
-- Fondo: negro
+- Fondo: negro (66%)
 - Corner radius: 12dp
 - Texto: 13sp
 - Icono: ✓ verde (#22C55E)
