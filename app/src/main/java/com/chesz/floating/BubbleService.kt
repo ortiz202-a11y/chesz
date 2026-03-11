@@ -392,7 +392,7 @@ class BubbleService : Service() {
                 background =
                     android.graphics.drawable.GradientDrawable().apply {
                         cornerRadius = dp(12).toFloat()
-                        setColor(0xFFFFFFFF.toInt())
+                        setColor(0xFF000000.toInt())
                     }
                 setOnClickListener { requestCapturePermission() }
                 setPadding(dp(14), 0, dp(14), 0)
