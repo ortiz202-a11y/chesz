@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(200)
+                    y = dp(180)
                 }
 
         setStateA_layout()
@@ -359,48 +359,15 @@ class BubbleService : Service() {
                 visibility = android.view.View.GONE
             }
         col.addView(debugText)
-        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
-
-        permText =
-            TextView(this).apply {
-                text = "Permitir"
-                typeface = customFont
-                setTextColor(0xFF33FF00.toInt())
-                textSize = 13f
-            }
-
-        val permIcon =
-            ImageView(this).apply {
-                setImageResource(R.drawable.ic_check_green)
-            }
-
-        val permRow =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER
-                addView(permText)
-                addView(
-                    permIcon,
-                    LinearLayout.LayoutParams(dp(22), dp(22)).apply {
-                        leftMargin = dp(10)
-                    },
-                )
-            }
-
-        permBar =
-            FrameLayout(this).apply {
-                background =
-                    android.graphics.drawable.GradientDrawable().apply {
-                        cornerRadius = dp(12).toFloat()
-                        setColor(0xFF000000.toInt())
-                    }
-                setOnClickListener { requestCapturePermission() }
-                setPadding(dp(14), 0, dp(14), 0)
-                addView(
-                    permRow,
-                    FrameLayout.LayoutParams(-2, -1, android.view.Gravity.CENTER),
-                )
-            }
+        val permIcon = ImageView(this).apply {
+            setImageResource(R.drawable.permit_icon)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+        }
+        permBar = FrameLayout(this).apply {
+            setOnClickListener { requestCapturePermission() }
+            addView(permIcon, FrameLayout.LayoutParams(-2, -1, Gravity.CENTER))
+        }
 
         col.addView(
             permBar,

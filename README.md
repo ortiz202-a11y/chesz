@@ -465,9 +465,9 @@ Vida del Permiso
 
 Botón Permitir Screenshot
 - Altura: 50dp
-- Fondo: negro (66%)
+- Fondo: Transparente (Asset)
 - Corner radius: 12dp
-- Texto: 13sp
+- Asset: permit_icon.png
 - Icono: ✓ verde (#22C55E)
 - Se oculta automáticamente cuando el permiso es válido.
 
