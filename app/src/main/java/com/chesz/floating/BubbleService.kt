@@ -173,7 +173,7 @@ class BubbleService : Service() {
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
                     x = dp(35)
-                    y = dp(180)
+                    y = dp(165)
                 }
 
         setStateA_layout()
