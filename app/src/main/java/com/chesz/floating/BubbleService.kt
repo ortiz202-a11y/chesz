@@ -367,7 +367,7 @@ class BubbleService : Service() {
         permBar = FrameLayout(this).apply {
             setBackgroundColor(0xFF000000.toInt())
             setOnClickListener { requestCapturePermission() }
-            addView(permIcon, FrameLayout.LayoutParams(-2, -1, Gravity.CENTER))
+            addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
 
         col.addView(
