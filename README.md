@@ -478,5 +478,8 @@ se esta utlizando la funciom git diff desoues de cada cambio oaea veeificar canb
 --------------------------------------> 
 
 
-ya estoy por terminar lq conecion con 
+ya estoy por terminar la conecion con 
 el servidor.
+
+En algun momento se podra alterar el tamaño del panel y de la letra pe4o dw momento esta prohibido.
+
