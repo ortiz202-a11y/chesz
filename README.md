@@ -490,7 +490,7 @@ En algun momento se podra alterar el tamaño del panel y de la letra pe4o dw mom
 
 ## 5.1 REGLAS FÍSICAS DE INTERFAZ (SOBRESCRIBE SECCIONES PREVIAS)
 * **Marco Perimetral**: 
-    * Grosor: 3dp.
+    * Grosor: 1dp.
     * Color: Verde Terminal (#33FF00).
     * Forma: Esquinas perfectamente cuadradas (0dp radius).
 * **Altura Dinámica**: Se autoriza rango de 15% a 20% de pantalla (para evitar truncado de logs).
