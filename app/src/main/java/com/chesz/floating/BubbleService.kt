@@ -345,7 +345,7 @@ class BubbleService : Service() {
 
         val panelBorder = android.graphics.drawable.GradientDrawable().apply {
             setColor(0x00000000)
-            setStroke(dp(3).toInt(), 0xFF33FF00.toInt())
+            setStroke(dp(1).toInt(), 0xFF33FF00.toInt())
             cornerRadius = 0f
         }
 
