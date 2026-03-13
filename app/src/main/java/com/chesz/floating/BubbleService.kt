@@ -335,7 +335,7 @@ class BubbleService : Service() {
         setStateA_layout()
     }
 
-        private fun buildPanel(): FrameLayout {
+            private fun buildPanel(): FrameLayout {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         val panel = FrameLayout(this).apply {
             setBackgroundColor(0xA8000000.toInt())
@@ -345,8 +345,8 @@ class BubbleService : Service() {
 
         val panelBorder = android.graphics.drawable.GradientDrawable().apply {
             setColor(0x00000000)
-            setStroke(dp(1).toInt(), 0xFFB0B0B0.toInt())
-            cornerRadius = dp(4).toFloat()
+            setStroke(dp(3).toInt(), 0xFF33FF00.toInt())
+            cornerRadius = 0f
         }
 
         val col = LinearLayout(this).apply {
@@ -374,11 +374,11 @@ class BubbleService : Service() {
             }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
-
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
             gravity = android.view.Gravity.CENTER_HORIZONTAL
-            topMargin = dp(0)
         })
+
+        col.addView(View(this), LinearLayout.LayoutParams(-1, dp(5)))
 
         val close = ImageView(this).apply {
             setImageResource(R.drawable.close)

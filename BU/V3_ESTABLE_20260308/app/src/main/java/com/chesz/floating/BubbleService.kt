@@ -593,7 +593,7 @@ class BubbleService : Service() {
             if (activeMediaProjection == null) {
                 val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
                 activeMediaProjection = mgr.getMediaProjection(rc, data)
-                
+
                 // 🛡️ LEY DE ANDROID 14: Callback OBLIGATORIO
                 activeMediaProjection?.registerCallback(object : android.media.projection.MediaProjection.Callback() {
                     override fun onStop() {
@@ -607,13 +607,13 @@ class BubbleService : Service() {
                         updatePermUi()
                     }
                 }, android.os.Handler(android.os.Looper.getMainLooper()))
-                
+
                 val safeW = if (sw % 2 != 0) sw - 1 else sw
                 val safeH = if (sh % 2 != 0) sh - 1 else sh
                 activeImageReader = android.media.ImageReader.newInstance(safeW, safeH, android.graphics.PixelFormat.RGBA_8888, 2)
                 activeVirtualDisplay = activeMediaProjection!!.createVirtualDisplay(
-                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi, 
-                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, 
+                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                     activeImageReader!!.surface, null, null
                 )
             }
