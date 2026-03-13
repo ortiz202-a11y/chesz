@@ -29,7 +29,6 @@ class BubbleService : Service() {
   private lateinit var bubbleIcon: ImageView
   private lateinit var bubbleLp: WindowManager.LayoutParams
 
-
   // Panel (Estado B)
   private lateinit var panelRoot: FrameLayout
   private lateinit var panelLp: WindowManager.LayoutParams
@@ -313,9 +312,9 @@ class BubbleService : Service() {
       background = null
       setBackgroundColor(0x00000000) // transparente
     }
-  
+
     val sizePx = dp(100)
-  
+
     // Círculo real (ESTE se escala) + outline oval para que JAMÁS sea cuadrado
     killCircle = FrameLayout(this).apply {
       background = android.graphics.drawable.GradientDrawable().apply {
@@ -331,13 +330,13 @@ class BubbleService : Service() {
       scaleX = 1f
       scaleY = 1f
     }
-  
+
     val xIcon = ImageView(this).apply {
       setImageResource(android.R.drawable.ic_delete)
       setColorFilter(0xFFFFFFFF.toInt())
       scaleType = ImageView.ScaleType.CENTER_INSIDE
     }
-  
+
     killRoot.addView(
       killCircle,
       FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER)
@@ -346,7 +345,7 @@ class BubbleService : Service() {
       xIcon,
       FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER)
     )
-  
+
     killLp = WindowManager.LayoutParams(
       sizePx,
       sizePx,
@@ -361,8 +360,6 @@ class BubbleService : Service() {
       y = dp(40)
     }
   }
-
-
 
   private fun showKill(show: Boolean) {
     if (show) {
@@ -389,8 +386,6 @@ class BubbleService : Service() {
       .withLayer()
       .start()
   }
-
-
 
   private fun bubbleCenterX(): Float {
       val loc = IntArray(2)

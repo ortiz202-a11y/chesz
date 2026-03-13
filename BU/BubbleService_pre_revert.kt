@@ -52,8 +52,6 @@ class BubbleService : Service() {
   private var mpResultCode: Int? = null
   private var mpData: Intent? = null
 
-
-  
   // ===== Panel UI refs (permiso captura) =====
   private lateinit var panelTitle: TextView
   private lateinit var permBar: FrameLayout
@@ -72,7 +70,6 @@ override fun onBind(intent: Intent?): IBinder? = null
     }
     return START_STICKY
   }
-
 
   override fun onCreate() {
     super.onCreate()
@@ -158,7 +155,6 @@ override fun onBind(intent: Intent?): IBinder? = null
             showKill(true)
           }
 
-          
 val clamped = clampRootToScreen(startX + dx, startY + dy)
           val cx = clamped.first
           val cy = clamped.second
@@ -167,7 +163,6 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
           root.requestLayout()
 
     root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
-
 
           if (dragging) {
             val over = isOverKillCenter(bubbleCenterX(), bubbleCenterY())
@@ -192,7 +187,7 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
             if (!panelShown) {
               showPanelIfFits()
             }
-            
+
             val hasPerm = (mpResultCode == Activity.RESULT_OK) && (mpData != null)
             if (hasPerm) {
               takeScreenshotOnce()
@@ -244,7 +239,6 @@ val clamped = clampRootToScreen(startX + dx, startY + dy)
       topMargin = 0
     }
 
-    
     // Clamp final: evita overflow al cambiar a Estado A
     val clampedA = clampRootToScreen(rootLp.x, rootLp.y)
     rootLp.x = clampedA.first
@@ -294,7 +288,6 @@ runCatching { wm.updateViewLayout(root, rootLp) }
     rootLp.width = rootW
     rootLp.height = rootH
 
-    
     // Clamp final (Estado B): con root ya redimensionado (panel incluido)
     val clampedB = clampRootToScreen(rootLp.x, rootLp.y)
     rootLp.x = clampedB.first
@@ -362,8 +355,6 @@ runCatching { wm.updateViewLayout(root, rootLp) }
       title.gravity = android.view.Gravity.CENTER_HORIZONTAL
     col.addView(title)
 
-
-
     // ===== Barra permiso captura (manual) =====
     panelTitle = title
 
@@ -426,7 +417,6 @@ runCatching { wm.updateViewLayout(root, rootLp) }
 
 // Close: pegado abajo + icono centrado + RECORTE REAL L/R (6dp)
       val closeH = dp(28) // barra delgada
-
 
       val closeW = (resources.displayMetrics.widthPixels * 0.30f).toInt()
       val close = ImageView(this).apply {
@@ -513,7 +503,6 @@ panel.addView(
     panelTitle.text = ""
     permBar.visibility = if (ok) View.GONE else View.VISIBLE
     }
-
 
   private fun createKillArea() {
     killRoot = FrameLayout(this).apply {
@@ -666,9 +655,8 @@ panel.addView(
     } else 0
 
     val maxY = (sh - h - bottomInset).coerceAtLeast(minY)
- 
+
    return x.coerceIn(0, maxX) to y.coerceIn(minY, maxY)
- 
 
  }
 

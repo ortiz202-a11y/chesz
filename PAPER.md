@@ -1,24 +1,12 @@
-# 📋 PAPER CHESZ
-
-## 🛠️ EN PROCESO
-- [x] Validar botón de 60dp y visibilidad (excludeFromRecents)
-- [ ] Probar autocuración del Supervisor de ADN
+# 📋 PAPER CHESZ - KANBAN (SINCRO V3.2)
 
 ## ✅ TERMINADO
-- [x] FASE 2 (Código): Motor FEN (Hugging Face) soldado al trigger de captura.
-- [x] FASE 2 (Aduana): Permiso INTERNET inyectado y validado en Manifest.
-- [x] Crisis de ADN resuelta: Integridad 1:1 restaurada en Kotlin y XML (SHA f3d3b31).
-- [x] Estructura de Scripts centralizada en Scripts/
-- [x] Portero (Git Hook) configurado y activo
-- [x] Identidad com.chesz unificada
-- [ ] ⚠️ FALLO: Check detenido (20:03)
-- [ ] ⚠️ FALLO: Detenido por Check/ADN (01:21)
-- [ ] Launcher: Se migró de CENTER_CROP a FIT_XY para forzar la expansión total de la imagen 
+- [x] Unificación de Identidad com.chesz.
+- [x] Regla Estado B: rootLp.y = 0 fijado en Adenda.
+- [x] Marco: 3dp verde terminal / Esquinas rectas.
+- [x] Separador: 5dp de aire entre Permitir y Close.
+- [x] Limpieza de Raíz: Archivos basura movidos a BU/.
 
-- [ ] ⚠️ FALLO: Detenido por Check/ADN (19:33)
-- [ ] ⚠️ FALLO: Detenido por Check/ADN (23:21)
-- [ ] ⚠️ FALLO: Detenido por Check/ADN (23:24)
-
-- [ ] PENDIENTE: Regla absoluta Estado B: ¿rootLp.y/size puede ajustarse determinísticamente o root queda anclado al botón y panel se dibuja sin mover y?
-- [ ] NUEVA BUILD LISTA PARA DESCARGAR (Sshot permiso UI)
-- [x] ADN e Integridad validados automáticamente (00:15)
+## 🛠️ PENDIENTES
+- [ ] Validar autocuración del ADN ante inyecciones de código.
+- [ ] Pruebas de UI con el permiso de captura en la nueva build.
