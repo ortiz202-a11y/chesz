@@ -335,64 +335,60 @@ class BubbleService : Service() {
         setStateA_layout()
     }
 
-    private fun buildPanel(): FrameLayout {
+        private fun buildPanel(): FrameLayout {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
-        val panel =
-            FrameLayout(this).apply {
-                setBackgroundColor(0xA8000000.toInt())
-                clipChildren = false
-                clipToPadding = false
-            }
-
-        val col =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(10), dp(0), dp(10), dp(0))
-            }
-
-        debugText =
-            TextView(this).apply {
-                typeface = customFont
-                setTextColor(0xFF33FF00.toInt())
-                textSize = 15f
-                gravity = android.view.Gravity.CENTER
-                visibility = android.view.View.GONE
-            }
-        col.addView(debugText)
-        val permIcon = ImageView(this).apply {
-            setImageResource(R.drawable.permit_icon)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            adjustViewBounds = true
+        val panel = FrameLayout(this).apply {
+            setBackgroundColor(0xA8000000.toInt())
+            clipChildren = false
+            clipToPadding = false
         }
+
+        val panelBorder = android.graphics.drawable.GradientDrawable().apply {
+            setColor(0x00000000)
+            setStroke(dp(1).toInt(), 0xFFB0B0B0.toInt())
+            cornerRadius = dp(4).toFloat()
+        }
+
+        val col = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = panelBorder
+        }
+
+        debugText = TextView(this).apply {
+            typeface = customFont
+            setTextColor(0xFF33FF00.toInt())
+            textSize = 15f
+            gravity = android.view.Gravity.CENTER
+            visibility = android.view.View.GONE
+        }
+        col.addView(debugText)
+
+        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
+
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
+            val permIcon = ImageView(context).apply {
+                setImageResource(R.drawable.permit_icon)
+                adjustViewBounds = true
+            }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
 
-        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
-        col.addView(
-            permBar,
-            LinearLayout.LayoutParams(-2, dp(40)).apply {
-                gravity = android.view.Gravity.CENTER_HORIZONTAL
-                topMargin = dp(0)
-            },
-        )
+        col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            topMargin = dp(0)
+        })
 
-        val close =
-            ImageView(this).apply {
-                setImageResource(R.drawable.close)
-                setPadding(dp(4), dp(2), dp(4), dp(2))
-                setOnClickListener { hidePanel() }
-            }
+        val close = ImageView(this).apply {
+            setImageResource(R.drawable.close)
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+            setOnClickListener { hidePanel() }
+        }
 
-        col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
-        val closeBar =
-            FrameLayout(this).apply {
-                addView(
-                    close,
-                    FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.30f).toInt(), dp(28), Gravity.CENTER),
-                )
-            }
+        val closeBar = FrameLayout(this).apply {
+            addView(close, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.30f).toInt(), dp(28), Gravity.CENTER))
+        }
         col.addView(closeBar)
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
