@@ -1,4 +1,7 @@
 package com.chesz.floating
+import org.json.JSONObject
+import android.os.Handler
+import android.os.Looper
 
 import android.app.Activity
 import android.app.Service
@@ -679,8 +682,24 @@ class BubbleService : Service() {
 
                 if (conn.responseCode == 200) {
                     val response = conn.inputStream.bufferedReader().readText()
-                    val fen = response.substringAfter("\"fen\":\"").substringBefore("\"")
-                    updateDebug("✅ FEN: $fen")
+                    val json = JSONObject(response)
+                    val fen = json.optString("fen", "")
+
+                    if (esFenValido64(fen)) {
+                        updateDebug("✅ FEN ok")
+
+                        // 1. Mostrar ChessDb inmediatamente
+                        val chessdbData = json.optString("chessdb", "Sin datos")
+                        updateDebug("📡 ChessDb: $chessdbData")
+
+                        // 2. Temporizador de 10 segundos (Usando Handler para evitar nulos)
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            val stockfishData = json.optString("stockfish", "Esperando...")
+                            updateDebug("📡 Stockfish: $stockfishData")
+                        }, 10000)
+                    } else {
+                        updateDebug("❌ FEN CORRUPTO")
+                    }
                 } else {
                     updateDebug("❌ Error API: ${conn.responseCode}")
                 }
@@ -690,4 +709,16 @@ class BubbleService : Service() {
         }.start()
     }
 
+    private fun esFenValido64(fen: String): Boolean {
+        val filas = fen.split(" ")[0].split("/")
+        if (filas.size != 8) return false
+        for (fila in filas) {
+            var cuenta = 0
+            for (char in fila) {
+                if (char.isDigit()) cuenta += char.toString().toInt() else cuenta += 1
+            }
+            if (cuenta != 8) return false
+        }
+        return true
+    }
 }

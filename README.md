@@ -490,12 +490,11 @@ En algun momento se podra alterar el tamaño del panel y de la letra pe4o dw mom
 
 ## 5.1 REGLAS FÍSICAS DE INTERFAZ (SOBRESCRIBE SECCIONES PREVIAS)
 * **Marco Perimetral**: 
-    * Grosor: 1dp.
+    * Grosor: 3dp.
     * Color: Verde Terminal (#33FF00).
     * Forma: Esquinas perfectamente cuadradas (0dp radius).
 * **Altura Dinámica**: Se autoriza rango de 15% a 20% de pantalla (para evitar truncado de logs).
-* **Separador de Botones**: Espacio de aire de 5dp exactos ubicado entre el botón "Permitir" y el botón "Close".
-* **Anclaje Y**: Se fija rootLp.y = 0 de forma determinista.
+* **Anclaje Y**: Se fija rootLp.y = dp(167) de forma determinista.
 
 ## 5.2 CONSOLA DEBUG
 * **Fuente**: perfect_dos_vga.ttf (#33FF00).
