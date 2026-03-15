@@ -225,7 +225,8 @@ class BubbleService : Service() {
                             showKill(false)
                         }
                     } else {
-                        togglePanel()
+                        val dist = kotlin.math.hypot(e.rawX - bubbleCenterX(), e.rawY - bubbleCenterY())
+                        if (dist <= dp(30).toFloat()) togglePanel()
                     }
                     dragging = false
                     true
@@ -698,13 +699,16 @@ class BubbleService : Service() {
                     writer.flush()
                 }
 
-                if (conn.responseCode == 200) {
-                    val response = conn.inputStream.bufferedReader().readText()
-                    val json = JSONObject(response)
+                val rc = conn.responseCode
+                val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
+                val raw = stream?.bufferedReader()?.readText() ?: "Sin respuesta"
+
+                if (rc == 200) {
+                    val json = JSONObject(raw)
                     val fen = json.optString("fen", "")
 
                     if (esFenValido64(fen)) {
-                        updateDebug("✅ FEN ok")
+                        updateDebug("✅ FEN: " + fen)
 
                         // 1. Mostrar ChessDb inmediatamente
                         val chessdbData = json.optString("chessdb", "Sin datos")
@@ -716,10 +720,10 @@ class BubbleService : Service() {
                             updateDebug("📡 Stockfish: $stockfishData")
                         }, 10000)
                     } else {
-                        updateDebug("❌ FEN CORRUPTO")
+                        updateDebug("❌ FEN CORRUPTO: " + fen + " | CRUDO: " + raw)
                     }
                 } else {
-                    updateDebug("❌ Error API: ${conn.responseCode}")
+                    updateDebug("❌ ERROR API: " + rc.toString() + " | CRUDO: " + raw)
                 }
             } catch (e: Exception) {
                 updateDebug("❌ Error Red: ${e.message}")
