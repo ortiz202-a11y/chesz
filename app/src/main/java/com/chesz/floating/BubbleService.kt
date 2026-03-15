@@ -616,8 +616,26 @@ class BubbleService : Service() {
                                 android.graphics.Bitmap.Config.ARGB_8888,
                             )
                             bitmap.copyPixelsFromBuffer(buffer)
-                            val cropped = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, safeW, safeH)
-                            bitmap.recycle()
+
+                            // --- INYECCION: VISION DE IA (Recorte y Escala de Grises) ---
+                            // 1. Recorte Milimetrico del Tablero (Coord: 0, 463, 708x708)
+                            val boardX = 0
+                            val boardY = 463
+                            val boardSize = 708
+                            val recortado = android.graphics.Bitmap.createBitmap(bitmap, boardX, boardY, boardSize, boardSize)
+                            bitmap.recycle() // Liberar pantalla completa
+
+                            // 2. Conversion a Escala de Grises (Requisito FrozenGraph 2019)
+                            val cropped = android.graphics.Bitmap.createBitmap(boardSize, boardSize, android.graphics.Bitmap.Config.ARGB_8888)
+                            val canvas = android.graphics.Canvas(cropped)
+                            val paint = android.graphics.Paint()
+                            val colorMatrix = android.graphics.ColorMatrix()
+                            colorMatrix.setSaturation(0f) // Matar color
+                            val filter = android.graphics.ColorMatrixColorFilter(colorMatrix)
+                            paint.colorFilter = filter
+                            canvas.drawBitmap(recortado, 0f, 0f, paint)
+                            recortado.recycle() // Liberar recorte a color
+                            // -----------------------------------------------------------
 
                             val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
                             if (dir != null) {
