@@ -363,10 +363,10 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 15f
-            gravity = android.view.Gravity.CENTER
+            gravity = android.view.Gravity.TOP or android.view.Gravity.START
             visibility = android.view.View.GONE
         }
-        col.addView(debugText)
+        col.addView(debugText, LinearLayout.LayoutParams(-1, -2))
 
         col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
 
@@ -379,7 +379,7 @@ class BubbleService : Service() {
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
         })
 
         col.addView(View(this), LinearLayout.LayoutParams(-1, dp(5)))
@@ -552,7 +552,7 @@ class BubbleService : Service() {
             debugText.visibility = View.VISIBLE
             debugText.maxLines = 6
             if (android.os.Build.VERSION.SDK_INT >= 26) {
-                debugText.setAutoSizeTextTypeUniformWithConfiguration(7, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                debugText.setAutoSizeTextTypeUniformWithConfiguration(13, 16, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
             }
             debugText.text = msg
         }
@@ -646,8 +646,8 @@ class BubbleService : Service() {
                             colorMatrix.setSaturation(0f) // Blanco y negro
 
                             // Multiplicador universal: Contraste 1.5x y brillo +15
-                            val scale = 1.5f
-                            val translate = 15f
+                            val scale = 1.0f
+                            val translate = 0f
                             val contrastMatrix = android.graphics.ColorMatrix(floatArrayOf(
                                 scale, 0f, 0f, 0f,  translate,
                                 0f, scale, 0f, 0f,  translate,
