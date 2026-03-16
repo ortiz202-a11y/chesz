@@ -769,6 +769,5 @@ class BubbleService : Service() {
     }
 }
 
-// Trampa de espacios final          
 val testUI = "TEXTO MS-DOS CON ESPACIOS          "
 
