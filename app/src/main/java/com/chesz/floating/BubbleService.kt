@@ -619,11 +619,18 @@ class BubbleService : Service() {
                             bitmap.copyPixelsFromBuffer(buffer)
 
                             // --- INYECCION: VISION DE IA (Recorte y Escala de Grises) ---
-                            // 1. Recorte Milimetrico del Tablero (Coord: 0, 463, 708x708)
+                            // 1. Recorte Definitivo Photopea (Coord: 0, 458, 720x720)
                             val boardX = 0
-                            val boardY = 463
-                            val boardSize = 708
-                            val recortado = android.graphics.Bitmap.createBitmap(bitmap, boardX, boardY, boardSize, boardSize)
+                            val boardY = 458
+                            val boardSize = 720
+
+                            val safeW = if (boardX + boardSize > bitmap.width) bitmap.width - boardX else boardSize
+                            val safeH = if (boardY + boardSize > bitmap.height) bitmap.height - boardY else boardSize
+
+                            val recortado = android.graphics.Bitmap.createBitmap(
+                                bitmap,
+                                boardX, boardY, safeW, safeH
+                            )
                             bitmap.recycle() // Liberar pantalla completa
 
                             // 2. Conversion a Escala de Grises (Requisito FrozenGraph 2019)
