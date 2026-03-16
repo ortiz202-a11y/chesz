@@ -699,31 +699,30 @@ class BubbleService : Service() {
                     writer.flush()
                 }
 
-                val rc = conn.responseCode
+                                val rc = conn.responseCode
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
-                val raw = stream?.bufferedReader()?.readText() ?: "Sin respuesta"
 
                 if (rc == 200) {
-                    val json = JSONObject(raw)
-                    val fen = json.optString("fen", "")
+                    val reader = stream?.bufferedReader()
+                    var linea: String?
+                    while (reader?.readLine().also { linea = it } != null) {
+                        val json = JSONObject(linea ?: "{}")
+                        val fen = json.optString("fen", "")
 
-                    if (esFenValido64(fen)) {
-                        updateDebug("✅ FEN: " + fen)
+                        if (esFenValido64(fen)) {
+                            updateDebug("\n✅ FEN: " + fen)
 
-                        // 1. Mostrar ChessDb inmediatamente
-                        val chessdbData = json.optString("chessdb", "Sin datos")
-                        updateDebug("📡 ChessDb: $chessdbData")
+                            val chessdbData = json.optString("chessdb", "")
+                            if (chessdbData.isNotEmpty() && chessdbData != "null") {
+                                updateDebug("\n📡 ChessDb: " + chessdbData)
+                            }
 
-                        // 2. Temporizador de 10 segundos (Usando Handler para evitar nulos)
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            val stockfishData = json.optString("stockfish", "Esperando...")
-                            updateDebug("📡 Stockfish: $stockfishData")
-                        }, 10000)
-                    } else {
-                        updateDebug("❌ FEN CORRUPTO: " + fen + " | CRUDO: " + raw)
+                            val stockfishData = json.optString("stockfish", "")
+                            if (stockfishData.isNotEmpty() && stockfishData != "null") {
+                                updateDebug("\n📡 Stockfish: " + stockfishData)
+                            }
+                        }
                     }
-                } else {
-                    updateDebug("❌ ERROR API: " + rc.toString() + " | CRUDO: " + raw)
                 }
             } catch (e: Exception) {
                 updateDebug("❌ Error Red: ${e.message}")
