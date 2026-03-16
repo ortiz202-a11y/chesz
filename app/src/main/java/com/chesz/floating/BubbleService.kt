@@ -628,12 +628,12 @@ class BubbleService : Service() {
                             val boardY = 458
                             val boardSize = 720
 
-                            val safeW = if (boardX + boardSize > bitmap.width) bitmap.width - boardX else boardSize
-                            val safeH = if (boardY + boardSize > bitmap.height) bitmap.height - boardY else boardSize
+                            val safeCropW = if (boardX + boardSize > bitmap.width) bitmap.width - boardX else boardSize
+                            val safeCropH = if (boardY + boardSize > bitmap.height) bitmap.height - boardY else boardSize
 
                             val recortado = android.graphics.Bitmap.createBitmap(
                                 bitmap,
-                                boardX, boardY, safeW, safeH
+                                boardX, boardY, safeCropW, safeCropH
                             )
                             bitmap.recycle() // Liberar pantalla completa
 
@@ -666,11 +666,11 @@ class BubbleService : Service() {
                                 if (!dir.exists()) dir.mkdirs()
                                 val file = java.io.File(dir, "chesz_last.png")
                                 java.io.FileOutputStream(file).use {
-                                    cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                                    grayBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
                                 updateDebug(">_ ENVIANDO DATOS..."); sendToCheszEngine(file)
                             }
-                            cropped.recycle()
+                            grayBitmap.recycle()
                         } catch (e: Exception) {
                             updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
