@@ -699,7 +699,7 @@ class BubbleService : Service() {
                     writer.flush()
                 }
 
-                                val rc = conn.responseCode
+                                                val rc = conn.responseCode
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
                 if (rc == 200) {
@@ -710,17 +710,19 @@ class BubbleService : Service() {
                         val fen = json.optString("fen", "")
 
                         if (esFenValido64(fen)) {
-                            updateDebug("\n✅ FEN: " + fen)
+                            var textoFinal = "✅ FEN: " + fen
 
                             val chessdbData = json.optString("chessdb", "")
                             if (chessdbData.isNotEmpty() && chessdbData != "null") {
-                                updateDebug("\n📡 ChessDb: " + chessdbData)
+                                textoFinal += "\n\n📡 ChessDb: " + chessdbData
                             }
 
                             val stockfishData = json.optString("stockfish", "")
                             if (stockfishData.isNotEmpty() && stockfishData != "null") {
-                                updateDebug("\n📡 Stockfish: " + stockfishData)
+                                textoFinal += "\n\n📡 Stockfish: " + stockfishData
                             }
+
+                            updateDebug(textoFinal)
                         }
                     }
                 }
