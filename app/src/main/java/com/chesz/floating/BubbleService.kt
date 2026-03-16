@@ -550,6 +550,10 @@ class BubbleService : Service() {
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
+            debugText.maxLines = 6
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                debugText.setAutoSizeTextTypeUniformWithConfiguration(7, 14, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+            }
             debugText.text = msg
         }
     }
@@ -633,14 +637,26 @@ class BubbleService : Service() {
                             )
                             bitmap.recycle() // Liberar pantalla completa
 
-                            // 2. Conversion a Escala de Grises (Requisito FrozenGraph 2019)
-                            val cropped = android.graphics.Bitmap.createBitmap(boardSize, boardSize, android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(cropped)
+                            // 2. Conversion a Escala de Grises Universal (Anti-Camuflaje)
+                            val grayBitmap = android.graphics.Bitmap.createBitmap(recortado.width, recortado.height, android.graphics.Bitmap.Config.ARGB_8888)
+                            val canvas = android.graphics.Canvas(grayBitmap)
                             val paint = android.graphics.Paint()
+
                             val colorMatrix = android.graphics.ColorMatrix()
-                            colorMatrix.setSaturation(0f) // Matar color
-                            val filter = android.graphics.ColorMatrixColorFilter(colorMatrix)
-                            paint.colorFilter = filter
+                            colorMatrix.setSaturation(0f) // Blanco y negro
+
+                            // Multiplicador universal: Contraste 1.5x y brillo +15
+                            val scale = 1.5f
+                            val translate = 15f
+                            val contrastMatrix = android.graphics.ColorMatrix(floatArrayOf(
+                                scale, 0f, 0f, 0f,  translate,
+                                0f, scale, 0f, 0f,  translate,
+                                0f, 0f, scale, 0f,  translate,
+                                0f, 0f, 0f,  1f,  0f
+                            ))
+                            colorMatrix.postConcat(contrastMatrix)
+
+                            paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
                             canvas.drawBitmap(recortado, 0f, 0f, paint)
                             recortado.recycle() // Liberar recorte a color
                             // -----------------------------------------------------------
@@ -652,7 +668,7 @@ class BubbleService : Service() {
                                 java.io.FileOutputStream(file).use {
                                     cropped.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
-                                updateDebug("📡 Enviando a API Soberana..."); sendToCheszEngine(file)
+                                updateDebug(">_ ENVIANDO DATOS..."); sendToCheszEngine(file)
                             }
                             cropped.recycle()
                         } catch (e: Exception) {
@@ -717,19 +733,19 @@ class BubbleService : Service() {
                         val fen = json.optString("fen", "")
 
                         if (esFenValido64(fen)) {
-                            var textoFinal = "✅ FEN: " + fen
+                            var textoFinal = "FEN: " + fen.trim()
 
                             val chessdbData = json.optString("chessdb", "")
                             if (chessdbData.isNotEmpty() && chessdbData != "null") {
-                                textoFinal += "\n\n📡 ChessDb: " + chessdbData
+                                textoFinal += "\nCHESSDB: " + chessdbData.trim()
                             }
 
                             val stockfishData = json.optString("stockfish", "")
                             if (stockfishData.isNotEmpty() && stockfishData != "null") {
-                                textoFinal += "\n\n📡 Stockfish: " + stockfishData
+                                textoFinal += "\nSTOCKFISH: " + stockfishData.trim()
                             }
 
-                            updateDebug(textoFinal)
+                            updateDebug(textoFinal.trim())
                         }
                     }
                 }
@@ -752,3 +768,7 @@ class BubbleService : Service() {
         return true
     }
 }
+
+// Trampa de espacios final          
+val testUI = "TEXTO MS-DOS CON ESPACIOS          "
+
