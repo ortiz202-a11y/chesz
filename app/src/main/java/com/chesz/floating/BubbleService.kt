@@ -386,13 +386,13 @@ class BubbleService : Service() {
 
         val close = ImageView(this).apply {
             setImageResource(R.drawable.close)
-            setPadding(dp(4), dp(4), dp(4), dp(4))
+            setPadding(0, 0, 0, 0)
             setOnClickListener { hidePanel() }
         }
         panel.addView(close, FrameLayout.LayoutParams(dp(28), dp(28)).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.END
-            topMargin = dp(5)
-            rightMargin = dp(5)
+            topMargin = dp(-2)
+            rightMargin = dp(-2)
         })
         return panel
     }
@@ -743,9 +743,9 @@ class BubbleService : Service() {
                                 try {
                                     val sfJson = org.json.JSONObject(stockfishData)
                                     val rawMove = sfJson.optString("bestmove", "")
-                                    val eval = sfJson.optDouble("evaluation", 0.0)
-                                    val mate = sfJson.optString("mate", "null")
-                                    val continuation = sfJson.optString("continuation", "")
+                                    val evalStr = sfJson.optString("evaluation", "")
+                                    val mateStr = sfJson.optString("mate", "")
+                                    val contStr = sfJson.optString("continuation", "")
 
                                     var move = rawMove
                                     var ponder = ""
@@ -757,31 +757,32 @@ class BubbleService : Service() {
 
                                     textoFinal += "\n\n[BM] >  ${move.uppercase()}"
                                     if (ponder.isNotEmpty()) textoFinal += "\n[CA] >  ${ponder.uppercase()}"
-                                    if (mate != "null" && mate.isNotEmpty()) {
-                                        textoFinal += "\n[VV] >  M$mate"
+
+                                    if (mateStr.isNotEmpty() && mateStr != "null") {
+                                        textoFinal += "\n[VV] >  M$mateStr"
+                                    } else if (evalStr.isNotEmpty() && evalStr != "null") {
+                                        val d = evalStr.toDoubleOrNull()
+                                        if (d != null && d > 0) {
+                                            textoFinal += "\n[VV] >  +$evalStr"
+                                        } else {
+                                            textoFinal += "\n[VV] >  $evalStr"
+                                        }
                                     } else {
-                                        val eStr = if (eval > 0) "+$eval" else "$eval"
-                                        textoFinal += "\n[VV] >  $eStr"
+                                        textoFinal += "\n[VV] >  0.0"
                                     }
 
-                                    if (continuation.isNotEmpty()) {
-                                        val contParts = continuation.split(" ")
+                                    if (contStr.isNotEmpty() && contStr != "null") {
+                                        val contParts = contStr.split(" ")
                                         var nmString = ""
                                         val limit = Math.min(8, contParts.size)
                                         for (i in 2 until limit) {
                                             val m = contParts[i].uppercase()
-                                            if (i % 2 == 0) {
-                                                nmString += "($m) "
-                                            } else {
-                                                nmString += "$m "
-                                            }
+                                            if (i % 2 == 0) nmString += "($m) " else nmString += "$m "
                                         }
-                                        if (nmString.isNotEmpty()) {
-                                            textoFinal += "\n[NM] >  ${nmString.trim()}"
-                                        }
+                                        if (nmString.isNotEmpty()) textoFinal += "\n[NM] >  ${nmString.trim()}"
                                     }
                                 } catch (e: Exception) {
-                                    textoFinal += "\n[ RAW ]> " + stockfishData.trim()
+                                    textoFinal += "\n[RAW]> " + stockfishData.trim()
                                 }
                             }
 
