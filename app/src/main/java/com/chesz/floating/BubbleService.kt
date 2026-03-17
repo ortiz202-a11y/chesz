@@ -731,14 +731,31 @@ class BubbleService : Service() {
                         val fen = json.optString("fen", "")
 
                         if (esFenValido64(fen)) {
-                            var textoFinal = "FEN: " + fen.trim()
+                            var textoFinal = ""
 
                             val chessdbData = json.optString("chessdb", "")
                             if (chessdbData.isNotEmpty() && chessdbData != "null") {
                                 textoFinal += "\nCHESSDB: " + chessdbData.trim()
                             }
 
-                                                        val stockfishData = json.optString("stockfish", "")
+                            // --- CAJA NEGRA (LOG) ---
+                            try {
+                                val logDir = getExternalFilesDir(null)
+                                if (logDir != null) {
+                                    if (!logDir.exists()) logDir.mkdirs()
+                                    val logFile = java.io.File(logDir, "chesz_log.txt")
+                                    val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                                    val fData = json.optString("fen", "Vacio")
+                                    val sData = json.optString("stockfish", "Vacio")
+
+                                    val logContent = "==== [ $ts ] ====\nFEN RAW: $fData\n\nSTOCKFISH RAW: $sData\n"
+                                    logFile.writeText(logContent)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            // -------------------------
+                            val stockfishData = json.optString("stockfish", "")
                             if (stockfishData.isNotEmpty() && stockfishData != "null") {
                                 try {
                                     val sfJson = org.json.JSONObject(stockfishData)
