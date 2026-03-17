@@ -355,7 +355,7 @@ class BubbleService : Service() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), dp(10), dp(10), dp(10))
+            setPadding(dp(40), dp(10), dp(10), dp(10))
             background = panelBorder
         }
 
@@ -382,20 +382,18 @@ class BubbleService : Service() {
             gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
         })
 
-        col.addView(View(this), LinearLayout.LayoutParams(-1, dp(5)))
+        panel.addView(col, FrameLayout.LayoutParams(-1, -1))
 
         val close = ImageView(this).apply {
             setImageResource(R.drawable.close)
-            setPadding(dp(4), dp(2), dp(4), dp(2))
+            setPadding(dp(4), dp(4), dp(4), dp(4))
             setOnClickListener { hidePanel() }
         }
-
-        val closeBar = FrameLayout(this).apply {
-            addView(close, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.30f).toInt(), dp(28), Gravity.CENTER))
-        }
-        col.addView(closeBar)
-
-        panel.addView(col, FrameLayout.LayoutParams(-1, -1))
+        panel.addView(close, FrameLayout.LayoutParams(dp(28), dp(28)).apply {
+            gravity = android.view.Gravity.TOP or android.view.Gravity.END
+            topMargin = dp(5)
+            rightMargin = dp(5)
+        })
         return panel
     }
 
@@ -740,9 +738,51 @@ class BubbleService : Service() {
                                 textoFinal += "\nCHESSDB: " + chessdbData.trim()
                             }
 
-                            val stockfishData = json.optString("stockfish", "")
+                                                        val stockfishData = json.optString("stockfish", "")
                             if (stockfishData.isNotEmpty() && stockfishData != "null") {
-                                textoFinal += "\nSTOCKFISH: " + stockfishData.trim()
+                                try {
+                                    val sfJson = org.json.JSONObject(stockfishData)
+                                    val rawMove = sfJson.optString("bestmove", "")
+                                    val eval = sfJson.optDouble("evaluation", 0.0)
+                                    val mate = sfJson.optString("mate", "null")
+                                    val continuation = sfJson.optString("continuation", "")
+
+                                    var move = rawMove
+                                    var ponder = ""
+                                    if (rawMove.startsWith("bestmove ")) {
+                                        val parts = rawMove.split(" ")
+                                        if (parts.size >= 2) move = parts[1]
+                                        if (parts.size >= 4 && parts[2] == "ponder") ponder = parts[3]
+                                    }
+
+                                    textoFinal += "\n\n[BM] >  ${move.uppercase()}"
+                                    if (ponder.isNotEmpty()) textoFinal += "\n[CA] >  ${ponder.uppercase()}"
+                                    if (mate != "null" && mate.isNotEmpty()) {
+                                        textoFinal += "\n[VV] >  M$mate"
+                                    } else {
+                                        val eStr = if (eval > 0) "+$eval" else "$eval"
+                                        textoFinal += "\n[VV] >  $eStr"
+                                    }
+
+                                    if (continuation.isNotEmpty()) {
+                                        val contParts = continuation.split(" ")
+                                        var nmString = ""
+                                        val limit = Math.min(8, contParts.size)
+                                        for (i in 2 until limit) {
+                                            val m = contParts[i].uppercase()
+                                            if (i % 2 == 0) {
+                                                nmString += "($m) "
+                                            } else {
+                                                nmString += "$m "
+                                            }
+                                        }
+                                        if (nmString.isNotEmpty()) {
+                                            textoFinal += "\n[NM] >  ${nmString.trim()}"
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    textoFinal += "\n[ RAW ]> " + stockfishData.trim()
+                                }
                             }
 
                             updateDebug(textoFinal.trim())
