@@ -36,6 +36,7 @@ class BubbleService : Service() {
 
     private var panelShown = false
     private var panelDyPx: Int = 0
+    private var lastFen: String? = null
 
     // Drag state (sobre el ROOT)
     private var downRawX = 0f
@@ -358,6 +359,19 @@ class BubbleService : Service() {
             setPadding(dp(40), dp(10), dp(10), dp(10))
             background = panelBorder
         }
+
+        val fenTitle = TextView(this).apply {
+            text = "FEN: " + (lastFen ?: "---")
+            textSize = 11f
+            typeface = customFont
+            setTextColor(0xFF33FF00.toInt())
+            includeFontPadding = false
+            setSingleLine(false)
+            maxLines = 2
+            setPadding(dp(10), 0, dp(45), 0)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
+        }
+        col.addView(fenTitle, 0)
 
         debugText = TextView(this).apply {
             typeface = customFont
@@ -729,6 +743,7 @@ class BubbleService : Service() {
                     while (reader?.readLine().also { linea = it } != null) {
                         val json = JSONObject(linea ?: "{}")
                         val fen = json.optString("fen", "")
+                        lastFen = fen
 
                         if (esFenValido64(fen)) {
                             var textoFinal = ""
