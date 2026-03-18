@@ -356,20 +356,25 @@ class BubbleService : Service() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(40), dp(10), dp(10), dp(10))
+            setPadding(dp(40), 0, dp(10), dp(10))
             background = panelBorder
         }
 
         val fenTitle = TextView(this).apply {
-            text = "FEN: " + (lastFen ?: "---")
+            text = ""
             textSize = 11f
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
-            includeFontPadding = false
+            includeFontPadding = false // Quita el espacio extra interno de la fuente
             setSingleLine(false)
             maxLines = 2
+            setLineSpacing(0f, 0.9f) // Compacta la distancia entre los dos renglones
+            visibility = android.view.View.GONE
             setPadding(dp(10), 0, dp(45), 0)
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = 0
+                bottomMargin = dp(2) // Espacio mínimo para no pegar con lo de abajo
+            }
         }
         col.addView(fenTitle, 0)
 
