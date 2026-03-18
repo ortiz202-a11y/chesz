@@ -67,6 +67,7 @@ class BubbleService : Service() {
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
     private lateinit var debugText: TextView
+    private lateinit var fenTitle: TextView
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -360,7 +361,7 @@ class BubbleService : Service() {
             background = panelBorder
         }
 
-        val fenTitle = TextView(this).apply {
+        fenTitle = TextView(this).apply {
             text = ""
             textSize = 11f
             typeface = customFont
@@ -748,6 +749,7 @@ class BubbleService : Service() {
                     while (reader?.readLine().also { linea = it } != null) {
                         val json = JSONObject(linea ?: "{}")
                         val fen = json.optString("fen", "")
+                        root.post { fenTitle.text = "FEN: $fen" }
                         lastFen = fen
 
                         if (esFenValido64(fen)) {
