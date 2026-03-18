@@ -358,7 +358,7 @@ class BubbleService : Service() {
         val col = LinearLayout(this).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.START
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(40), 0, dp(10), dp(10))
+            setPadding(0, 0, dp(10), dp(10))
             background = panelBorder
         }
 
@@ -373,14 +373,10 @@ class BubbleService : Service() {
             maxLines = 2
             gravity = android.view.Gravity.START or android.view.Gravity.TOP
             setLineSpacing(0f, 0.9f)
-            setPadding(0, 0, dp(40), 0)
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
-                topMargin = 0
-                // El truco: Compensamos el padding de la columna
-                leftMargin = -dp(35)
-            }
+            setPadding(0, dp(5), dp(40), 0) // CERO a la izquierda
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
         }
-        col.addView(fenTitle, 0)
+        col.addView(fenTitle)
 
         debugText = TextView(this).apply {
             typeface = customFont
@@ -388,6 +384,8 @@ class BubbleService : Service() {
             textSize = 15f
             gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
             visibility = android.view.View.GONE
+            // AQUI RESTAURAMOS EL MARGEN DEL ANALISIS SIN AFECTAR AL FEN
+            setPadding(dp(40), 0, 0, 0)
         }
         col.addView(debugText, LinearLayout.LayoutParams(-1, -2))
 
