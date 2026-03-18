@@ -751,7 +751,7 @@ class BubbleService : Service() {
                         val json = JSONObject(linea ?: "{}")
                         val fen = json.optString("fen", "")
                         root.post { fenTitle.text = fen }
-                        
+
                         lastFen = fen
 
                         if (esFenValido64(fen)) {
