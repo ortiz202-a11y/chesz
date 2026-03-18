@@ -280,7 +280,7 @@ class BubbleService : Service() {
         val btnW = dp(60)
         val btnH = dp(60)
         val panelW = (dm.widthPixels * 0.55f).toInt()
-        val panelH = (dm.heightPixels * 0.20f).toInt()
+        val panelH = (dm.heightPixels * 0.17f).toInt()
 
         val rootX = rootLp.x
         val rootY = rootLp.y - (panelH - btnH)
@@ -333,7 +333,7 @@ class BubbleService : Service() {
         if (panelShown) {
             val dm = resources.displayMetrics
             val btnH = dp(60)
-            val panelH = (dm.heightPixels * 0.20f).toInt()
+            val panelH = (dm.heightPixels * 0.17f).toInt()
             rootLp.y = rootLp.y + (panelH - btnH)
         }
         setStateA_layout()
@@ -363,7 +363,7 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 15f
-            gravity = android.view.Gravity.TOP or android.view.Gravity.START
+            gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
             visibility = android.view.View.GONE
         }
         col.addView(debugText, LinearLayout.LayoutParams(-1, -2))
@@ -496,7 +496,7 @@ class BubbleService : Service() {
     private fun bubbleCenterY(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.20f).toInt() - dp(60)) else 0
+        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.17f).toInt() - dp(60)) else 0
         return loc[1] + offset + (dp(60) / 2f)
     }
 
