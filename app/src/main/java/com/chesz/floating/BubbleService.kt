@@ -373,7 +373,7 @@ class BubbleService : Service() {
             maxLines = 2
             gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
-            setPadding(0, dp(5), dp(40), 0) // CERO a la izquierda
+            setPadding(dp(5), dp(5), dp(21), 0)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
         }
         col.addView(fenTitle)
@@ -400,7 +400,7 @@ class BubbleService : Service() {
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            leftMargin = dp(75); gravity = android.view.Gravity.CENTER_VERTICAL
+            leftMargin = dp(40); gravity = android.view.Gravity.CENTER_VERTICAL
         })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
@@ -581,6 +581,7 @@ class BubbleService : Service() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
         updateDebug("⚙ Iniciando captura...")
+        root.post { fenTitle.text = "" }
         isCapturing = true
         root.postDelayed({ isCapturing = false }, 3000)
 
@@ -750,7 +751,7 @@ class BubbleService : Service() {
                     while (reader?.readLine().also { linea = it } != null) {
                         val json = JSONObject(linea ?: "{}")
                         val fen = json.optString("fen", "")
-                        root.post { fenTitle.text = fen }
+                        root.post { fenTitle.text = fen.substringBefore(" ") }
 
                         lastFen = fen
 
