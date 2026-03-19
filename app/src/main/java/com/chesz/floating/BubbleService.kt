@@ -371,7 +371,7 @@ class BubbleService : Service() {
             setSingleLine(false)
             minLines = 2
             maxLines = 2
-            gravity = android.view.Gravity.START or android.view.Gravity.TOP
+            gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
             setPadding(0, dp(5), dp(40), 0) // CERO a la izquierda
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
@@ -400,7 +400,7 @@ class BubbleService : Service() {
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            gravity = android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+            leftMargin = dp(75); gravity = android.view.Gravity.CENTER_VERTICAL
         })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
