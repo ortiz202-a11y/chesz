@@ -750,8 +750,7 @@ class BubbleService : Service() {
                 if (rc == 200) {
                     val respuesta = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
                     if (respuesta.isNotBlank()) {
-                        val json = JSONObject(respuesta) //
-                        val json = JSONObject(linea ?: "{}")
+                        val json = JSONObject(respuesta)
                         val fen = json.optString("fen", "")
                         root.post { fenTitle.text = fen.substringBefore(" ") }
 
