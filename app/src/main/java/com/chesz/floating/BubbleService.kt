@@ -723,6 +723,8 @@ class BubbleService : Service() {
             try {
                 val url = java.net.URL("https://Daxer2-chesz-engine.hf.space/predict")
                 val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 8000
+                conn.readTimeout = 10000
                 val boundary = "Boundary-" + System.currentTimeMillis()
 
                 conn.requestMethod = "POST"
@@ -833,11 +835,7 @@ class BubbleService : Service() {
                         } else {
                             // EL FEN LLEGO, PERO ESTA CHUECO. IMPRIMIR DE TODOS MODOS:
                             val sfData = json.optString("stockfish", "Sin datos")
-                            updateDebug("[FEN IMPERFECTO]
-" + fen + "
-
-[SF RAW]
-" + sfData.take(50) + "...")
+                            updateDebug("[FEN IMPERFECTO]\n" + fen + "\n\n[SF RAW]\n" + sfData.take(50) + "...")
                         }
                     } else {
                         updateDebug("[FALLO] JSON vacio o en blanco")
