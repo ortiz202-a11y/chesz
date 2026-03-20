@@ -830,8 +830,21 @@ class BubbleService : Service() {
                             }
 
                             updateDebug(textoFinal.trim())
+                        } else {
+                            // EL FEN LLEGO, PERO ESTA CHUECO. IMPRIMIR DE TODOS MODOS:
+                            val sfData = json.optString("stockfish", "Sin datos")
+                            updateDebug("[FEN IMPERFECTO]
+" + fen + "
+
+[SF RAW]
+" + sfData.take(50) + "...")
                         }
+                    } else {
+                        updateDebug("[FALLO] JSON vacio o en blanco")
                     }
+                } else {
+                    val errorBody = stream?.bufferedReader()?.use { it.readText() } ?: "Sin detalles"
+                    updateDebug("[FALLO HTTP] Codigo $rc -> $errorBody")
                 }
             } catch (e: Exception) {
                 updateDebug("❌ Error Red: ${e.message}")
