@@ -641,6 +641,8 @@ class BubbleService : Service() {
                                 android.graphics.Bitmap.Config.ARGB_8888,
                             )
                             bitmap.copyPixelsFromBuffer(buffer)
+                            val croppedLimpio = android.graphics.Bitmap.createBitmap(bitmap, 0, 0, safeW, safeH)
+                            bitmap.recycle()
 
                             // --- INYECCION: VISION DE IA (Recorte y Escala de Grises) ---
                             // 1. Recorte Definitivo Photopea (Coord: 0, 458, 720x720)
@@ -648,14 +650,14 @@ class BubbleService : Service() {
                             val boardY = 458
                             val boardSize = 720
 
-                            val safeCropW = if (boardX + boardSize > bitmap.width) bitmap.width - boardX else boardSize
-                            val safeCropH = if (boardY + boardSize > bitmap.height) bitmap.height - boardY else boardSize
+                            val safeCropW = if (boardX + boardSize > croppedLimpio.width) croppedLimpio.width - boardX else boardSize
+                            val safeCropH = if (boardY + boardSize > croppedLimpio.height) croppedLimpio.height - boardY else boardSize
 
                             val recortado = android.graphics.Bitmap.createBitmap(
-                                bitmap,
+                                croppedLimpio,
                                 boardX, boardY, safeCropW, safeCropH
                             )
-                            bitmap.recycle() // Liberar pantalla completa
+                            croppedLimpio.recycle() // Liberar pantalla completa
 
                             // 2. Conversion a Escala de Grises Universal (Anti-Camuflaje)
                             val grayBitmap = android.graphics.Bitmap.createBitmap(recortado.width, recortado.height, android.graphics.Bitmap.Config.ARGB_8888)
@@ -746,9 +748,9 @@ class BubbleService : Service() {
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
                 if (rc == 200) {
-                    val reader = stream?.bufferedReader()
-                    var linea: String?
-                    while (reader?.readLine().also { linea = it } != null) {
+                    val respuesta = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                    if (respuesta.isNotBlank()) {
+                        val json = JSONObject(respuesta) //
                         val json = JSONObject(linea ?: "{}")
                         val fen = json.optString("fen", "")
                         root.post { fenTitle.text = fen.substringBefore(" ") }
