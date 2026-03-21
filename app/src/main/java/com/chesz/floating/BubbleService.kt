@@ -238,10 +238,8 @@ class BubbleService : Service() {
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     devHandler.removeCallbacks(devRunnable!!) // Cancelar temporizador
-                    if (isDeveloperMode) {
-                        dragging = false
-                        return@setOnTouchListener true // Escudo: Ignorar el tap normal
-                    }
+                    
+                    // 1. Siempre procesar el arrastre y apagar el Kill Area primero
                     if (dragging) {
                         if (isOverKillCenter(bubbleCenterX(), bubbleCenterY())) {
                             performKill()
@@ -249,10 +247,18 @@ class BubbleService : Service() {
                             setKillHover(false)
                             showKill(false)
                         }
+                        dragging = false
+                        return@setOnTouchListener true
+                    }
+                    
+                    // 2. Si no fue arrastre, fue un Tap. Aplicar escudo si es Modo Dios.
+                    if (isDeveloperMode) {
+                        return@setOnTouchListener true // Escudo: Ignorar tap normal
                     } else {
                         val dist = kotlin.math.hypot(e.rawX - bubbleCenterX(), e.rawY - bubbleCenterY())
                         if (dist <= dp(30).toFloat()) togglePanel()
                     }
+                    
                     dragging = false
                     true
                 }
