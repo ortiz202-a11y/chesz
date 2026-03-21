@@ -56,6 +56,12 @@ class BubbleService : Service() {
     private var killShown = false
     private var killHovered = false
 
+    // ===== Modo Dios =====
+    private var isDeveloperMode = false
+    private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var devRunnable: Runnable? = null
+    private lateinit var devBar: LinearLayout
+
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
@@ -188,6 +194,17 @@ class BubbleService : Service() {
                 MotionEvent.ACTION_DOWN -> {
                     dragging = false
                     downRawX = e.rawX
+                    
+                    // Iniciar temporizador Modo Dios
+                    devRunnable = Runnable {
+                        isDeveloperMode = true
+                        flashBubbleRed() // Feedback visual
+                        if (!panelShown) showPanelIfFits()
+                        if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
+                        updateDebug(">_ MODO DESARROLLADOR ACTIVO.\n>_ ESPERANDO ORDENES...")
+                    }
+                    devHandler.postDelayed(devRunnable!!, 5000)
+
                     downRawY = e.rawY
                     startX = rootLp.x
                     startY = rootLp.y
@@ -199,6 +216,7 @@ class BubbleService : Service() {
                     val dy = (e.rawY - downRawY).toInt()
 
                     if (!dragging && (abs(dx) + abs(dy) > dp(6))) {
+                        devHandler.removeCallbacks(devRunnable!!) // Cancelar Modo Dios por arrastre
                         dragging = true
                         showKill(true)
                     }
@@ -219,6 +237,11 @@ class BubbleService : Service() {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    devHandler.removeCallbacks(devRunnable!!) // Cancelar temporizador
+                    if (isDeveloperMode) {
+                        dragging = false
+                        return@setOnTouchListener true // Escudo: Ignorar el tap normal
+                    }
                     if (dragging) {
                         if (isOverKillCenter(bubbleCenterX(), bubbleCenterY())) {
                             performKill()
@@ -332,6 +355,9 @@ class BubbleService : Service() {
     }
 
     private fun hidePanel() {
+        isDeveloperMode = false
+        if (this::devBar.isInitialized) devBar.visibility = View.GONE
+        
         if (panelShown) {
             val dm = resources.displayMetrics
             val btnH = dp(60)
@@ -393,6 +419,45 @@ class BubbleService : Service() {
         col.addView(debugText, LinearLayout.LayoutParams(-1, -2))
 
         col.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))
+
+        // --- BARRA MODO DIOS ---
+        devBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            setPadding(0, dp(5), 0, 0)
+        }
+        
+        val btnBg = android.graphics.drawable.GradientDrawable().apply {
+            setColor(0xFF000000.toInt()) // Fondo Negro
+            setStroke(dp(1), 0xFF33FF00.toInt()) // Borde Verde
+            cornerRadius = dp(20).toFloat() // Forma Pastilla
+        }
+
+        val btnPing = TextView(this).apply {
+            text = "PING HOST"
+            typeface = customFont
+            setTextColor(0xFF33FF00.toInt())
+            textSize = 12f
+            gravity = android.view.Gravity.CENTER
+            background = btnBg
+            setPadding(0, dp(8), 0, dp(8))
+            setOnClickListener { updateDebug(">_ PING: ENVIANDO PAQUETES A HF...") }
+        }
+
+        val btnBench = TextView(this).apply {
+            text = "BENCHMARK"
+            typeface = customFont
+            setTextColor(0xFF33FF00.toInt())
+            textSize = 12f
+            gravity = android.view.Gravity.CENTER
+            background = btnBg
+            setPadding(0, dp(8), 0, dp(8))
+            setOnClickListener { updateDebug(">_ BENCHMARK: INICIANDO BATERIA ZERO-UI...") }
+        }
+
+        devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
+        devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2))
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
