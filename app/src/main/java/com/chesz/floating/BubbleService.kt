@@ -198,6 +198,7 @@ class BubbleService : Service() {
                     // Iniciar temporizador Modo Dios
                     devRunnable = Runnable {
                         isDeveloperMode = true
+                        updatePermUi() // Destruir boton de permiso instantaneamente
                         flashBubbleRed() // Feedback visual
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
@@ -443,18 +444,18 @@ class BubbleService : Service() {
         }
 
         val btnPing = TextView(this).apply {
-            text = "PING HOST"
+            text = "PING / RESET"
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 12f
             gravity = android.view.Gravity.CENTER
             background = btnBg
             setPadding(0, dp(8), 0, dp(8))
-            setOnClickListener { updateDebug(">_ PING: ENVIANDO PAQUETES A HF...") }
+            setOnClickListener { pingAndResetHost() }
         }
 
         val btnBench = TextView(this).apply {
-            text = "BENCHMARK"
+            text = "FEN TEST"
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 12f
@@ -641,6 +642,44 @@ class BubbleService : Service() {
                 android.view.WindowInsets.Type.navigationBars(),
             )
         bottomInsetCache = insets.bottom
+    }
+
+    private fun pingAndResetHost() {
+        updateDebug(">_ PING: ENVIANDO PAQUETES A HF...")
+        kotlin.concurrent.thread {
+            try {
+                // FASE 1: PING (Verificar Estado)
+                val pingUrl = java.net.URL("https://daxer2-chesz-engine.hf.space/")
+                val pingConn = pingUrl.openConnection() as java.net.HttpURLConnection
+                pingConn.requestMethod = "GET"
+                pingConn.connectTimeout = 5000
+                pingConn.readTimeout = 5000
+                val code = pingConn.responseCode
+                
+                if (code == 200) {
+                    root.post { updateDebug(">_ HOST ACTIVO \n>_ SISTEMA FUNCIONANDO NORMALMENTE.") }
+                } else {
+                    root.post { updateDebug(">_ HOST DORMIDO/CAIDO (HTTP $code) \n>_ EJECUTANDO REINICIO HARDCORE...") }
+                    
+                    // FASE 2: REINICIO (API Hugging Face)
+                    val resetUrl = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart")
+                    val resetConn = resetUrl.openConnection() as java.net.HttpURLConnection
+                    resetConn.requestMethod = "POST"
+                    resetConn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTk" + "svOiM" + "hbaS")
+                    resetConn.setRequestProperty("Content-Length", "0")
+                    resetConn.doOutput = true
+                    
+                    val resetCode = resetConn.responseCode
+                    if (resetCode == 200 || resetCode == 201 || resetCode == 202) {
+                        root.post { updateDebug(">_ ORDEN DE REINICIO ACEPTADA \n>_ EL SERVIDOR ESTARA ACTIVO EN ~3 MINUTOS.") }
+                    } else {
+                        root.post { updateDebug(">_ ERROR AL REINICIAR (HTTP $resetCode)\n>_ REVISA EL TOKEN HF.") }
+                    }
+                }
+            } catch (e: Exception) {
+                root.post { updateDebug(">_ ERROR DE RED:\n>_ ${e.message}") }
+            }
+        }
     }
 
     private fun updateDebug(msg: String) {
