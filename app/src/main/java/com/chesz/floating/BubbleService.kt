@@ -371,9 +371,12 @@ class BubbleService : Service() {
             setSingleLine(false)
             minLines = 2
             maxLines = 2
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                setAutoSizeTextTypeUniformWithConfiguration(7, 11, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+            }
             gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
-            setPadding(dp(5), dp(5), dp(21), 0)
+            setPadding(dp(3), dp(4), dp(19), 0)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
         }
         col.addView(fenTitle)
