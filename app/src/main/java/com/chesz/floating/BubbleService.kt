@@ -201,7 +201,10 @@ class BubbleService : Service() {
                         flashBubbleRed() // Feedback visual
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
-                        updateDebug(">_ MODO DESARROLLADOR ACTIVO.\n>_ ESPERANDO ORDENES...")
+                        root.post { 
+                            fenTitle.text = ">_ MODE DEBUG" 
+                            debugText.text = "" // Consola en silencio
+                        }
                     }
                     devHandler.postDelayed(devRunnable!!, 5000)
 
@@ -463,7 +466,7 @@ class BubbleService : Service() {
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(5) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(1) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
