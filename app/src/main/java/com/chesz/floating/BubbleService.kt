@@ -463,7 +463,7 @@ class BubbleService : Service() {
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2))
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(5) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -524,7 +524,7 @@ class BubbleService : Service() {
 
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
-        permBar.visibility = if (mpData != null) View.GONE else View.VISIBLE
+        permBar.visibility = if (isDeveloperMode) View.GONE else if (mpData != null) View.GONE else View.VISIBLE
     }
 
     private fun createKillArea() {
@@ -643,9 +643,9 @@ class BubbleService : Service() {
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
-            debugText.maxLines = 6
+            debugText.maxLines = 15
             if (android.os.Build.VERSION.SDK_INT >= 26) {
-                debugText.setAutoSizeTextTypeUniformWithConfiguration(13, 16, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                debugText.setAutoSizeTextTypeUniformWithConfiguration(6, 13, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
             }
             debugText.text = msg
         }
