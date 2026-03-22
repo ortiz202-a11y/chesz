@@ -189,7 +189,7 @@ class BubbleService : Service() {
                     y = dp(167)
                 }
 
-        setStateA_layout()
+        setStateALayout()
 
         root.setOnTouchListener { _, e ->
             when (e.actionMasked) {
@@ -287,7 +287,7 @@ class BubbleService : Service() {
         }
     }
 
-    private fun setStateA_layout() {
+    private fun setStateALayout() {
         val btnPx = dp(60)
         rootLp.width = btnPx
         rootLp.height = btnPx
@@ -376,7 +376,7 @@ class BubbleService : Service() {
             val panelH = (dm.heightPixels * 0.17f).toInt()
             rootLp.y = rootLp.y + (panelH - btnH)
         }
-        setStateA_layout()
+        setStateALayout()
     }
 
             private fun buildPanel(): FrameLayout {
