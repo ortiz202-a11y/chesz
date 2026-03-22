@@ -438,6 +438,7 @@ class BubbleService : Service() {
 
         // --- BARRA MODO DIOS ---
         devBar = LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
             visibility = View.GONE
             setPadding(0, dp(5), 0, 0)
@@ -472,9 +473,9 @@ class BubbleService : Service() {
         }
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(-2, -2))
-        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(0, 0, 1f))
+        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(15), 0))
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(5); rightMargin = dp(5); bottomMargin = dp(4) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(30); rightMargin = dp(0); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
