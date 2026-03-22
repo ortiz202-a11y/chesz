@@ -397,7 +397,7 @@ class BubbleService : Service() {
         val col = LinearLayout(this).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.START
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, dp(10), dp(10))
+            setPadding(0, 0, 0, 0)
             background = panelBorder
         }
 
@@ -458,7 +458,7 @@ class BubbleService : Service() {
         }
 
             btnBench = TextView(this).apply {
-            text = "FEN TEST"
+            text = "TEST FEN"
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 12f
@@ -470,7 +470,7 @@ class BubbleService : Service() {
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(0) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(38); bottomMargin = dp(0) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -677,7 +677,7 @@ class BubbleService : Service() {
                     root.post {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
-                            val isOnline = (rc == 200)
+                            val isOnline = (rc == 200 || rc == 404)
                             
                             val nColor = if (isOnline) 0xD9FF8800.toInt() else 0xD9FF0033.toInt()
                             val nStroke = if (isOnline) 0xFFFFCC00.toInt() else 0xFFFF0033.toInt()
@@ -725,6 +725,7 @@ class BubbleService : Service() {
                 try {
                     val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json")
                     conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTK" + "svOiM" + "hbaS")     
                     conn.doOutput = true
                     conn.responseCode
@@ -895,6 +896,7 @@ class BubbleService : Service() {
                 val boundary = "Boundary-" + System.currentTimeMillis()
 
                 conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json")
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
 
