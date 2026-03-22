@@ -658,7 +658,7 @@ class BubbleService : Service() {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
                             val neonRed = android.graphics.drawable.GradientDrawable().apply {
-                                setColor(0xD9FF0033.toInt())
+                                setColor(0xD9FF0033.toInt()) // Rojo Neon 85%
                                 setStroke(dp(2), 0xFFFF0033.toInt())
                                 cornerRadius = dp(20).toFloat()
                             }
@@ -666,8 +666,7 @@ class BubbleService : Service() {
                                 btnPing.background = neonRed
                                 btnPing.setTextColor(0xFFFFFFFF.toInt())
                             }
-                            updateDebug(">_ HOST DETECTADO
->_ SEGUNDO TAP PARA REINICIAR.")
+                            updateDebug(">_ HOST DETECTADO\n>_ SEGUNDO TAP PARA REINICIAR.")
                             root.postDelayed({
                                 isHostChecked = false
                                 val originalGreen = android.graphics.drawable.GradientDrawable().apply {
@@ -698,8 +697,7 @@ class BubbleService : Service() {
                     btnPing.background = originalGreen
                     btnPing.setTextColor(0xFF33FF00.toInt())
                 }
-                updateDebug(">_ HOST RESTARTING...
->_ READY IN 3MIN.")
+                updateDebug(">_ HOST RESTARTING...\n>_ READY IN 3MIN.")
             }
             kotlin.concurrent.thread {
                 try {
