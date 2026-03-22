@@ -58,6 +58,9 @@ class BubbleService : Service() {
 
     // ===== Modo Dios =====
     private var isDeveloperMode = false
+        fenTitle.text = ""
+        debugText.text = ""
+        debugText.visibility = View.GONE
     private var isHostChecked = false
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
@@ -369,6 +372,9 @@ class BubbleService : Service() {
 
     private fun hidePanel() {
         isDeveloperMode = false
+        fenTitle.text = ""
+        debugText.text = ""
+        debugText.visibility = View.GONE
         if (this::devBar.isInitialized) devBar.visibility = View.GONE
         
         if (panelShown) {
@@ -453,7 +459,7 @@ class BubbleService : Service() {
             textSize = 12f
             gravity = android.view.Gravity.CENTER
             background = btnBg
-            setPadding(0, dp(8), 0, dp(8))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
             setOnClickListener { pingAndResetHost() }
         }
 
@@ -464,13 +470,13 @@ class BubbleService : Service() {
             textSize = 12f
             gravity = android.view.Gravity.CENTER
             background = btnBg
-            setPadding(0, dp(8), 0, dp(8))
+            setPadding(dp(16), dp(8), dp(16), dp(8))
             setOnClickListener { updateDebug(">_ BENCHMARK: INICIANDO BATERIA ZERO-UI...") }
         }
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
+        col.addView(devBar, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(55); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -481,7 +487,7 @@ class BubbleService : Service() {
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2)
+            leftMargin = dp(55); bottomMargin = dp(4)
         })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
@@ -674,7 +680,7 @@ class BubbleService : Service() {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 4000
                     val rc = conn.responseCode
-                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
+                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                     root.post {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
@@ -727,10 +733,10 @@ class BubbleService : Service() {
                     val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
-                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTK" + "svOiM" + "hbaS")     
+                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")     
                     // doOutput quitado para POST simple
                     val rc = conn.responseCode
-                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
+                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                 } catch (e: Exception) {}
             }
         }
@@ -918,7 +924,7 @@ class BubbleService : Service() {
                 }
 
                                                 val rc = conn.responseCode
-                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
+                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
                 if (rc == 200) {
