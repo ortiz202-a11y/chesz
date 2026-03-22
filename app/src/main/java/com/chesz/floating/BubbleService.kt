@@ -58,6 +58,7 @@ class BubbleService : Service() {
 
     // ===== Modo Dios =====
     private var isDeveloperMode = false
+    private var isHostChecked = false
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
     private lateinit var devBar: LinearLayout
@@ -444,7 +445,7 @@ class BubbleService : Service() {
         }
 
         val btnPing = TextView(this).apply {
-            text = "PING / RESET"
+            text = "HOST P/R"
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
             textSize = 12f
@@ -467,7 +468,7 @@ class BubbleService : Service() {
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(1) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(45); bottomMargin = dp(0) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -644,40 +645,68 @@ class BubbleService : Service() {
         bottomInsetCache = insets.bottom
     }
 
-    private fun pingAndResetHost() {
-        updateDebug(">_ PING: ENVIANDO PAQUETES A HF...")
-        kotlin.concurrent.thread {
-            try {
-                // FASE 1: PING (Verificar Estado)
-                val pingUrl = java.net.URL("https://daxer2-chesz-engine.hf.space/")
-                val pingConn = pingUrl.openConnection() as java.net.HttpURLConnection
-                pingConn.requestMethod = "GET"
-                pingConn.connectTimeout = 5000
-                pingConn.readTimeout = 5000
-                val code = pingConn.responseCode
-                
-                if (code == 200) {
-                    root.post { updateDebug(">_ HOST ACTIVO \n>_ SISTEMA FUNCIONANDO NORMALMENTE.") }
-                } else {
-                    root.post { updateDebug(">_ HOST DORMIDO/CAIDO (HTTP $code) \n>_ EJECUTANDO REINICIO HARDCORE...") }
+        private fun pingAndResetHost() {
+        if (!isHostChecked) {
+            // TAP 1: AUDITORIA
+            updateDebug(">_ PING ENVIADO...")
+            kotlin.concurrent.thread {
+                try {
+                    val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 4000
+                    val rc = conn.responseCode
                     
-                    // FASE 2: REINICIO (API Hugging Face)
-                    val resetUrl = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart")
-                    val resetConn = resetUrl.openConnection() as java.net.HttpURLConnection
-                    resetConn.requestMethod = "POST"
-                    resetConn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTk" + "svOiM" + "hbaS")
-                    resetConn.setRequestProperty("Content-Length", "0")
-                    resetConn.doOutput = true
-                    
-                    val resetCode = resetConn.responseCode
-                    if (resetCode == 200 || resetCode == 201 || resetCode == 202) {
-                        root.post { updateDebug(">_ ORDEN DE REINICIO ACEPTADA \n>_ EL SERVIDOR ESTARA ACTIVO EN ~3 MINUTOS.") }
-                    } else {
-                        root.post { updateDebug(">_ ERROR AL REINICIAR (HTTP $resetCode)\n>_ REVISA EL TOKEN HF.") }
+                root.post {
+                    if (rc == 200 || rc == 503 || rc == 404) {
+                        isHostChecked = true
+                        // CAMBIO A ROJO NEON (85% opacidad en fondo)
+                        val neonRed = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(0xD9FF0033.toInt()) 
+                            setStroke(dp(2), 0xFFFF0033.toInt())
+                            cornerRadius = dp(20).toFloat()
+                        }
+                        btnPing.background = neonRed
+                        btnPing.setTextColor(0xFFFFFFFF.toInt()) // Texto blanco para contraste
+                        
+                        updateDebug(">_ HOST DETECTADO\n>_ SEGUNDO TAP PARA REINICIAR.")
+                        
+                        // RESETEAR A VERDE TRAS 10 SEG
+                        root.postDelayed({ 
+                            isHostChecked = false 
+                            val originalGreen = android.graphics.drawable.GradientDrawable().apply {
+                                setColor(0xFF000000.toInt())
+                                setStroke(dp(1), 0xFF33FF00.toInt())
+                                cornerRadius = dp(20).toFloat()
+                            }
+                            btnPing.background = originalGreen
+                            btnPing.setTextColor(0xFF33FF00.toInt())
+                        }, 10000)
                     }
                 }
-            } catch (e: Exception) {
-                root.post { updateDebug(">_ ERROR DE RED:\n>_ ${e.message}") }
+                } catch (e: Exception) {
+                    root.post { updateDebug(">_ ERROR DE RED: ${e.message}") }
+                }
+            }
+        } else {
+            // TAP 2: EJECUCION
+            isHostChecked = false
+            root.post {
+                val originalGreen = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(0xFF000000.toInt())
+                    setStroke(dp(1), 0xFF33FF00.toInt())
+                    cornerRadius = dp(20).toFloat()
+                }
+                btnPing.background = originalGreen
+                btnPing.setTextColor(0xFF33FF00.toInt())
+            }
+            updateDebug(">_ HOST RESTARTING...\n>_ READY IN 3MIN.")
+            kotlin.concurrent.thread {
+                try {
+                    val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTk" + "svOiM" + "hbaS")
+                    conn.doOutput = true
+                    conn.responseCode // Disparar peticion
+                } catch (e: Exception) {}
             }
         }
     }
