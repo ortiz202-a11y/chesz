@@ -456,7 +456,7 @@ class BubbleService : Service() {
             textSize = 12f
             gravity = android.view.Gravity.CENTER
             background = btnBg
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { pingAndResetHost() }
         }
 
@@ -467,13 +467,14 @@ class BubbleService : Service() {
             textSize = 12f
             gravity = android.view.Gravity.CENTER
             background = btnBg
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { updateDebug(">_ BENCHMARK: INICIANDO BATERIA ZERO-UI...") }
         }
 
-        devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
-        devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(55); bottomMargin = dp(4) })
+        devBar.addView(btnPing, LinearLayout.LayoutParams(-2, -2))
+        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(0, 0, 1f))
+        devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(5); rightMargin = dp(5); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
