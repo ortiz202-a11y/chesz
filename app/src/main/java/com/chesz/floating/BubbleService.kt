@@ -415,7 +415,7 @@ class BubbleService : Service() {
             }
             gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
-            setPadding(dp(3), dp(4), dp(19), 0)
+            setPadding(dp(3), dp(2), dp(3), 0)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
         }
         col.addView(fenTitle)
@@ -427,7 +427,7 @@ class BubbleService : Service() {
             gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
             visibility = android.view.View.GONE
             // AQUI RESTAURAMOS EL MARGEN DEL ANALISIS SIN AFECTAR AL FEN
-            setPadding(dp(40), 0, 0, 0)
+            setPadding(dp(40), dp(2), 0, 0)
         }
         col.addView(debugText, LinearLayout.LayoutParams(-1, -2))
 
@@ -470,7 +470,7 @@ class BubbleService : Service() {
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         devBar.addView(btnBench, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(38); bottomMargin = dp(0) })
+        col.addView(devBar, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -481,7 +481,7 @@ class BubbleService : Service() {
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
         col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            leftMargin = dp(40); gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2)
         })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
@@ -673,7 +673,8 @@ class BubbleService : Service() {
                 try {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 4000
-                    val rc = conn.responseCode
+                    val rc = val rc = conn.responseCode
+                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
                     root.post {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
@@ -728,7 +729,8 @@ class BubbleService : Service() {
                     conn.setRequestProperty("Content-Type", "application/json")
                     conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTK" + "svOiM" + "hbaS")     
                     conn.doOutput = true
-                    conn.responseCode
+                    val rc = conn.responseCode
+                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
                 } catch (e: Exception) {}
             }
         }
@@ -915,7 +917,8 @@ class BubbleService : Service() {
                     writer.flush()
                 }
 
-                                                val rc = conn.responseCode
+                                                val rc = val rc = conn.responseCode
+                    root.post { updateDebug(">_ RESTART STATUS: $rc") }
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
                 if (rc == 200) {
