@@ -58,9 +58,6 @@ class BubbleService : Service() {
 
     // ===== Modo Dios =====
     private var isDeveloperMode = false
-        fenTitle.text = ""
-        debugText.text = ""
-        debugText.visibility = View.GONE
     private var isHostChecked = false
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
