@@ -134,3 +134,5 @@
 - [x] APK lista y verificada (08:34)
 - [x] ADN e Integridad validados automáticamente (09:09)
 - [x] APK lista y verificada (09:10)
+- [x] ADN e Integridad validados automáticamente (14:40)
+- [x] APK lista y verificada (14:42)
