@@ -673,7 +673,7 @@ class BubbleService : Service() {
                 try {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 4000
-                    val rc = val rc = conn.responseCode
+                    val rc = conn.responseCode
                     root.post { updateDebug(">_ RESTART STATUS: $rc") }
                     root.post {
                         if (rc == 200 || rc == 503 || rc == 404) {
@@ -728,7 +728,7 @@ class BubbleService : Service() {
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
                     conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTK" + "svOiM" + "hbaS")     
-                    conn.doOutput = true
+                    // doOutput quitado para POST simple
                     val rc = conn.responseCode
                     root.post { updateDebug(">_ RESTART STATUS: $rc") }
                 } catch (e: Exception) {}
@@ -899,7 +899,7 @@ class BubbleService : Service() {
 
                 conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
-                conn.doOutput = true
+                // doOutput quitado para POST simple
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
 
                 conn.outputStream.use { out ->
@@ -917,7 +917,7 @@ class BubbleService : Service() {
                     writer.flush()
                 }
 
-                                                val rc = val rc = conn.responseCode
+                                                val rc = conn.responseCode
                     root.post { updateDebug(">_ RESTART STATUS: $rc") }
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
