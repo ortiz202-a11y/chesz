@@ -75,6 +75,7 @@ class BubbleService : Service() {
     private lateinit var permText: TextView
     private lateinit var debugText: TextView
     private lateinit var fenTitle: TextView
+    private lateinit var btnPing: TextView
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -444,7 +445,7 @@ class BubbleService : Service() {
             cornerRadius = dp(20).toFloat() // Forma Pastilla
         }
 
-        val btnPing = TextView(this).apply {
+        btnPing = TextView(this).apply {
             text = "HOST P/R"
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
@@ -645,49 +646,47 @@ class BubbleService : Service() {
         bottomInsetCache = insets.bottom
     }
 
-        private fun pingAndResetHost() {
+            private fun pingAndResetHost() {
         if (!isHostChecked) {
-            // TAP 1: AUDITORIA
             updateDebug(">_ PING ENVIADO...")
             kotlin.concurrent.thread {
                 try {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 4000
                     val rc = conn.responseCode
-                    
-                root.post {
-                    if (rc == 200 || rc == 503 || rc == 404) {
-                        isHostChecked = true
-                        // CAMBIO A ROJO NEON (85% opacidad en fondo)
-                        val neonRed = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(0xD9FF0033.toInt()) 
-                            setStroke(dp(2), 0xFFFF0033.toInt())
-                            cornerRadius = dp(20).toFloat()
-                        }
-                        btnPing.background = neonRed
-                        btnPing.setTextColor(0xFFFFFFFF.toInt()) // Texto blanco para contraste
-                        
-                        updateDebug(">_ HOST DETECTADO\n>_ SEGUNDO TAP PARA REINICIAR.")
-                        
-                        // RESETEAR A VERDE TRAS 10 SEG
-                        root.postDelayed({ 
-                            isHostChecked = false 
-                            val originalGreen = android.graphics.drawable.GradientDrawable().apply {
-                                setColor(0xFF000000.toInt())
-                                setStroke(dp(1), 0xFF33FF00.toInt())
+                    root.post {
+                        if (rc == 200 || rc == 503 || rc == 404) {
+                            isHostChecked = true
+                            val neonRed = android.graphics.drawable.GradientDrawable().apply {
+                                setColor(0xD9FF0033.toInt())
+                                setStroke(dp(2), 0xFFFF0033.toInt())
                                 cornerRadius = dp(20).toFloat()
                             }
-                            btnPing.background = originalGreen
-                            btnPing.setTextColor(0xFF33FF00.toInt())
-                        }, 10000)
+                            if (this::btnPing.isInitialized) {
+                                btnPing.background = neonRed
+                                btnPing.setTextColor(0xFFFFFFFF.toInt())
+                            }
+                            updateDebug(">_ HOST DETECTADO
+>_ SEGUNDO TAP PARA REINICIAR.")
+                            root.postDelayed({
+                                isHostChecked = false
+                                val originalGreen = android.graphics.drawable.GradientDrawable().apply {
+                                    setColor(0xFF000000.toInt())
+                                    setStroke(dp(1), 0xFF33FF00.toInt())
+                                    cornerRadius = dp(20).toFloat()
+                                }
+                                if (this::btnPing.isInitialized) {
+                                    btnPing.background = originalGreen
+                                    btnPing.setTextColor(0xFF33FF00.toInt())
+                                }
+                            }, 10000)
+                        }
                     }
-                }
                 } catch (e: Exception) {
                     root.post { updateDebug(">_ ERROR DE RED: ${e.message}") }
                 }
             }
         } else {
-            // TAP 2: EJECUCION
             isHostChecked = false
             root.post {
                 val originalGreen = android.graphics.drawable.GradientDrawable().apply {
@@ -695,17 +694,20 @@ class BubbleService : Service() {
                     setStroke(dp(1), 0xFF33FF00.toInt())
                     cornerRadius = dp(20).toFloat()
                 }
-                btnPing.background = originalGreen
-                btnPing.setTextColor(0xFF33FF00.toInt())
+                if (this::btnPing.isInitialized) {
+                    btnPing.background = originalGreen
+                    btnPing.setTextColor(0xFF33FF00.toInt())
+                }
+                updateDebug(">_ HOST RESTARTING...
+>_ READY IN 3MIN.")
             }
-            updateDebug(">_ HOST RESTARTING...\n>_ READY IN 3MIN.")
             kotlin.concurrent.thread {
                 try {
                     val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "trMyq" + "AEcnh" + "xTeEt" + "hRWWw" + "HFnTk" + "svOiM" + "hbaS")
                     conn.doOutput = true
-                    conn.responseCode // Disparar peticion
+                    conn.responseCode
                 } catch (e: Exception) {}
             }
         }
