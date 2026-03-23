@@ -416,9 +416,7 @@ class BubbleService : Service() {
             setSingleLine(false)
             minLines = 2
             maxLines = 2
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                setAutoSizeTextTypeUniformWithConfiguration(7, 11, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
-            }
+
             gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
             setPadding(dp(3), dp(1), dp(3), 0)
@@ -429,7 +427,7 @@ class BubbleService : Service() {
         debugText = TextView(this).apply {
             typeface = customFont
             setTextColor(0xFF33FF00.toInt())
-            textSize = 15f
+            textSize = 13f
             gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
             visibility = android.view.View.GONE
             // AQUI RESTAURAMOS EL MARGEN DEL ANALISIS SIN AFECTAR AL FEN
@@ -755,9 +753,7 @@ class BubbleService : Service() {
         root.post {
             debugText.visibility = View.VISIBLE
             debugText.maxLines = 15
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                debugText.setAutoSizeTextTypeUniformWithConfiguration(6, 13, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
-            }
+
             debugText.text = msg
         }
     }
