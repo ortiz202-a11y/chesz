@@ -470,7 +470,7 @@ class BubbleService : Service() {
             gravity = android.view.Gravity.CENTER
             background = btnBg
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            setOnClickListener { updateDebug(">_ BENCHMARK: INICIANDO BATERIA ZERO-UI...") }
+            setOnClickListener { runBenchmark() }
         }
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(-2, -2))
@@ -1034,6 +1034,87 @@ class BubbleService : Service() {
                 }
             } catch (e: Exception) {
                 updateDebug("❌ Error Red: ${e.message}")
+            }
+        }.start()
+    }
+
+
+    private fun runBenchmark() {
+        if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
+        if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
+        updateDebug(">_ INICIANDO BATERIA TEST FEN...")
+        
+        Thread {
+            try {
+                val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
+                var correct = 0
+                var resultLog = ""
+                
+                for (i in 1..10) {
+                    root.post { updateDebug(">_ TEST FEN [$i/10]\n>_ ANALIZANDO $i.png ...") }
+                    
+                    val isAsset = assets.open("benchmark/$i.png")
+                    val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                    if (dir != null && !dir.exists()) dir.mkdirs()
+                    val tempFile = java.io.File(dir, "bench_temp.png")
+                    java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
+                    isAsset.close()
+                    
+                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 15000
+                    val boundary = "Boundary-" + System.currentTimeMillis()
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    conn.instanceFollowRedirects = true
+                    conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    
+                    conn.outputStream.use { out ->
+                        val writer = java.io.PrintWriter(out.writer())
+                        writer.print("--$boundary\r\n")
+                        writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
+                        writer.print("Content-Type: image/png\r\n\r\n")
+                        writer.flush()
+                        tempFile.inputStream().use { it.copyTo(out) }
+                        writer.print("\r\n--$boundary--\r\n")
+                        writer.flush()
+                    }
+                    
+                    val rc = conn.responseCode
+                    var predictedFen = ""
+                    if (rc in 200..299) {
+                        val resp = conn.inputStream.bufferedReader().use { it.readText() }
+                        val json = org.json.JSONObject(resp)
+                        predictedFen = json.optString("fen", "").substringBefore(" ")
+                    }
+                    
+                    val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
+                    
+                    if (predictedFen == expectedFen && expectedFen.isNotEmpty()) {
+                        correct++
+                        resultLog += "$i ✓  "
+                    } else {
+                        resultLog += "$i X  "
+                    }
+                    
+                    // Pausa ligera de proteccion contra Anti-Spam (Cloudflare)
+                    Thread.sleep(800)
+                }
+                
+                val pct = (correct * 100) / 10
+                val finalMsg = if (pct == 100) "HOST GOD FUNCTION" else "HOST BAD FUNCTION"
+                
+                root.post {
+                    updateDebug(">_ BATERIA TERMINADA\n>_ RESULTADOS:\n$resultLog\n>_ SCORE: $pct%\n>_ $finalMsg")
+                    root.postDelayed({ resetToGodMode() }, 8000)
+                }
+                
+            } catch (e: Exception) {
+                root.post { 
+                    updateDebug(">_ ERROR BENCHMARK:\n${e.message}")
+                    root.postDelayed({ resetToGodMode() }, 5000)
+                }
             }
         }.start()
     }
