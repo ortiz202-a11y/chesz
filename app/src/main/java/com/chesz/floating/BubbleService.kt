@@ -917,6 +917,7 @@ class BubbleService : Service() {
                 conn.instanceFollowRedirects = true
                 // doOutput quitado para POST simple
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    conn.setRequestProperty("Connection", "close")
 
                 conn.outputStream.use { out ->
                     val writer = java.io.PrintWriter(out.writer())
@@ -1066,6 +1067,7 @@ class BubbleService : Service() {
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     conn.instanceFollowRedirects = true
                     conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    conn.setRequestProperty("Connection", "close")
 
                     conn.outputStream.use { out ->
                         val writer = java.io.PrintWriter(out.writer())
@@ -1087,6 +1089,7 @@ class BubbleService : Service() {
 
                     val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
                     Thread.sleep(1500)
+                    conn.disconnect()
                     return predictedFen == expectedFen && expectedFen.isNotEmpty()
                 }
 
