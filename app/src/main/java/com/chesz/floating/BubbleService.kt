@@ -1088,6 +1088,7 @@ class BubbleService : Service() {
                     return if (pct == 100) ">_ $color  100%" else ">_ $color  $pct%  [X ${fallos.joinToString(",")}]"
                 }
 
+                System.setProperty("http.keepAlive", "false")
                 fun procesarFoto(i: Int): Boolean {
                     val isAsset = assets.open("benchmark/$i.png")
                     val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
@@ -1120,8 +1121,12 @@ class BubbleService : Service() {
 
                     val rc = conn.responseCode
                     var predictedFen = ""
+                    
+                    // Drenar el stream obligatoriamente (sea 200 o Error) para destrabar Android
+                    val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
+                    val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                    
                     if (rc in 200..299) {
-                        val resp = conn.inputStream.bufferedReader().use { it.readText() }
                         predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
                     }
 
