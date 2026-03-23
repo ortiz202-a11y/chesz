@@ -1042,32 +1042,21 @@ class BubbleService : Service() {
     private fun runBenchmark() {
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
         if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
-        
-        root.post { 
-            fenTitle.setTextColor(0xFFFF0033.toInt())
-            fenTitle.text = ">_ PREPARANDO BATERIA..."
-            updateDebug(">_ MODO FERRARI: RÁFAGA ACTIVA")
-        }
-        
+
         Thread {
             try {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
-                var correct = 0
-                var resultLog = ""
-                
-                for (i in 1..10) {
-                    root.post { 
-                        fenTitle.text = ">_ TEST FEN [$i/10]"
-                        updateDebug(">_ ANALIZANDO $i.png ...") 
-                    }
-                    
+                var correctWhite = 0
+                var correctBlack = 0
+
+                fun procesarFoto(i: Int): Boolean {
                     val isAsset = assets.open("benchmark/$i.png")
                     val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
                     if (dir != null && !dir.exists()) dir.mkdirs()
                     val tempFile = java.io.File(dir, "bench_temp.png")
                     java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
                     isAsset.close()
-                    
+
                     val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
                     val conn = url.openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 8000
@@ -1077,7 +1066,7 @@ class BubbleService : Service() {
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     conn.instanceFollowRedirects = true
                     conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                    
+
                     conn.outputStream.use { out ->
                         val writer = java.io.PrintWriter(out.writer())
                         writer.print("--$boundary\r\n")
@@ -1088,43 +1077,68 @@ class BubbleService : Service() {
                         writer.print("\r\n--$boundary--\r\n")
                         writer.flush()
                     }
-                    
+
                     val rc = conn.responseCode
                     var predictedFen = ""
                     if (rc in 200..299) {
                         val resp = conn.inputStream.bufferedReader().use { it.readText() }
-                        val json = org.json.JSONObject(resp)
-                        predictedFen = json.optString("fen", "").substringBefore(" ")
+                        predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
                     }
-                    
+
                     val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                    
-                    if (predictedFen == expectedFen && expectedFen.isNotEmpty()) {
-                        correct++
-                        resultLog += "$i ✓  "
-                    } else {
-                        resultLog += "$i X  "
-                    }
-                    
-                    Thread.sleep(300)
+                    Thread.sleep(1500)
+                    return predictedFen == expectedFen && expectedFen.isNotEmpty()
                 }
+
+                // ---------------- ESCENA 1: BLANCAS ----------------
+                root.post { fenTitle.text = "" }
+                for (i in 1..5) {
+                    root.post { updateDebug(">_ TEST 1/2\n>_ FOTO $i / 5") }
+                    val ok = procesarFoto(i)
+                    if (ok) correctWhite++
+                }
+                val pctWhite = (correctWhite * 100) / 5
                 
-                val pct = (correct * 100) / 10
-                val finalMsg = if (pct == 100) "HOST GOD FUNCTION" else "HOST BAD FUNCTION"
+                // ---------------- ESCENA 2: FUSION (LECTURA + ENFRIAMIENTO 10s) ----------------
+                root.post { updateDebug(">_ TEST 1/2\n>_ TEST PLAY WHITE  $pctWhite%") }
+                for (sec in 10 downTo 1) {
+                    root.post { fenTitle.text = ">_ NEXT IN ${sec}s" }
+                    Thread.sleep(1000)
+                }
+
+                // ---------------- ESCENA 3: NEGRAS ----------------
+                root.post { fenTitle.text = "" }
+                for (i in 6..10) {
+                    val currentFoto = i - 5
+                    root.post { updateDebug(">_ TEST 2/2\n>_ FOTO $currentFoto / 5") }
+                    val ok = procesarFoto(i)
+                    if (ok) correctBlack++
+                }
+                val pctBlack = (correctBlack * 100) / 5
+                val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
+                // ---------------- ESCENA 4: REPORTE FINAL ACUMULADO + CIERRE 5s ----------------
                 root.post {
-                    fenTitle.setTextColor(0xFF33FF00.toInt())
-                    fenTitle.text = ">_ MODE DEBUG"
-                    updateDebug(">_ BATERIA TERMINADA\n>_ RESULTADOS:\n$resultLog\n>_ SCORE: $pct%\n>_ $finalMsg")
-                    root.postDelayed({ resetToGodMode() }, 8000)
+                    updateDebug(">_ TEST PLAY WHITE  $pctWhite%\n>_ TEST PLAY black  $pctBlack%\n>_ TOTAL TEST $pctTotal%")
                 }
-                
-            } catch (e: Exception) {
+                for (sec in 5 downTo 1) {
+                    root.post { fenTitle.text = ">_ CLOSING IN ${sec}s" }
+                    Thread.sleep(1000)
+                }
+
+                // ---------------- ESCENA 5: RESTAURACION ----------------
                 root.post { 
-                    fenTitle.setTextColor(0xFF33FF00.toInt())
                     fenTitle.text = ">_ MODE DEBUG"
-                    updateDebug(">_ ERROR BENCHMARK:\n${e.message}")
-                    root.postDelayed({ resetToGodMode() }, 5000)
+                    resetToGodMode() 
+                }
+
+            } catch (e: Exception) {
+                root.post {
+                    updateDebug(">_ ERROR: ${e.message}")
+                    root.postDelayed({ 
+                        fenTitle.text = ">_ MODE DEBUG"
+                        resetToGodMode() 
+                    }, 5000)
                 }
             }
         }.start()
