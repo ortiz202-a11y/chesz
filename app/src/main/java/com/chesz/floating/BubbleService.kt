@@ -317,7 +317,7 @@ class BubbleService : Service() {
         val dm = resources.displayMetrics
         val btnW = dp(60)
         val btnH = dp(60)
-        val panelW = (dm.widthPixels * 0.55f).toInt()
+        val panelW = (dm.widthPixels * 0.60f).toInt()
         val panelH = (dm.heightPixels * 0.17f).toInt()
 
         val rootX = rootLp.x
@@ -421,8 +421,8 @@ class BubbleService : Service() {
             }
             gravity = android.view.Gravity.CENTER
             setLineSpacing(0f, 0.9f)
-            setPadding(dp(3), dp(2), dp(3), 0)
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0 }
+            setPadding(dp(3), dp(1), dp(3), 0)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0; rightMargin = dp(27) }
         }
         col.addView(fenTitle)
 
