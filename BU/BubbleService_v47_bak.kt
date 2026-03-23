@@ -670,14 +670,18 @@ class BubbleService : Service() {
 
     private fun pingAndResetHost() {
         if (!isHostChecked) {
-            devHandler.removeCallbacksAndMessages(null)
-            root.post { 
-                fenTitle.text = ""
-                updateDebug(">_ PING ENVIADO...") 
+        // Escudo de 10s: Si falla la red, resetear la UI obligatoriamente
+        devHandler.removeCallbacksAndMessages(null)
+        devHandler.postDelayed({ 
+            if (isDeveloperMode && !isHostChecked) {
+                updateDebug(">_ ERROR: TIMEOUT DE RED (10s)")
+                resetToGodMode()
             }
-            if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
-            if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
+        }, 10000)
 
+            updateDebug(">_ PING ENVIADO...")
+            if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
+            
             kotlin.concurrent.thread {
                 try {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
@@ -686,16 +690,16 @@ class BubbleService : Service() {
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     conn.instanceFollowRedirects = true
                     val rc = conn.responseCode
-
+                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                     root.post {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
                             val isOnline = (rc == 200 || rc == 404)
+                            
                             val nColor = if (isOnline) 0xD9FF8800.toInt() else 0xD9FF0033.toInt()
                             val nStroke = if (isOnline) 0xFFFFCC00.toInt() else 0xFFFF0033.toInt()
-
+                            
                             if (this::btnPing.isInitialized) {
-                                btnPing.visibility = android.view.View.VISIBLE
                                 btnPing.background = android.graphics.drawable.GradientDrawable().apply {
                                     setColor(nColor)
                                     setStroke(dp(2), nStroke)
@@ -703,83 +707,47 @@ class BubbleService : Service() {
                                 }
                                 btnPing.setTextColor(0xFFFFFFFF.toInt())
                             }
-
-                            val msg = if (isOnline) ">_ HOST : ONLINE\n>_ OPTIONAL RESTART: ORANGE BTN" else ">_ HOST : SLEEP\n>_ WAKE UP HOST: RED BTN"
+                            
+                            val msg = if (isOnline) ">_ HOST : ONLINE\n>_ OPTIONAL RESTART: ORANGE BTN" 
+                                      else ">_ HOST : SLEEP\n>_ WAKE UP HOST: RED BTN"
                             updateDebug(msg)
 
-                            Thread {
-                                for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = ">_ ${sec}s" }
-                                    Thread.sleep(1000)
+                            root.postDelayed({
+                                if (isHostChecked) {
+                                    isHostChecked = false
+                                    updateDebug(">_ TIME OUT")
+                                    root.postDelayed({ resetToGodMode() }, 1500)
                                 }
-                                root.post { fenTitle.text = ">_ 0s" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = "" }
-                                Thread.sleep(300)
-                                root.post {
-                                    if (isHostChecked) {
-                                        isHostChecked = false
-                                        updateDebug(">_ TIME OUT")
-                                        root.postDelayed({ fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }, 1500)
-                                    }
-                                }
-                            }.start()
+                            }, 10000)
                         } else {
+                            if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
                             updateDebug(">_ STATUS: OFFLINE\n>_ CHECK HOST / MANUAL REBOOT")
-                            Thread {
-                                for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = ">_ ${sec}s" }
-                                    Thread.sleep(1000)
-                                }
-                                root.post { fenTitle.text = ">_ 0s" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = "" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
-                            }.start()
+                            root.postDelayed({ resetToGodMode() }, 10000)
                         }
                     }
                 } catch (e: Exception) {
-                    root.post {
+                    root.post { 
+                        if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
                         updateDebug(">_ STATUS: OFFLINE\n>_ CHECK HOST / MANUAL REBOOT")
-                        Thread {
-                            for (sec in 5 downTo 1) {
-                                root.post { fenTitle.text = ">_ ${sec}s" }
-                                Thread.sleep(1000)
-                            }
-                            root.post { fenTitle.text = ">_ 0s" }
-                            Thread.sleep(300)
-                            root.post { fenTitle.text = "" }
-                            Thread.sleep(300)
-                            root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
-                        }.start()
+                        root.postDelayed({ resetToGodMode() }, 10000)
                     }
                 }
             }
         } else {
             isHostChecked = false
-            root.post { updateDebug(">_ HOST RESTARTING...\n>_ READY IN 1-3MIN.") }
-
-            Thread {
-                for (sec in 5 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
-                    Thread.sleep(1000)
-                }
-                root.post { fenTitle.text = ">_ 0s" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = "" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
-            }.start()
-
+            updateDebug(">_ HOST RESTARTING...\n>_ READY IN 1-3MIN.")
+            root.postDelayed({ resetToGodMode() }, 5000)
+            
             kotlin.concurrent.thread {
                 try {
                     val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")
+                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")     
+                    // doOutput quitado para POST simple
                     val rc = conn.responseCode
+                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                 } catch (e: Exception) {}
             }
         }
@@ -1081,12 +1049,6 @@ class BubbleService : Service() {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
                 var correctWhite = 0
                 var correctBlack = 0
-                val fallosBlancas = mutableListOf<Int>()
-                val fallosNegras = mutableListOf<Int>()
-
-                fun formatRes(color: String, pct: Int, fallos: List<Int>): String {
-                    return if (pct == 100) ">_ $color  100%" else ">_ $color  $pct%  [X ${fallos.joinToString(",")}]"
-                }
 
                 fun procesarFoto(i: Int): Boolean {
                     val isAsset = assets.open("benchmark/$i.png")
@@ -1131,44 +1093,43 @@ class BubbleService : Service() {
                     return predictedFen == expectedFen && expectedFen.isNotEmpty()
                 }
 
+                // ---------------- ESCENA 1: BLANCAS ----------------
                 root.post { fenTitle.text = "" }
                 for (i in 1..5) {
                     root.post { updateDebug(">_ TEST 1/2\n>_ FOTO $i / 5") }
                     val ok = procesarFoto(i)
-                    if (ok) correctWhite++ else fallosBlancas.add(i)
+                    if (ok) correctWhite++
                 }
                 val pctWhite = (correctWhite * 100) / 5
-                val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
                 
-                root.post { updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite") }
+                // ---------------- ESCENA 2: FUSION (LECTURA + ENFRIAMIENTO 10s) ----------------
+                root.post { updateDebug(">_ TEST 1/2\n>_ TEST PLAY WHITE  $pctWhite%") }
                 for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
+                    root.post { fenTitle.text = ">_ NEXT IN ${sec}s" }
                     Thread.sleep(1000)
                 }
 
+                // ---------------- ESCENA 3: NEGRAS ----------------
                 root.post { fenTitle.text = "" }
                 for (i in 6..10) {
                     val currentFoto = i - 5
                     root.post { updateDebug(">_ TEST 2/2\n>_ FOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
-                    if (ok) correctBlack++ else fallosNegras.add(i)
+                    if (ok) correctBlack++
                 }
                 val pctBlack = (correctBlack * 100) / 5
-                val resBlack = formatRes("BLACK", pctBlack, fallosNegras)
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
+                // ---------------- ESCENA 4: REPORTE FINAL ACUMULADO + CIERRE 5s ----------------
                 root.post {
-                    updateDebug(">_ MATCH\n$resWhite\n$resBlack\n>_ TOTAL TEST $pctTotal%")
+                    updateDebug(">_ TEST PLAY WHITE  $pctWhite%\n>_ TEST PLAY black  $pctBlack%\n>_ TOTAL TEST $pctTotal%")
                 }
                 for (sec in 5 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
+                    root.post { fenTitle.text = ">_ CLOSING IN ${sec}s" }
                     Thread.sleep(1000)
                 }
 
-                root.post { fenTitle.text = ">_ 0s" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = "" }
-                Thread.sleep(300)
+                // ---------------- ESCENA 5: RESTAURACION ----------------
                 root.post { 
                     fenTitle.text = ">_ MODE DEBUG"
                     resetToGodMode() 
