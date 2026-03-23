@@ -1119,6 +1119,98 @@ class BubbleService : Service() {
         }.start()
     }
 
+
+    private fun runBenchmark() {
+        if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
+        if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
+        
+        root.post { 
+            fenTitle.setTextColor(0xFFFF0033.toInt())
+            fenTitle.text = ">_ PREPARANDO BATERIA..."
+            updateDebug(">_ MODO FERRARI: RÁFAGA ACTIVA")
+        }
+        
+        Thread {
+            try {
+                val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
+                var correct = 0
+                var resultLog = ""
+                
+                for (i in 1..10) {
+                    root.post { 
+                        fenTitle.text = ">_ TEST FEN [$i/10]"
+                        updateDebug(">_ ANALIZANDO $i.png ...") 
+                    }
+                    
+                    val isAsset = assets.open("benchmark/$i.png")
+                    val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                    if (dir != null && !dir.exists()) dir.mkdirs()
+                    val tempFile = java.io.File(dir, "bench_temp.png")
+                    java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
+                    isAsset.close()
+                    
+                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 15000
+                    val boundary = "Boundary-" + System.currentTimeMillis()
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    conn.instanceFollowRedirects = true
+                    conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    
+                    conn.outputStream.use { out ->
+                        val writer = java.io.PrintWriter(out.writer())
+                        writer.print("--$boundary\r\n")
+                        writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
+                        writer.print("Content-Type: image/png\r\n\r\n")
+                        writer.flush()
+                        tempFile.inputStream().use { it.copyTo(out) }
+                        writer.print("\r\n--$boundary--\r\n")
+                        writer.flush()
+                    }
+                    
+                    val rc = conn.responseCode
+                    var predictedFen = ""
+                    if (rc in 200..299) {
+                        val resp = conn.inputStream.bufferedReader().use { it.readText() }
+                        val json = org.json.JSONObject(resp)
+                        predictedFen = json.optString("fen", "").substringBefore(" ")
+                    }
+                    
+                    val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
+                    
+                    if (predictedFen == expectedFen && expectedFen.isNotEmpty()) {
+                        correct++
+                        resultLog += "$i ✓  "
+                    } else {
+                        resultLog += "$i X  "
+                    }
+                    
+                    Thread.sleep(300)
+                }
+                
+                val pct = (correct * 100) / 10
+                val finalMsg = if (pct == 100) "HOST GOD FUNCTION" else "HOST BAD FUNCTION"
+                
+                root.post {
+                    fenTitle.setTextColor(0xFF33FF00.toInt())
+                    fenTitle.text = ">_ MODE DEBUG"
+                    updateDebug(">_ BATERIA TERMINADA\n>_ RESULTADOS:\n$resultLog\n>_ SCORE: $pct%\n>_ $finalMsg")
+                    root.postDelayed({ resetToGodMode() }, 8000)
+                }
+                
+            } catch (e: Exception) {
+                root.post { 
+                    fenTitle.setTextColor(0xFF33FF00.toInt())
+                    fenTitle.text = ">_ MODE DEBUG"
+                    updateDebug(">_ ERROR BENCHMARK:\n${e.message}")
+                    root.postDelayed({ resetToGodMode() }, 5000)
+                }
+            }
+        }.start()
+    }
+
     private fun esFenValido64(fen: String): Boolean {
         val filas = fen.split(" ")[0].split("/")
         if (filas.size != 8) return false
