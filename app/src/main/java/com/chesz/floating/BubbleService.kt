@@ -362,12 +362,15 @@ class BubbleService : Service() {
             }
 
         panelShown = true
+        resetToGodMode()
         updatePermUi()
         root.requestLayout()
         runCatching { wm.updateViewLayout(root, rootLp) }
     }
 
     private fun hidePanel() {
+        devHandler.removeCallbacksAndMessages(null)
+        isHostChecked = false
         isDeveloperMode = false
         fenTitle.text = ""
         debugText.text = ""
@@ -669,6 +672,15 @@ class BubbleService : Service() {
 
     private fun pingAndResetHost() {
         if (!isHostChecked) {
+        // Escudo de 10s: Si falla la red, resetear la UI obligatoriamente
+        devHandler.removeCallbacksAndMessages(null)
+        devHandler.postDelayed({ 
+            if (isDeveloperMode && !isHostChecked) {
+                updateDebug(">_ ERROR: TIMEOUT DE RED (10s)")
+                resetToGodMode()
+            }
+        }, 10000)
+
             updateDebug(">_ PING ENVIADO...")
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
             
