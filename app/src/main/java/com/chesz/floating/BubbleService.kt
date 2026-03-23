@@ -686,6 +686,9 @@ class BubbleService : Service() {
                 try {
                     val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 4000
+                    conn.readTimeout = 6000
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                    conn.instanceFollowRedirects = true
                     val rc = conn.responseCode
                     root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
                     root.post {
@@ -740,6 +743,7 @@ class BubbleService : Service() {
                     val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")     
                     // doOutput quitado para POST simple
                     val rc = conn.responseCode
@@ -902,14 +906,15 @@ class BubbleService : Service() {
     private fun sendToCheszEngine(file: java.io.File) {
         Thread {
             try {
-                val url = java.net.URL("https://Daxer2-chesz-engine.hf.space/predict")
+                val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 8000
                 conn.readTimeout = 10000
                 val boundary = "Boundary-" + System.currentTimeMillis()
 
                 conn.requestMethod = "POST"
-                    conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                conn.instanceFollowRedirects = true
                 // doOutput quitado para POST simple
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
 
