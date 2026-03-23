@@ -485,9 +485,7 @@ class BubbleService : Service() {
             }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
-        col.addView(permBar, LinearLayout.LayoutParams(-2, dp(40)).apply {
-            leftMargin = dp(12); rightMargin = dp(13); bottomMargin = dp(4)
-        })
+        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(40)).apply { leftMargin = dp(30); rightMargin = dp(0); bottomMargin = dp(4) })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
 
