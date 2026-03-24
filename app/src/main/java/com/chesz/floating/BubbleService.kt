@@ -1084,6 +1084,7 @@ class BubbleService : Service() {
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
                 logFile.writeText("=== REPORTE FEN BENCHMARK ===\n")
+                
                 var correctWhite = 0
                 var correctBlack = 0
                 val fallosBlancas = mutableListOf<Int>()
@@ -1110,7 +1111,6 @@ class BubbleService : Service() {
                             val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}-$intentos")
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             
-                            // TIMEOUT CORTO: Si el socket es zombie, que reviente rapido
                             conn.connectTimeout = 4000
                             conn.readTimeout = 6500 
                             
@@ -1143,7 +1143,6 @@ class BubbleService : Service() {
 
                             val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
                             
-                            // Espionaje: Guardar la respuesta exacta en el txt
                             val rawLimpio = resp.take(80).replace("\n", "")
                             logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
                             
@@ -1154,13 +1153,13 @@ class BubbleService : Service() {
                         } catch (e: Exception) {
                             intentos++
                             if (intentos >= 2) return false
-                            // AUTO-CURACION: El zombie murio. Dormimos 200ms y disparamos el reintento.
                             Thread.sleep(200)
                         }
                     }
                     return false
                 }
 
+                // --- FASE 1: BLANCAS ---
                 root.post { fenTitle.text = "" }
                 for (i in 1..5) {
                     root.post { updateDebug(">_ TEST 1/2\n>_ FOTO $i / 5") }
@@ -1170,15 +1169,47 @@ class BubbleService : Service() {
                 val pctWhite = (correctWhite * 100) / 5
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
                 
-                root.post { updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite") }
+                // --- ESPERA 10s O INTERRUPCION MANUAL ---
+                var phase2Triggered = false
+                root.post { 
+                    updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite\n>_ OPTIONAL 2 TEST")
+                    
+                    if (this::btnBench.isInitialized) {
+                        btnBench.text = "TEST 2/2"
+                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(0xD9FF8800.toInt())
+                            setStroke(dp(2), 0xFFFFCC00.toInt())
+                            cornerRadius = dp(20).toFloat()
+                        }
+                        btnBench.setTextColor(0xFFFFFFFF.toInt())
+                        btnBench.visibility = android.view.View.VISIBLE
+                        btnBench.setOnClickListener {
+                            phase2Triggered = true
+                            btnBench.visibility = android.view.View.GONE
+                        }
+                    }
+                }
                 
-                for (sec in 5 downTo 1) {
+                for (sec in 10 downTo 1) {
                     root.post { fenTitle.text = ">_ ${sec}s" }
-                    Thread.sleep(1000)
+                    // Bucle rapido para detectar el tap sin congelar la interfaz
+                    for (ms in 0 until 10) {
+                        if (phase2Triggered) break
+                        Thread.sleep(100)
+                    }
+                    if (phase2Triggered) break
                 }
 
-                root.post { fenTitle.text = "" }
+                if (!phase2Triggered) {
+                    // ABANDONO: Ignoraste el boton.
+                    root.post { fenTitle.text = ">_ 0s" }
+                    Thread.sleep(300)
+                    root.post { fenTitle.text = "" }
+                    throw Exception("ABORT_MANUAL")
+                }
 
+                // --- FASE 2: NEGRAS ---
+                root.post { fenTitle.text = "" }
                 for (i in 6..10) {
                     val currentFoto = i - 5
                     root.post { updateDebug(">_ TEST 2/2\n>_ FOTO $currentFoto / 5") }
@@ -1189,30 +1220,38 @@ class BubbleService : Service() {
                 val resBlack = formatRes("BLACK", pctBlack, fallosNegras)
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
+                // --- REPORTE FINAL ---
                 root.post {
                     updateDebug(">_ MATCH\n$resWhite\n$resBlack\n>_ TOTAL TEST $pctTotal%")
                 }
-                for (sec in 5 downTo 1) {
+                for (sec in 10 downTo 1) {
                     root.post { fenTitle.text = ">_ ${sec}s" }
                     Thread.sleep(1000)
                 }
-
                 root.post { fenTitle.text = ">_ 0s" }
                 Thread.sleep(300)
                 root.post { fenTitle.text = "" }
-                Thread.sleep(300)
-                root.post { 
-                    fenTitle.text = ">_ MODE DEBUG"
-                    resetToGodMode() 
-                }
 
             } catch (e: Exception) {
+                if (e.message != "ABORT_MANUAL") {
+                    root.post { updateDebug(">_ ERROR: ${e.message}") }
+                    Thread.sleep(5000)
+                }
+            } finally {
+                // RESTAURACION ABSOLUTA (Garantizado)
                 root.post {
-                    updateDebug(">_ ERROR: ${e.message}")
-                    root.postDelayed({ 
-                        fenTitle.text = ">_ MODE DEBUG"
-                        resetToGodMode() 
-                    }, 5000)
+                    if (this::btnBench.isInitialized) {
+                        btnBench.text = "TEST FEN"
+                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(0xFF000000.toInt())
+                            setStroke(dp(1), 0xFF33FF00.toInt())
+                            cornerRadius = dp(20).toFloat()
+                        }
+                        btnBench.setTextColor(0xFF33FF00.toInt())
+                        btnBench.setOnClickListener { runBenchmark() } // Restaura el disparador original
+                    }
+                    fenTitle.text = ">_ MODE DEBUG"
+                    resetToGodMode() // Esto purgara el panel de texto a ""
                 }
             }
         }.start()
