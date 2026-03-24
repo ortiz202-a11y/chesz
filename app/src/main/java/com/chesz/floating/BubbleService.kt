@@ -1083,7 +1083,9 @@ class BubbleService : Service() {
                 val dirLog = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
-                logFile.writeText("=== REPORTE FEN BENCHMARK ===\n")
+                
+                // MODO APPEND: No borra, solo actualiza sumando al final.
+                logFile.appendText("\n\n=== NUEVO REPORTE FEN BENCHMARK ===\n")
                 
                 var correctWhite = 0
                 var correctBlack = 0
@@ -1093,9 +1095,6 @@ class BubbleService : Service() {
                 fun formatRes(color: String, pct: Int, fallos: List<Int>): String {
                     return if (pct == 100) ">_ $color  100%" else ">_ $color  $pct%  [X ${fallos.joinToString(",")}]"
                 }
-
-                System.setProperty("http.keepAlive", "false")
-                System.setProperty("http.maxConnections", "20")
 
                 fun procesarFoto(i: Int): Boolean {
                     var intentos = 0
@@ -1111,15 +1110,15 @@ class BubbleService : Service() {
                             val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}-$intentos")
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             
-                            conn.connectTimeout = 4000
-                            conn.readTimeout = 6500 
+                            conn.connectTimeout = 8000
+                            conn.readTimeout = 15000 // Tiempos sanos restaurados
                             
                             val boundary = "Boundary-" + System.currentTimeMillis()
                             conn.requestMethod = "POST"
                             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                             conn.instanceFollowRedirects = true
                             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                            conn.setRequestProperty("Connection", "close")
+                            // KEEP-ALIVE ACTIVADO: Se elimino "Connection: close" y la orden de desconexion.
 
                             conn.outputStream.use { out ->
                                 val writer = java.io.PrintWriter(out.writer())
@@ -1142,18 +1141,25 @@ class BubbleService : Service() {
                             }
 
                             val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                            
                             val rawLimpio = resp.take(80).replace("\n", "")
+                            
+                            // ESCRITURA INMEDIATA INCLUSO SI FALLA EL MATCH
                             logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
                             
-                            Thread.sleep(1500)
-                            conn.disconnect()
+                            Thread.sleep(1500) // Velocidad rafaga a 1.5s
+                            
+                            // En Android, cerrar el stream de datos con ".use" es suficiente para liberar el socket en Keep-Alive.
+                            // No aplicamos conn.disconnect() para no matar la tuberia.
                             return predictedFen == expectedFen && expectedFen.isNotEmpty()
                             
                         } catch (e: Exception) {
                             intentos++
-                            if (intentos >= 2) return false
-                            Thread.sleep(200)
+                            if (intentos >= 2) {
+                                // ESCRITURA FORZADA DE ERROR DE RED
+                                logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
+                                return false
+                            }
+                            Thread.sleep(500)
                         }
                     }
                     return false
@@ -1192,7 +1198,6 @@ class BubbleService : Service() {
                 
                 for (sec in 10 downTo 1) {
                     root.post { fenTitle.text = ">_ ${sec}s" }
-                    // Bucle rapido para detectar el tap sin congelar la interfaz
                     for (ms in 0 until 10) {
                         if (phase2Triggered) break
                         Thread.sleep(100)
@@ -1201,10 +1206,10 @@ class BubbleService : Service() {
                 }
 
                 if (!phase2Triggered) {
-                    // ABANDONO: Ignoraste el boton.
                     root.post { fenTitle.text = ">_ 0s" }
                     Thread.sleep(300)
                     root.post { fenTitle.text = "" }
+                    logFile.appendText("=== ABORTO MANUAL ANTES DE NEGRAS ===\n")
                     throw Exception("ABORT_MANUAL")
                 }
 
@@ -1220,7 +1225,9 @@ class BubbleService : Service() {
                 val resBlack = formatRes("BLACK", pctBlack, fallosNegras)
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
-                // --- REPORTE FINAL ---
+                // --- REPORTE FINAL Y SELLO CHESZ ---
+                logFile.appendText("=== CHESZ ===\n")
+                
                 root.post {
                     updateDebug(">_ MATCH\n$resWhite\n$resBlack\n>_ TOTAL TEST $pctTotal%")
                 }
@@ -1238,7 +1245,6 @@ class BubbleService : Service() {
                     Thread.sleep(5000)
                 }
             } finally {
-                // RESTAURACION ABSOLUTA (Garantizado)
                 root.post {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
@@ -1248,10 +1254,10 @@ class BubbleService : Service() {
                             cornerRadius = dp(20).toFloat()
                         }
                         btnBench.setTextColor(0xFF33FF00.toInt())
-                        btnBench.setOnClickListener { runBenchmark() } // Restaura el disparador original
+                        btnBench.setOnClickListener { runBenchmark() }
                     }
                     fenTitle.text = ">_ MODE DEBUG"
-                    resetToGodMode() // Esto purgara el panel de texto a ""
+                    resetToGodMode()
                 }
             }
         }.start()
