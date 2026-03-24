@@ -1084,7 +1084,6 @@ class BubbleService : Service() {
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
                 
-                // MODO APPEND: No borra, solo actualiza sumando al final.
                 logFile.appendText("\n\n=== NUEVO REPORTE FEN BENCHMARK ===\n")
                 
                 var correctWhite = 0
@@ -1110,15 +1109,20 @@ class BubbleService : Service() {
                             val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}-$intentos")
                             val conn = url.openConnection() as java.net.HttpURLConnection
                             
-                            conn.connectTimeout = 8000
-                            conn.readTimeout = 15000 // Tiempos sanos restaurados
+                            // LIMITES CORTOS: Si choca, aborta rapido.
+                            conn.connectTimeout = 4000
+                            conn.readTimeout = 6500 
                             
                             val boundary = "Boundary-" + System.currentTimeMillis()
                             conn.requestMethod = "POST"
                             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                             conn.instanceFollowRedirects = true
                             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                            // KEEP-ALIVE ACTIVADO: Se elimino "Connection: close" y la orden de desconexion.
+                            
+                            // DESTRUCTOR SELECTIVO: Solo purga la red en la frontera de las fases.
+                            if (i == 5 || i == 10) {
+                                conn.setRequestProperty("Connection", "close")
+                            }
 
                             conn.outputStream.use { out ->
                                 val writer = java.io.PrintWriter(out.writer())
@@ -1143,29 +1147,24 @@ class BubbleService : Service() {
                             val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
                             val rawLimpio = resp.take(80).replace("\n", "")
                             
-                            // ESCRITURA INMEDIATA INCLUSO SI FALLA EL MATCH
                             logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
                             
-                            Thread.sleep(1500) // Velocidad rafaga a 1.5s
-                            
-                            // En Android, cerrar el stream de datos con ".use" es suficiente para liberar el socket en Keep-Alive.
-                            // No aplicamos conn.disconnect() para no matar la tuberia.
+                            // TU VELOCIDAD DE RAFAGA INTACTA
+                            Thread.sleep(1500)
                             return predictedFen == expectedFen && expectedFen.isNotEmpty()
                             
                         } catch (e: Exception) {
                             intentos++
                             if (intentos >= 2) {
-                                // ESCRITURA FORZADA DE ERROR DE RED
                                 logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
                                 return false
                             }
-                            Thread.sleep(500)
+                            Thread.sleep(200)
                         }
                     }
                     return false
                 }
 
-                // --- FASE 1: BLANCAS ---
                 root.post { fenTitle.text = "" }
                 for (i in 1..5) {
                     root.post { updateDebug(">_ TEST 1/2\n>_ FOTO $i / 5") }
@@ -1175,11 +1174,9 @@ class BubbleService : Service() {
                 val pctWhite = (correctWhite * 100) / 5
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
                 
-                // --- ESPERA 10s O INTERRUPCION MANUAL ---
                 var phase2Triggered = false
                 root.post { 
                     updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite\n>_ OPTIONAL 2 TEST")
-                    
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST 2/2"
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
@@ -1209,11 +1206,10 @@ class BubbleService : Service() {
                     root.post { fenTitle.text = ">_ 0s" }
                     Thread.sleep(300)
                     root.post { fenTitle.text = "" }
-                    logFile.appendText("=== ABORTO MANUAL ANTES DE NEGRAS ===\n")
+                    logFile.appendText("=== ABORTO MANUAL ===\n")
                     throw Exception("ABORT_MANUAL")
                 }
 
-                // --- FASE 2: NEGRAS ---
                 root.post { fenTitle.text = "" }
                 for (i in 6..10) {
                     val currentFoto = i - 5
@@ -1225,7 +1221,6 @@ class BubbleService : Service() {
                 val resBlack = formatRes("BLACK", pctBlack, fallosNegras)
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
-                // --- REPORTE FINAL Y SELLO CHESZ ---
                 logFile.appendText("=== CHESZ ===\n")
                 
                 root.post {
