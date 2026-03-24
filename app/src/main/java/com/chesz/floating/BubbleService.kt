@@ -1090,51 +1090,66 @@ class BubbleService : Service() {
                 }
 
                 System.setProperty("http.keepAlive", "false")
-                
+                System.setProperty("http.maxConnections", "20")
+
                 fun procesarFoto(i: Int): Boolean {
-                    val isAsset = assets.open("benchmark/$i.png")
-                    val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-                    if (dir != null && !dir.exists()) dir.mkdirs()
-                    val tempFile = java.io.File(dir, "bench_temp.png")
-                    java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
-                    isAsset.close()
+                    var intentos = 0
+                    while (intentos < 2) {
+                        try {
+                            val isAsset = assets.open("benchmark/$i.png")
+                            val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                            if (dir != null && !dir.exists()) dir.mkdirs()
+                            val tempFile = java.io.File(dir, "bench_temp.png")
+                            java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
+                            isAsset.close()
 
-                    System.setProperty("http.maxConnections", "20")
-                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
-                    val conn = url.openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 8000
-                    conn.readTimeout = 15000
-                    val boundary = "Boundary-" + System.currentTimeMillis()
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.instanceFollowRedirects = true
-                    conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                    conn.setRequestProperty("Connection", "close")
+                            val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}-$intentos")
+                            val conn = url.openConnection() as java.net.HttpURLConnection
+                            
+                            // TIMEOUT CORTO: Si el socket es zombie, que reviente rapido
+                            conn.connectTimeout = 4000
+                            conn.readTimeout = 6500 
+                            
+                            val boundary = "Boundary-" + System.currentTimeMillis()
+                            conn.requestMethod = "POST"
+                            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                            conn.instanceFollowRedirects = true
+                            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                            conn.setRequestProperty("Connection", "close")
 
-                    conn.outputStream.use { out ->
-                        val writer = java.io.PrintWriter(out.writer())
-                        writer.print("--$boundary\r\n")
-                        writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
-                        writer.print("Content-Type: image/png\r\n\r\n")
-                        writer.flush()
-                        tempFile.inputStream().use { it.copyTo(out) }
-                        writer.print("\r\n--$boundary--\r\n")
-                        writer.flush()
+                            conn.outputStream.use { out ->
+                                val writer = java.io.PrintWriter(out.writer())
+                                writer.print("--$boundary\r\n")
+                                writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
+                                writer.print("Content-Type: image/png\r\n\r\n")
+                                writer.flush()
+                                tempFile.inputStream().use { it.copyTo(out) }
+                                writer.print("\r\n--$boundary--\r\n")
+                                writer.flush()
+                            }
+
+                            val rc = conn.responseCode
+                            var predictedFen = ""
+                            val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
+                            val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                            
+                            if (rc in 200..299) {
+                                predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
+                            }
+
+                            val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
+                            Thread.sleep(1500)
+                            conn.disconnect()
+                            return predictedFen == expectedFen && expectedFen.isNotEmpty()
+                            
+                        } catch (e: Exception) {
+                            intentos++
+                            if (intentos >= 2) return false
+                            // AUTO-CURACION: El zombie murio. Dormimos 200ms y disparamos el reintento.
+                            Thread.sleep(200)
+                        }
                     }
-
-                    val rc = conn.responseCode
-                    var predictedFen = ""
-                    val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
-                    val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
-                    
-                    if (rc in 200..299) {
-                        predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
-                    }
-
-                    val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                    Thread.sleep(1500)
-                    conn.disconnect()
-                    return predictedFen == expectedFen && expectedFen.isNotEmpty()
+                    return false
                 }
 
                 root.post { fenTitle.text = "" }
@@ -1148,24 +1163,12 @@ class BubbleService : Service() {
                 
                 root.post { updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite") }
                 
-                // DESCANSO RECORTADO A 5s
                 for (sec in 5 downTo 1) {
                     root.post { fenTitle.text = ">_ ${sec}s" }
                     Thread.sleep(1000)
                 }
 
                 root.post { fenTitle.text = "" }
-                
-                // --- EL ROMPEHIELOS: GET INVISIBLE ---
-                try {
-                    val dummy = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
-                    dummy.connectTimeout = 3000
-                    dummy.readTimeout = 3000
-                    dummy.requestMethod = "GET"
-                    dummy.responseCode
-                    dummy.disconnect()
-                } catch(e: Exception) {}
-                // -------------------------------------
 
                 for (i in 6..10) {
                     val currentFoto = i - 5
