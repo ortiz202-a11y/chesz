@@ -1131,7 +1131,7 @@ class BubbleService : Service() {
                     }
 
                     val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                    Thread.sleep(1500)
+                    Thread.sleep(3000)
                     conn.disconnect()
                     return predictedFen == expectedFen && expectedFen.isNotEmpty()
                 }
