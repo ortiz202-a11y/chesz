@@ -1080,6 +1080,10 @@ class BubbleService : Service() {
         Thread {
             try {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
+                val dirLog = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
+                val logFile = java.io.File(dirLog, "FEN.TXT")
+                logFile.writeText("=== REPORTE FEN BENCHMARK ===\n")
                 var correctWhite = 0
                 var correctBlack = 0
                 val fallosBlancas = mutableListOf<Int>()
@@ -1138,6 +1142,11 @@ class BubbleService : Service() {
                             }
 
                             val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
+                            
+                            // Espionaje: Guardar la respuesta exacta en el txt
+                            val rawLimpio = resp.take(80).replace("\n", "")
+                            logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
+                            
                             Thread.sleep(1500)
                             conn.disconnect()
                             return predictedFen == expectedFen && expectedFen.isNotEmpty()
