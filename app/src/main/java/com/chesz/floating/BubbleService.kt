@@ -1090,6 +1090,7 @@ class BubbleService : Service() {
                 }
 
                 System.setProperty("http.keepAlive", "false")
+                
                 fun procesarFoto(i: Int): Boolean {
                     val isAsset = assets.open("benchmark/$i.png")
                     val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
@@ -1123,8 +1124,6 @@ class BubbleService : Service() {
 
                     val rc = conn.responseCode
                     var predictedFen = ""
-                    
-                    // Drenar el stream obligatoriamente (sea 200 o Error) para destrabar Android
                     val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
                     val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
                     
@@ -1133,7 +1132,7 @@ class BubbleService : Service() {
                     }
 
                     val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                    Thread.sleep(3000)
+                    Thread.sleep(1500)
                     conn.disconnect()
                     return predictedFen == expectedFen && expectedFen.isNotEmpty()
                 }
@@ -1148,12 +1147,26 @@ class BubbleService : Service() {
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
                 
                 root.post { updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite") }
-                for (sec in 10 downTo 1) {
+                
+                // DESCANSO RECORTADO A 5s
+                for (sec in 5 downTo 1) {
                     root.post { fenTitle.text = ">_ ${sec}s" }
                     Thread.sleep(1000)
                 }
 
                 root.post { fenTitle.text = "" }
+                
+                // --- EL ROMPEHIELOS: GET INVISIBLE ---
+                try {
+                    val dummy = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
+                    dummy.connectTimeout = 3000
+                    dummy.readTimeout = 3000
+                    dummy.requestMethod = "GET"
+                    dummy.responseCode
+                    dummy.disconnect()
+                } catch(e: Exception) {}
+                // -------------------------------------
+
                 for (i in 6..10) {
                     val currentFoto = i - 5
                     root.post { updateDebug(">_ TEST 2/2\n>_ FOTO $currentFoto / 5") }
