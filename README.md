@@ -116,7 +116,7 @@ Sin mover overlay real.
 
 Dimensiones
 
-panelW = 55% ancho pantalla
+panelW = 60% ancho pantalla
 panelH = 15% alto pantalla
 bw = 60dp
 bh = 60dp
