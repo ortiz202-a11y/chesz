@@ -1107,9 +1107,9 @@ class BubbleService : Service() {
                         val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
                         val conn = url.openConnection() as java.net.HttpURLConnection
                         
-                        // MUTILACION DE TIEMPOS: 1.5 SEGUNDOS MAXIMO DE ESPERA.
-                        conn.connectTimeout = 1500
-                        conn.readTimeout = 1500 
+                        // PACIENCIA RESTAURADA: Necesitamos darle tiempo a la IA para calcular el FEN (8.5s max)
+                        conn.connectTimeout = 4000
+                        conn.readTimeout = 8500 
                         
                         val boundary = "Boundary-" + System.currentTimeMillis()
                         conn.requestMethod = "POST"
@@ -1146,13 +1146,13 @@ class BubbleService : Service() {
                         
                         logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
                         
-                        // Pausa de disparo normal si responde rapido
+                        // TU METRALLETA: Espera de 1.5s entre disparos
                         Thread.sleep(1500)
                         return predictedFen == expectedFen && expectedFen.isNotEmpty()
                         
                     } catch (e: Exception) {
                         logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
-                        // Sin sleep extra aqui. El timeout forzado de 1.5s ya consumio el tiempo.
+                        // Flujo lineal estricto sin reintentos. Avanza inmediatamente a la siguiente foto.
                         return false
                     }
                 }
