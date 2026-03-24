@@ -1096,73 +1096,65 @@ class BubbleService : Service() {
                 }
 
                 fun procesarFoto(i: Int): Boolean {
-                    var intentos = 0
-                    while (intentos < 2) {
-                        try {
-                            val isAsset = assets.open("benchmark/$i.png")
-                            val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-                            if (dir != null && !dir.exists()) dir.mkdirs()
-                            val tempFile = java.io.File(dir, "bench_temp.png")
-                            java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
-                            isAsset.close()
+                    try {
+                        val isAsset = assets.open("benchmark/$i.png")
+                        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                        if (dir != null && !dir.exists()) dir.mkdirs()
+                        val tempFile = java.io.File(dir, "bench_temp.png")
+                        java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
+                        isAsset.close()
 
-                            val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}-$intentos")
-                            val conn = url.openConnection() as java.net.HttpURLConnection
-                            
-                            // LIMITES CORTOS: Si choca, aborta rapido.
-                            conn.connectTimeout = 4000
-                            conn.readTimeout = 6500 
-                            
-                            val boundary = "Boundary-" + System.currentTimeMillis()
-                            conn.requestMethod = "POST"
-                            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                            conn.instanceFollowRedirects = true
-                            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                            
-                            // DESTRUCTOR SELECTIVO: Solo purga la red en la frontera de las fases.
-                            if (i == 5 || i == 10) {
-                                conn.setRequestProperty("Connection", "close")
-                            }
-
-                            conn.outputStream.use { out ->
-                                val writer = java.io.PrintWriter(out.writer())
-                                writer.print("--$boundary\r\n")
-                                writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
-                                writer.print("Content-Type: image/png\r\n\r\n")
-                                writer.flush()
-                                tempFile.inputStream().use { it.copyTo(out) }
-                                writer.print("\r\n--$boundary--\r\n")
-                                writer.flush()
-                            }
-
-                            val rc = conn.responseCode
-                            var predictedFen = ""
-                            val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
-                            val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
-                            
-                            if (rc in 200..299) {
-                                predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
-                            }
-
-                            val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                            val rawLimpio = resp.take(80).replace("\n", "")
-                            
-                            logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
-                            
-                            // TU VELOCIDAD DE RAFAGA INTACTA
-                            Thread.sleep(1500)
-                            return predictedFen == expectedFen && expectedFen.isNotEmpty()
-                            
-                        } catch (e: Exception) {
-                            intentos++
-                            if (intentos >= 2) {
-                                logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
-                                return false
-                            }
-                            Thread.sleep(200)
+                        val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
+                        val conn = url.openConnection() as java.net.HttpURLConnection
+                        
+                        // MUTILACION DE TIEMPOS: 1.5 SEGUNDOS MAXIMO DE ESPERA.
+                        conn.connectTimeout = 1500
+                        conn.readTimeout = 1500 
+                        
+                        val boundary = "Boundary-" + System.currentTimeMillis()
+                        conn.requestMethod = "POST"
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                        conn.instanceFollowRedirects = true
+                        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                        
+                        if (i == 5 || i == 10) {
+                            conn.setRequestProperty("Connection", "close")
                         }
+
+                        conn.outputStream.use { out ->
+                            val writer = java.io.PrintWriter(out.writer())
+                            writer.print("--$boundary\r\n")
+                            writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
+                            writer.print("Content-Type: image/png\r\n\r\n")
+                            writer.flush()
+                            tempFile.inputStream().use { it.copyTo(out) }
+                            writer.print("\r\n--$boundary--\r\n")
+                            writer.flush()
+                        }
+
+                        val rc = conn.responseCode
+                        var predictedFen = ""
+                        val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
+                        val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                        
+                        if (rc in 200..299) {
+                            predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
+                        }
+
+                        val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
+                        val rawLimpio = resp.take(80).replace("\n", "")
+                        
+                        logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
+                        
+                        // Pausa de disparo normal si responde rapido
+                        Thread.sleep(1500)
+                        return predictedFen == expectedFen && expectedFen.isNotEmpty()
+                        
+                    } catch (e: Exception) {
+                        logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
+                        // Sin sleep extra aqui. El timeout forzado de 1.5s ya consumio el tiempo.
+                        return false
                     }
-                    return false
                 }
 
                 root.post { fenTitle.text = "" }
