@@ -938,7 +938,8 @@ class BubbleService : Service() {
     private fun sendToCheszEngine(file: java.io.File) {
         Thread {
             try {
-                val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
+                System.setProperty("http.maxConnections", "20")
+                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 8000
                 conn.readTimeout = 10000
@@ -1097,7 +1098,8 @@ class BubbleService : Service() {
                     java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
                     isAsset.close()
 
-                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict")
+                    System.setProperty("http.maxConnections", "20")
+                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
                     val conn = url.openConnection() as java.net.HttpURLConnection
                     conn.connectTimeout = 8000
                     conn.readTimeout = 15000
