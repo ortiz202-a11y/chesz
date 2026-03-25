@@ -499,3 +499,7 @@ En algun momento se podra alterar el tamaño del panel y de la letra pe4o dw mom
 ## 5.2 CONSOLA DEBUG
 * **Fuente**: perfect_dos_vga.ttf (#33FF00).
 * **Lógica**: GONE por defecto, visible únicamente durante el ciclo de API.
+
+--------------------------------------
+SE AGREGO UN MODO DEBUG O MODO DIOS PARA HACER PING Y O REINICIAR EL SERBIDOR 
+TAMBIEN UN BOTON PARA PRUEBAS DEL FEN
