@@ -1084,7 +1084,7 @@ class BubbleService : Service() {
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
                 
-                logFile.appendText("\n\n=== NUEVO REPORTE FEN BENCHMARK ===\n")
+                logFile.writeText("=== NUEVO REPORTE FEN BENCHMARK ===\n")
                 
                 var correctWhite = 0
                 var correctBlack = 0
