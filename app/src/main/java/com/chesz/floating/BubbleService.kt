@@ -206,7 +206,7 @@ class BubbleService : Service() {
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
                         root.post { 
-                            fenTitle.text = ">_ MODE DEBUG" 
+                            fenTitle.text = "MODE DEBUG" 
                             debugText.text = "" // Consola en silencio
                         }
                     }
@@ -673,7 +673,7 @@ class BubbleService : Service() {
             devHandler.removeCallbacksAndMessages(null)
             root.post { 
                 fenTitle.text = ""
-                updateDebug(">_ PING ENVIADO...") 
+                updateDebug("PING ENVIADO...") 
             }
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
             if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
@@ -704,72 +704,72 @@ class BubbleService : Service() {
                                 btnPing.setTextColor(0xFFFFFFFF.toInt())
                             }
 
-                            val msg = if (isOnline) ">_ HOST : ONLINE\n>_ OPTIONAL RESTART: ORANGE BTN" else ">_ HOST : SLEEP\n>_ WAKE UP HOST: RED BTN"
+                            val msg = if (isOnline) "HOST : ONLINE\nOPTIONAL RESTART: ORANGE BTN" else "HOST : SLEEP\nWAKE UP HOST: RED BTN"
                             updateDebug(msg)
 
                             Thread {
                                 for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = ">_ ${sec}s" }
+                                    root.post { fenTitle.text = "${sec}s" }
                                     Thread.sleep(1000)
                                 }
-                                root.post { fenTitle.text = ">_ 0s" }
+                                root.post { fenTitle.text = "0s" }
                                 Thread.sleep(300)
                                 root.post { fenTitle.text = "" }
                                 Thread.sleep(300)
                                 root.post {
                                     if (isHostChecked) {
                                         isHostChecked = false
-                                        updateDebug(">_ TIME OUT")
-                                        root.postDelayed({ fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }, 1500)
+                                        updateDebug("TIME OUT")
+                                        root.postDelayed({ fenTitle.text = "MODE DEBUG"; resetToGodMode() }, 1500)
                                     }
                                 }
                             }.start()
                         } else {
-                            updateDebug(">_ STATUS: OFFLINE\n>_ CHECK HOST / MANUAL REBOOT")
+                            updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
                             Thread {
                                 for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = ">_ ${sec}s" }
+                                    root.post { fenTitle.text = "${sec}s" }
                                     Thread.sleep(1000)
                                 }
-                                root.post { fenTitle.text = ">_ 0s" }
+                                root.post { fenTitle.text = "0s" }
                                 Thread.sleep(300)
                                 root.post { fenTitle.text = "" }
                                 Thread.sleep(300)
-                                root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
+                                root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
                             }.start()
                         }
                     }
                 } catch (e: Exception) {
                     root.post {
-                        updateDebug(">_ STATUS: OFFLINE\n>_ CHECK HOST / MANUAL REBOOT")
+                        updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
                         Thread {
                             for (sec in 5 downTo 1) {
-                                root.post { fenTitle.text = ">_ ${sec}s" }
+                                root.post { fenTitle.text = "${sec}s" }
                                 Thread.sleep(1000)
                             }
-                            root.post { fenTitle.text = ">_ 0s" }
+                            root.post { fenTitle.text = "0s" }
                             Thread.sleep(300)
                             root.post { fenTitle.text = "" }
                             Thread.sleep(300)
-                            root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
+                            root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
                         }.start()
                     }
                 }
             }
         } else {
             isHostChecked = false
-            root.post { updateDebug(">_ HOST RESTARTING...\n>_ READY IN 1-3MIN.") }
+            root.post { updateDebug("HOST RESTARTING...\nREADY IN 1-3MIN.") }
 
             Thread {
                 for (sec in 5 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
+                    root.post { fenTitle.text = "${sec}s" }
                     Thread.sleep(1000)
                 }
-                root.post { fenTitle.text = ">_ 0s" }
+                root.post { fenTitle.text = "0s" }
                 Thread.sleep(300)
                 root.post { fenTitle.text = "" }
                 Thread.sleep(300)
-                root.post { fenTitle.text = ">_ MODE DEBUG"; resetToGodMode() }
+                root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
             }.start()
 
             kotlin.concurrent.thread {
@@ -907,7 +907,7 @@ class BubbleService : Service() {
                                 java.io.FileOutputStream(file).use {
                                     grayBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
-                                updateDebug(">_ ENVIANDO DATOS..."); sendToCheszEngine(file)
+                                updateDebug("ENVIANDO DATOS..."); sendToCheszEngine(file)
                             }
                             grayBitmap.recycle()
                         } catch (e: Exception) {
@@ -968,7 +968,7 @@ class BubbleService : Service() {
                 }
 
                                                 val rc = conn.responseCode
-                    root.post { if (rc != 200 && rc != 302) updateDebug(">_ RESTART STATUS: $rc") }
+                    root.post { if (rc != 200 && rc != 302) updateDebug("RESTART STATUS: $rc") }
                 val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
 
                 if (rc == 200) {
@@ -1092,7 +1092,7 @@ class BubbleService : Service() {
                 val fallosNegras = mutableListOf<Int>()
 
                 fun formatRes(color: String, pct: Int, fallos: List<Int>): String {
-                    return if (pct == 100) ">_ $color  100%" else ">_ $color  $pct%  [X ${fallos.joinToString(",")}]"
+                    return if (pct == 100) "$color  100%" else "$color  $pct%  [X ${fallos.joinToString(",")}]"
                 }
 
                 fun procesarFoto(i: Int): Boolean {
@@ -1159,7 +1159,7 @@ class BubbleService : Service() {
 
                 root.post { fenTitle.text = "" }
                 for (i in 1..5) {
-                    root.post { updateDebug(">_ TEST 1/2\n>_ FOTO $i / 5") }
+                    root.post { updateDebug("TEST 1/2\nFOTO $i / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctWhite++ else fallosBlancas.add(i)
                 }
@@ -1168,7 +1168,7 @@ class BubbleService : Service() {
                 
                 var phase2Triggered = false
                 root.post { 
-                    updateDebug(">_ TEST 1/2\n>_ MATCH\n$resWhite\n>_ OPTIONAL 2 TEST")
+                    updateDebug("TEST 1/2\nMATCH\n$resWhite\nOPTIONAL 2 TEST")
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST 2/2"
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
@@ -1186,7 +1186,7 @@ class BubbleService : Service() {
                 }
                 
                 for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
+                    root.post { fenTitle.text = "${sec}s" }
                     for (ms in 0 until 10) {
                         if (phase2Triggered) break
                         Thread.sleep(100)
@@ -1195,7 +1195,7 @@ class BubbleService : Service() {
                 }
 
                 if (!phase2Triggered) {
-                    root.post { fenTitle.text = ">_ 0s" }
+                    root.post { fenTitle.text = "0s" }
                     Thread.sleep(300)
                     root.post { fenTitle.text = "" }
                     logFile.appendText("=== ABORTO MANUAL ===\n")
@@ -1205,7 +1205,7 @@ class BubbleService : Service() {
                 root.post { fenTitle.text = "" }
                 for (i in 6..10) {
                     val currentFoto = i - 5
-                    root.post { updateDebug(">_ TEST 2/2\n>_ FOTO $currentFoto / 5") }
+                    root.post { updateDebug("TEST 2/2\nFOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctBlack++ else fallosNegras.add(i)
                 }
@@ -1216,19 +1216,19 @@ class BubbleService : Service() {
                 logFile.appendText("=== CHESZ ===\n")
                 
                 root.post {
-                    updateDebug(">_ MATCH\n$resWhite\n$resBlack\n>_ TOTAL TEST $pctTotal%")
+                    updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
                 }
                 for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = ">_ ${sec}s" }
+                    root.post { fenTitle.text = "${sec}s" }
                     Thread.sleep(1000)
                 }
-                root.post { fenTitle.text = ">_ 0s" }
+                root.post { fenTitle.text = "0s" }
                 Thread.sleep(300)
                 root.post { fenTitle.text = "" }
 
             } catch (e: Exception) {
                 if (e.message != "ABORT_MANUAL") {
-                    root.post { updateDebug(">_ ERROR: ${e.message}") }
+                    root.post { updateDebug("ERROR: ${e.message}") }
                     Thread.sleep(5000)
                 }
             } finally {
@@ -1243,7 +1243,7 @@ class BubbleService : Service() {
                         btnBench.setTextColor(0xFF33FF00.toInt())
                         btnBench.setOnClickListener { runBenchmark() }
                     }
-                    fenTitle.text = ">_ MODE DEBUG"
+                    fenTitle.text = "MODE DEBUG"
                     resetToGodMode()
                 }
             }
