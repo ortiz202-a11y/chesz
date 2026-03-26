@@ -876,40 +876,18 @@ class BubbleService : Service() {
                             )
                             croppedLimpio.recycle() // Liberar pantalla completa
 
-                            // 2. Conversion a Escala de Grises Universal (Anti-Camuflaje)
-                            val grayBitmap = android.graphics.Bitmap.createBitmap(recortado.width, recortado.height, android.graphics.Bitmap.Config.ARGB_8888)
-                            val canvas = android.graphics.Canvas(grayBitmap)
-                            val paint = android.graphics.Paint()
-
-                            val colorMatrix = android.graphics.ColorMatrix()
-                            colorMatrix.setSaturation(0f) // Blanco y negro
-
-                            // Multiplicador universal: Contraste 1.5x y brillo +15
-                            val scale = 1.0f
-                            val translate = 0f
-                            val contrastMatrix = android.graphics.ColorMatrix(floatArrayOf(
-                                scale, 0f, 0f, 0f,  translate,
-                                0f, scale, 0f, 0f,  translate,
-                                0f, 0f, scale, 0f,  translate,
-                                0f, 0f, 0f,  1f,  0f
-                            ))
-                            colorMatrix.postConcat(contrastMatrix)
-
-                            paint.colorFilter = android.graphics.ColorMatrixColorFilter(colorMatrix)
-                            canvas.drawBitmap(recortado, 0f, 0f, paint)
-                            recortado.recycle() // Liberar recorte a color
-                            // -----------------------------------------------------------
-
+                            // 2. Imagen en Color Original (Filtro de grises extraido)
                             val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
                             if (dir != null) {
                                 if (!dir.exists()) dir.mkdirs()
                                 val file = java.io.File(dir, "chesz_last.png")
                                 java.io.FileOutputStream(file).use {
-                                    grayBitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                                    recortado.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
-                                updateDebug("ENVIANDO DATOS..."); sendToCheszEngine(file)
+                                updateDebug("ENVIANDO DATOS...")
+                                sendToCheszEngine(file)
                             }
-                            grayBitmap.recycle()
+                            recortado.recycle()
                         } catch (e: Exception) {
                             updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
