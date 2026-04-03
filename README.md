@@ -503,3 +503,5 @@ En algun momento se podra alterar el tamaño del panel y de la letra pe4o dw mom
 --------------------------------------
 SE AGREGO UN MODO DEBUG O MODO DIOS PARA HACER PING Y O REINICIAR EL SERBIDOR 
 TAMBIEN UN BOTON PARA PRUEBAS DEL FEN
+
+# CHESZ

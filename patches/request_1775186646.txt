@@ -1,0 +1,10 @@
+# PATCH REQUEST (B MODE)
+IDEA:
+test
+
+REGLAS PARA IA:
+- Devuelve SOLO un unified diff válido
+- Compatible con: patch -p1
+- Cambios mínimos
+- Si archivo no existe, créalo correctamente
+- No agregues explicaciones
