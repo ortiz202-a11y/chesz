@@ -1,0 +1,22 @@
+IDEA ORIGINAL:
+agregar saludo hola mundo en prueba.txt
+
+========================
+PROMPT PARA IA (COPIAR Y PEGAR):
+========================
+
+Convierte esta intención en un patch git válido:
+
+- Repo Android Kotlin: chesz
+- Usa unified diff
+- Compatible con: patch -p1
+- No inventes archivos inexistentes
+- Si falta archivo, créalo correctamente
+- Cambios mínimos y seguros
+
+INTENCIÓN:
+agregar saludo hola mundo en prueba.txt
+
+Devuelve SOLO el patch final.
+
+========================
