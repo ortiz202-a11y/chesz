@@ -160,7 +160,7 @@ class BubbleService : Service() {
             }
         root.addView(panelRoot)
 
-        val btnPx = dp(60)
+        val btnPx = dp(BUBBLE_SIZE_DP)
         bubbleIcon =
             ImageView(this).apply {
                 setImageResource(R.drawable.bubble_icon)
@@ -186,8 +186,8 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.TOP or Gravity.START
-                    x = dp(35)
-                    y = dp(167)
+                    x = dp(BUBBLE_INIT_X_DP)
+                    y = dp(BUBBLE_INIT_Y_DP)
                 }
 
         setStateALayout()
@@ -210,7 +210,7 @@ class BubbleService : Service() {
                             debugText.text = "" // Consola en silencio
                         }
                     }
-                    devHandler.postDelayed(devRunnable!!, 5000)
+                    devHandler.postDelayed(devRunnable!!, DELAY_DEV_MODE_MS)
 
                     downRawY = e.rawY
                     startX = rootLp.x
@@ -222,7 +222,7 @@ class BubbleService : Service() {
                     val dx = (e.rawX - downRawX).toInt()
                     val dy = (e.rawY - downRawY).toInt()
 
-                    if (!dragging && (abs(dx) + abs(dy) > dp(6))) {
+                    if (!dragging && (abs(dx) + abs(dy) > dp(DRAG_THRESHOLD_DP))) {
                         devHandler.removeCallbacks(devRunnable!!) // Cancelar Modo Dios por arrastre
                         dragging = true
                         showKill(true)
@@ -263,7 +263,7 @@ class BubbleService : Service() {
                         return@setOnTouchListener true // Escudo: Ignorar tap normal
                     } else {
                         val dist = kotlin.math.hypot(e.rawX - bubbleCenterX(), e.rawY - bubbleCenterY())
-                        if (dist <= dp(30).toFloat()) togglePanel()
+                        if (dist <= dp(TAP_RADIUS_DP).toFloat()) togglePanel()
                     }
                     
                     dragging = false
@@ -289,7 +289,7 @@ class BubbleService : Service() {
     }
 
     private fun setStateALayout() {
-        val btnPx = dp(60)
+        val btnPx = dp(BUBBLE_SIZE_DP)
         rootLp.width = btnPx
         rootLp.height = btnPx
         panelRoot.visibility = View.GONE
@@ -315,10 +315,10 @@ class BubbleService : Service() {
 
     private fun showPanelIfFits() {
         val dm = resources.displayMetrics
-        val btnW = dp(60)
-        val btnH = dp(60)
-        val panelW = (dm.widthPixels * 0.60f).toInt()
-        val panelH = (dm.heightPixels * 0.17f).toInt()
+        val btnW = dp(BUBBLE_SIZE_DP)
+        val btnH = dp(BUBBLE_SIZE_DP)
+        val panelW = (dm.widthPixels * PANEL_WIDTH_RATIO).toInt()
+        val panelH = (dm.heightPixels * PANEL_HEIGHT_RATIO).toInt()
 
         val rootX = rootLp.x
         val rootY = rootLp.y - (panelH - btnH)
@@ -379,8 +379,8 @@ class BubbleService : Service() {
         
         if (panelShown) {
             val dm = resources.displayMetrics
-            val btnH = dp(60)
-            val panelH = (dm.heightPixels * 0.17f).toInt()
+            val btnH = dp(BUBBLE_SIZE_DP)
+            val panelH = (dm.heightPixels * PANEL_HEIGHT_RATIO).toInt()
             rootLp.y = rootLp.y + (panelH - btnH)
         }
         setStateALayout()
@@ -389,14 +389,14 @@ class BubbleService : Service() {
             private fun buildPanel(): FrameLayout {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         val panel = FrameLayout(this).apply {
-            setBackgroundColor(0xA8000000.toInt())
+            setBackgroundColor(COLOR_PANEL_BG)
             clipChildren = false
             clipToPadding = false
         }
 
         val panelBorder = android.graphics.drawable.GradientDrawable().apply {
             setColor(0x00000000)
-            setStroke(dp(1).toInt(), 0xFF33FF00.toInt())
+            setStroke(dp(BTN_STROKE_DP).toInt(), COLOR_GREEN)
             cornerRadius = 0f
         }
 
@@ -409,9 +409,9 @@ class BubbleService : Service() {
 
         fenTitle = TextView(this).apply {
             text = ""
-            textSize = 11f
+            textSize = TEXT_SIZE_FEN
             typeface = customFont
-            setTextColor(0xFF33FF00.toInt())
+            setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setSingleLine(false)
             minLines = 2
@@ -426,8 +426,8 @@ class BubbleService : Service() {
 
         debugText = TextView(this).apply {
             typeface = customFont
-            setTextColor(0xFF33FF00.toInt())
-            textSize = 13f
+            setTextColor(COLOR_GREEN)
+            textSize = TEXT_SIZE_DEBUG
             gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
             visibility = android.view.View.GONE
             // AQUI RESTAURAMOS EL MARGEN DEL ANALISIS SIN AFECTAR AL FEN
@@ -446,16 +446,16 @@ class BubbleService : Service() {
         }
         
         val btnBg = android.graphics.drawable.GradientDrawable().apply {
-            setColor(0xFF000000.toInt()) // Fondo Negro
-            setStroke(dp(1), 0xFF33FF00.toInt()) // Borde Verde
-            cornerRadius = dp(20).toFloat() // Forma Pastilla
+            setColor(COLOR_BLACK) // Fondo Negro
+            setStroke(dp(BTN_STROKE_DP), COLOR_GREEN) // Borde Verde
+            cornerRadius = dp(BTN_CORNER_DP).toFloat() // Forma Pastilla
         }
 
         btnPing = TextView(this).apply {
             text = "HOST P/R"
             typeface = customFont
-            setTextColor(0xFF33FF00.toInt())
-            textSize = 12f
+            setTextColor(COLOR_GREEN)
+            textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
             background = btnBg
             setPadding(dp(8), dp(8), dp(8), dp(8))
@@ -465,8 +465,8 @@ class BubbleService : Service() {
             btnBench = TextView(this).apply {
             text = "TEST FEN"
             typeface = customFont
-            setTextColor(0xFF33FF00.toInt())
-            textSize = 12f
+            setTextColor(COLOR_GREEN)
+            textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
             background = btnBg
             setPadding(dp(8), dp(8), dp(8), dp(8))
@@ -474,9 +474,9 @@ class BubbleService : Service() {
         }
 
         devBar.addView(btnPing, LinearLayout.LayoutParams(-2, -2))
-        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(15), 0))
+        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(30); rightMargin = dp(0); bottomMargin = dp(4) })
+        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -486,7 +486,7 @@ class BubbleService : Service() {
             }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
-        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(40)).apply { leftMargin = dp(30); rightMargin = dp(0); bottomMargin = dp(4) })
+        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         panel.addView(col, FrameLayout.LayoutParams(-1, -1))
 
@@ -495,7 +495,7 @@ class BubbleService : Service() {
             setPadding(0, 0, 0, 0)
             setOnClickListener { hidePanel() }
         }
-        panel.addView(close, FrameLayout.LayoutParams(dp(28), dp(28)).apply {
+        panel.addView(close, FrameLayout.LayoutParams(dp(CLOSE_BTN_SIZE_DP), dp(CLOSE_BTN_SIZE_DP)).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.END
             topMargin = dp(-2)
             rightMargin = dp(-2)
@@ -505,8 +505,8 @@ class BubbleService : Service() {
 
     private fun flashBubbleRed() {
         runCatching {
-            bubbleIcon.setColorFilter(0xFFFF3333.toInt())
-            bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, 220)
+            bubbleIcon.setColorFilter(COLOR_FLASH_RED)
+            bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, DELAY_FLASH_MS)
         }
     }
 
@@ -544,24 +544,24 @@ class BubbleService : Service() {
                 setBackgroundColor(0)
             }
 
-        val sizePx = dp(100)
+        val sizePx = dp(KILL_CIRCLE_SIZE_DP)
         killCircle =
             FrameLayout(this).apply {
                 background =
                     android.graphics.drawable.GradientDrawable().apply {
                         shape = android.graphics.drawable.GradientDrawable.OVAL
-                        setColor(0xCCFF0000.toInt())
+                        setColor(COLOR_KILL_RED)
                     }
             }
 
         val xIcon =
             ImageView(this).apply {
                 setImageResource(android.R.drawable.ic_delete)
-                setColorFilter(0xFFFFFFFF.toInt())
+                setColorFilter(COLOR_WHITE)
             }
 
         killRoot.addView(killCircle, FrameLayout.LayoutParams(sizePx, sizePx, Gravity.CENTER))
-        killCircle.addView(xIcon, FrameLayout.LayoutParams(dp(44), dp(44), Gravity.CENTER))
+        killCircle.addView(xIcon, FrameLayout.LayoutParams(dp(KILL_ICON_SIZE_DP), dp(KILL_ICON_SIZE_DP), Gravity.CENTER))
 
         killLp =
             WindowManager
@@ -574,7 +574,7 @@ class BubbleService : Service() {
                     PixelFormat.TRANSLUCENT,
                 ).apply {
                     gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    y = dp(60)
+                    y = dp(KILL_BOTTOM_OFFSET_DP)
                 }
     }
 
@@ -589,21 +589,21 @@ class BubbleService : Service() {
     }
 
     private fun setKillHover(hover: Boolean) {
-        val target = if (hover) 1.40f else 1.0f
-        killCircle.animate().scaleX(target).scaleY(target).setDuration(60).start()
+        val target = if (hover) KILL_HOVER_SCALE else 1.0f
+        killCircle.animate().scaleX(target).scaleY(target).setDuration(DELAY_KILL_ANIM_MS).start()
     }
 
     private fun bubbleCenterX(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        return loc[0] + (dp(60) / 2f)
+        return loc[0] + (dp(BUBBLE_SIZE_DP) / 2f)
     }
 
     private fun bubbleCenterY(): Float {
         val loc = IntArray(2)
         root.getLocationOnScreen(loc)
-        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * 0.17f).toInt() - dp(60)) else 0
-        return loc[1] + offset + (dp(60) / 2f)
+        val offset = if (panelShown) ((resources.displayMetrics.heightPixels * PANEL_HEIGHT_RATIO).toInt() - dp(BUBBLE_SIZE_DP)) else 0
+        return loc[1] + offset + (dp(BUBBLE_SIZE_DP) / 2f)
     }
 
     private fun isOverKillCenter(
@@ -613,7 +613,7 @@ class BubbleService : Service() {
         if (!killShown) return false
         val loc = IntArray(2)
         killRoot.getLocationOnScreen(loc)
-        val pad = dp(18)
+        val pad = dp(KILL_HOVER_PADDING_DP)
         return x in (loc[0] - pad).toFloat()..(loc[0] + killRoot.width + pad).toFloat() &&
             y in (loc[1] - pad).toFloat()..(loc[1] + killRoot.height + pad).toFloat()
     }
@@ -635,7 +635,7 @@ class BubbleService : Service() {
         x: Int,
         y: Int,
     ): Pair<Int, Int> {
-        val w = if (rootLp.width > 0) rootLp.width else dp(60)
+        val w = if (rootLp.width > 0) rootLp.width else dp(BUBBLE_SIZE_DP)
         val maxX = (sw - w).coerceAtLeast(0)
         val maxY = (sh - rootLp.height - bottomInsetCache).coerceAtLeast(0)
         return x.coerceIn(0, maxX) to y.coerceIn(0, maxY)
@@ -656,12 +656,12 @@ class BubbleService : Service() {
             if (this::btnPing.isInitialized) {
                 btnPing.visibility = android.view.View.VISIBLE
                 val g = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(0xFF000000.toInt())
-                    setStroke(dp(1), 0xFF33FF00.toInt())
-                    cornerRadius = dp(20).toFloat()
+                    setColor(COLOR_BLACK)
+                    setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
                 }
                 btnPing.background = g
-                btnPing.setTextColor(0xFF33FF00.toInt())
+                btnPing.setTextColor(COLOR_GREEN)
             }
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
             updateDebug("")
@@ -680,9 +680,9 @@ class BubbleService : Service() {
 
             kotlin.concurrent.thread {
                 try {
-                    val conn = java.net.URL("https://daxer2-chesz-engine.hf.space/").openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 4000
-                    conn.readTimeout = 6000
+                    val conn = java.net.URL(URL_ENGINE_PING).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = TIMEOUT_PING_CONNECT
+                    conn.readTimeout = TIMEOUT_PING_READ
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
                     conn.instanceFollowRedirects = true
                     val rc = conn.responseCode
@@ -691,17 +691,17 @@ class BubbleService : Service() {
                         if (rc == 200 || rc == 503 || rc == 404) {
                             isHostChecked = true
                             val isOnline = (rc == 200 || rc == 404)
-                            val nColor = if (isOnline) 0xD9FF8800.toInt() else 0xD9FF0033.toInt()
-                            val nStroke = if (isOnline) 0xFFFFCC00.toInt() else 0xFFFF0033.toInt()
+                            val nColor = if (isOnline) COLOR_ORANGE_BG else COLOR_NEON_RED_BG
+                            val nStroke = if (isOnline) COLOR_ORANGE_STROKE else COLOR_NEON_RED_STROKE
 
                             if (this::btnPing.isInitialized) {
                                 btnPing.visibility = android.view.View.VISIBLE
                                 btnPing.background = android.graphics.drawable.GradientDrawable().apply {
                                     setColor(nColor)
-                                    setStroke(dp(2), nStroke)
-                                    cornerRadius = dp(20).toFloat()
+                                    setStroke(dp(BTN_STROKE_ALERT_DP), nStroke)
+                                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
                                 }
-                                btnPing.setTextColor(0xFFFFFFFF.toInt())
+                                btnPing.setTextColor(COLOR_WHITE)
                             }
 
                             val msg = if (isOnline) "HOST : ONLINE\nOPTIONAL RESTART: ORANGE BTN" else "HOST : SLEEP\nWAKE UP HOST: RED BTN"
@@ -774,7 +774,7 @@ class BubbleService : Service() {
 
             kotlin.concurrent.thread {
                 try {
-                    val conn = java.net.URL("https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart").openConnection() as java.net.HttpURLConnection
+                    val conn = java.net.URL(URL_HF_RESTART).openConnection() as java.net.HttpURLConnection
                     conn.requestMethod = "POST"
                     conn.setRequestProperty("Content-Type", "application/json")
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
@@ -788,7 +788,7 @@ class BubbleService : Service() {
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
-            debugText.maxLines = 15
+            debugText.maxLines = DEBUG_MAX_LINES
 
             debugText.text = msg
         }
@@ -800,7 +800,7 @@ class BubbleService : Service() {
         updateDebug("⚙ Iniciando captura...")
         root.post { fenTitle.text = "" }
         isCapturing = true
-        root.postDelayed({ isCapturing = false }, 3000)
+        root.postDelayed({ isCapturing = false }, DELAY_CAPTURE_RESET_MS)
 
         runCatching {
             if (activeMediaProjection == null) {
@@ -863,9 +863,9 @@ class BubbleService : Service() {
 
                             // --- INYECCION: VISION DE IA (Recorte y Escala de Grises) ---
                             // 1. Recorte Definitivo Photopea (Coord: 0, 458, 720x720)
-                            val boardX = 0
-                            val boardY = 458
-                            val boardSize = 720
+                            val boardX = BOARD_X
+                            val boardY = BOARD_Y
+                            val boardSize = BOARD_SIZE
 
                             val safeCropW = if (boardX + boardSize > croppedLimpio.width) croppedLimpio.width - boardX else boardSize
                             val safeCropH = if (boardY + boardSize > croppedLimpio.height) croppedLimpio.height - boardY else boardSize
@@ -897,7 +897,7 @@ class BubbleService : Service() {
                 } catch (e: Exception) {
                     updateDebug("❌ Error de lectura: ${e.message}")
                 }
-            }, 600)
+            }, DELAY_SCREENSHOT_MS)
 
         }.onFailure {
             updateDebug("❌ " + it.javaClass.simpleName + ": " + it.message)
@@ -917,10 +917,10 @@ class BubbleService : Service() {
         Thread {
             try {
                 System.setProperty("http.maxConnections", "20")
-                    val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
+                    val url = java.net.URL("$URL_ENGINE_PREDICT?bypass=${System.currentTimeMillis()}")
                 val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = 8000
-                conn.readTimeout = 10000
+                conn.connectTimeout = TIMEOUT_ENGINE_CONNECT
+                conn.readTimeout = TIMEOUT_ENGINE_READ
                 val boundary = "Boundary-" + System.currentTimeMillis()
 
                 conn.requestMethod = "POST"
@@ -1019,7 +1019,7 @@ class BubbleService : Service() {
                                     if (contStr.isNotEmpty() && contStr != "null") {
                                         val contParts = contStr.split(" ")
                                         var nmString = ""
-                                        val limit = Math.min(8, contParts.size)
+                                        val limit = Math.min(BENCH_CONTINUATION_LIMIT, contParts.size)
                                         for (i in 2 until limit) {
                                             val m = contParts[i].uppercase()
                                             if (i % 2 == 0) nmString += "($m) " else nmString += "$m "
@@ -1082,12 +1082,12 @@ class BubbleService : Service() {
                         java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
                         isAsset.close()
 
-                        val url = java.net.URL("https://daxer2-chesz-engine.hf.space/predict?bypass=${System.currentTimeMillis()}")
+                        val url = java.net.URL("$URL_ENGINE_PREDICT?bypass=${System.currentTimeMillis()}")
                         val conn = url.openConnection() as java.net.HttpURLConnection
                         
                         // PACIENCIA RESTAURADA: Necesitamos darle tiempo a la IA para calcular el FEN (8.5s max)
-                        conn.connectTimeout = 4000
-                        conn.readTimeout = 8500 
+                        conn.connectTimeout = TIMEOUT_BENCH_CONNECT
+                        conn.readTimeout = TIMEOUT_BENCH_READ 
                         
                         val boundary = "Boundary-" + System.currentTimeMillis()
                         conn.requestMethod = "POST"
@@ -1125,7 +1125,7 @@ class BubbleService : Service() {
                         logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
                         
                         // TU METRALLETA: Espera de 1.5s entre disparos
-                        Thread.sleep(1500)
+                        Thread.sleep(DELAY_BENCH_BETWEEN_MS)
                         return predictedFen == expectedFen && expectedFen.isNotEmpty()
                         
                     } catch (e: Exception) {
@@ -1150,11 +1150,11 @@ class BubbleService : Service() {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST 2/2"
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(0xD9FF8800.toInt())
-                            setStroke(dp(2), 0xFFFFCC00.toInt())
-                            cornerRadius = dp(20).toFloat()
+                            setColor(COLOR_ORANGE_BG)
+                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
                         }
-                        btnBench.setTextColor(0xFFFFFFFF.toInt())
+                        btnBench.setTextColor(COLOR_WHITE)
                         btnBench.visibility = android.view.View.VISIBLE
                         btnBench.setOnClickListener {
                             phase2Triggered = true
@@ -1214,11 +1214,11 @@ class BubbleService : Service() {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(0xFF000000.toInt())
-                            setStroke(dp(1), 0xFF33FF00.toInt())
-                            cornerRadius = dp(20).toFloat()
+                            setColor(COLOR_BLACK)
+                            setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
                         }
-                        btnBench.setTextColor(0xFF33FF00.toInt())
+                        btnBench.setTextColor(COLOR_GREEN)
                         btnBench.setOnClickListener { runBenchmark() }
                     }
                     fenTitle.text = "MODE DEBUG"
@@ -1226,6 +1226,79 @@ class BubbleService : Service() {
                 }
             }
         }.start()
+    }
+
+
+    companion object {
+        // --- Dimensiones UI (dp) ---
+        private const val BUBBLE_SIZE_DP       = 60
+        private const val BUBBLE_INIT_X_DP     = 35
+        private const val BUBBLE_INIT_Y_DP     = 167
+        private const val DRAG_THRESHOLD_DP    = 6
+        private const val TAP_RADIUS_DP        = 30
+        private const val PANEL_LEFT_MARGIN_DP = 30
+        private const val KILL_CIRCLE_SIZE_DP  = 100
+        private const val KILL_ICON_SIZE_DP    = 44
+        private const val KILL_BOTTOM_OFFSET_DP = 60
+        private const val KILL_HOVER_PADDING_DP = 18
+        private const val BTN_CORNER_DP        = 20
+        private const val BTN_STROKE_DP        = 1
+        private const val BTN_STROKE_ALERT_DP  = 2
+        private const val BTN_SPACING_DP       = 15
+        private const val CLOSE_BTN_SIZE_DP    = 28
+        private const val PERM_BAR_HEIGHT_DP   = 40
+
+        // --- Proporciones del panel ---
+        private const val PANEL_WIDTH_RATIO    = 0.60f
+        private const val PANEL_HEIGHT_RATIO   = 0.17f
+
+        // --- Tamaños de texto (sp) ---
+        private const val TEXT_SIZE_FEN        = 11f
+        private const val TEXT_SIZE_DEBUG      = 13f
+        private const val TEXT_SIZE_BTN        = 12f
+
+        // --- Colores ---
+        val COLOR_GREEN         = 0xFF33FF00.toInt()
+        val COLOR_BLACK         = 0xFF000000.toInt()
+        val COLOR_WHITE         = 0xFFFFFFFF.toInt()
+        val COLOR_PANEL_BG      = 0xA8000000.toInt()
+        val COLOR_FLASH_RED     = 0xFFFF3333.toInt()
+        val COLOR_KILL_RED      = 0xCCFF0000.toInt()
+        val COLOR_NEON_RED_BG   = 0xD9FF0033.toInt()
+        val COLOR_NEON_RED_STROKE = 0xFFFF0033.toInt()
+        val COLOR_ORANGE_BG     = 0xD9FF8800.toInt()
+        val COLOR_ORANGE_STROKE = 0xFFFFCC00.toInt()
+
+        // --- Coordenadas de recorte del tablero ---
+        private const val BOARD_X    = 0
+        private const val BOARD_Y    = 458
+        private const val BOARD_SIZE = 720
+
+        // --- Timeouts de red (ms) ---
+        private const val TIMEOUT_PING_CONNECT   = 4000
+        private const val TIMEOUT_PING_READ      = 6000
+        private const val TIMEOUT_ENGINE_CONNECT = 8000
+        private const val TIMEOUT_ENGINE_READ    = 10000
+        private const val TIMEOUT_BENCH_CONNECT  = 4000
+        private const val TIMEOUT_BENCH_READ     = 8500
+
+        // --- Delays (ms) ---
+        private const val DELAY_DEV_MODE_MS       = 5000L
+        private const val DELAY_SCREENSHOT_MS     = 600L
+        private const val DELAY_FLASH_MS          = 220L
+        private const val DELAY_KILL_ANIM_MS      = 60L
+        private const val DELAY_CAPTURE_RESET_MS  = 3000L
+        private const val DELAY_BENCH_BETWEEN_MS  = 1500L
+
+        // --- Misc ---
+        private const val KILL_HOVER_SCALE        = 1.40f
+        private const val DEBUG_MAX_LINES         = 15
+        private const val BENCH_CONTINUATION_LIMIT = 8
+
+        // --- URLs ---
+        private const val URL_ENGINE_PING    = "https://daxer2-chesz-engine.hf.space/"
+        private const val URL_ENGINE_PREDICT = "https://daxer2-chesz-engine.hf.space/predict"
+        private const val URL_HF_RESTART     = "https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart"
     }
 
     private fun esFenValido64(fen: String): Boolean {
