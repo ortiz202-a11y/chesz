@@ -89,9 +89,7 @@ class FenEngine(private val context: Context) {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
 
-        // Brillo del píxel central: > 120 → pieza blanca, ≤ 120 → pieza negra
-        val centerBrightness = square[CENTER_PIXEL * SQUARE_SIZE + CENTER_PIXEL]
-        val isWhiteZone = centerBrightness > BRIGHTNESS_THRESHOLD
+        val isWhiteZone = isPieceWhite(square)
 
         var bestScore = MATCH_THRESHOLD
         var bestSymbol = EMPTY
@@ -110,6 +108,46 @@ class FenEngine(private val context: Context) {
             }
         }
         return bestSymbol
+    }
+
+    /**
+     * Determina el bando de la pieza usando contraste relativo:
+     *   1. Media de la región central 30×30 px (más robusta que un solo píxel).
+     *   2. Umbral dinámico = (min + max) / 2 de toda la casilla.
+     *   → blanca si el centro es más luminoso que el punto medio del rango.
+     *
+     * No depende de ningún umbral absoluto, por lo que funciona con cualquier
+     * tema de tablero o condición de iluminación.
+     * Si el contraste global es muy bajo (casilla vacía), la clasificación
+     * no importa: matchNormalized no superará MATCH_THRESHOLD de todos modos.
+     */
+    private fun isPieceWhite(square: IntArray): Boolean {
+        val s = SQUARE_SIZE
+        val c0 = CENTER_CROP_START
+        val c1 = CENTER_CROP_END
+
+        // Media de la región central
+        var sumCenter = 0L
+        for (y in c0 until c1) {
+            for (x in c0 until c1) {
+                sumCenter += square[y * s + x]
+            }
+        }
+        val centerMean = sumCenter.toFloat() / ((c1 - c0) * (c1 - c0))
+
+        // Min y max de toda la casilla
+        var minV = 255
+        var maxV = 0
+        for (v in square) {
+            if (v < minV) minV = v
+            if (v > maxV) maxV = v
+        }
+
+        // Sin contraste suficiente → casilla vacía, la clasificación no importa
+        if (maxV - minV < MIN_CONTRAST) return true
+
+        // Blanca si el centro supera el punto medio del rango de la casilla
+        return centerMean > (minV + maxV) / 2.0f
     }
 
     // ─────────────────────────────────────────────
@@ -355,8 +393,9 @@ class FenEngine(private val context: Context) {
         private const val BOARD_SIZE         = 720
         private const val BOARD_SQUARES      = 8
         private const val SQUARE_SIZE        = 90   // BOARD_SIZE / BOARD_SQUARES
-        private const val CENTER_PIXEL       = 45   // píxel [45,45] para validar bando
-        private const val BRIGHTNESS_THRESHOLD = 120 // > 120 → pieza blanca
+        private const val CENTER_CROP_START  = 30   // región central 30×30 para bando
+        private const val CENTER_CROP_END    = 60
+        private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
         private const val MATCH_THRESHOLD    = 0.45f
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
