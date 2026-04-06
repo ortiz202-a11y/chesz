@@ -86,7 +86,7 @@ class FenEngine(private val context: Context) {
         debugLog("=== GRID ANTES DEL FLIP ===")
         debugLog(gridToString(grid))
 
-        val flipped = isBoardFlipped(gray)
+        val flipped = isBoardFlipped(gray, grid)
         debugLog("isBoardFlipped = $flipped")
 
         val finalGrid = if (flipped) flipGrid(grid) else grid
@@ -96,23 +96,153 @@ class FenEngine(private val context: Context) {
             debugLog(gridToString(finalGrid))
         }
 
+        // 2ª pasada CON bias solo en filas de peones (1 y 6), ahora que la orientación es conocida
+        for (finalRow in listOf(1, 6)) {
+            for (finalCol in 0 until BOARD_SQUARES) {
+                val origRow = if (flipped) BOARD_SQUARES - 1 - finalRow else finalRow
+                val origCol = if (flipped) BOARD_SQUARES - 1 - finalCol else finalCol
+                finalGrid[finalRow][finalCol] = detectPiece(gray, origRow, origCol, applyBias = true)
+            }
+        }
+
         val fen = buildFen(finalGrid)
         debugLog("FEN final: $fen")
         return fen
     }
 
     /**
-     * Detecta si el tablero está orientado desde la perspectiva de las negras
-     * muestreando la casilla inferior izquierda del tablero en escala de grises.
-     * Casilla oscura → orientación normal (no flipar).
-     * Casilla clara → tablero girado (flipar).
+     * Lee el número ("1" u "8") en la esquina superior izquierda del tablero.
+     *
+     * Métricas sobre la región [CORNER_X, CORNER_Y, CORNER_W × CORNER_H]:
+     *   - fillRatio   : fracción de píxeles de primer plano sobre el total.
+     *   - widthRatio  : fracción de columnas que contienen al menos un píxel de primer plano.
+     *   - avgTransitions: promedio de segmentos horizontales de primer plano por fila.
+     *
+     * "8" → fillRatio alto, widthRatio alto, avgTransitions ~1-2.
+     * "1" → fillRatio bajo, widthRatio bajo (trazo estrecho).
+     *
+     * @return false = "8" detectado (no flipar), true = "1" detectado (flipar), null = sin detección.
      */
-    private fun isBoardFlipped(boardGray: IntArray): Boolean {
-        val square = extractSquare(boardGray, BOARD_SQUARES - 1, 0)
-        val avg = square.average().toFloat()
-        val flipped = avg >= 128f
-        debugLog("Esquina inf-izq: avg=${"%.1f".format(avg)} → isBoardFlipped=$flipped")
-        return flipped
+    private fun detectCornerOrientation(boardGray: IntArray): Boolean? {
+        // Extraer región
+        val region = IntArray(CORNER_W * CORNER_H) { i ->
+            val rx = i % CORNER_W
+            val ry = i / CORNER_W
+            boardGray[(CORNER_Y + ry) * BOARD_SIZE + (CORNER_X + rx)]
+        }
+
+        // Rango dinámico
+        var minV = 255; var maxV = 0
+        for (v in region) { if (v < minV) minV = v; if (v > maxV) maxV = v }
+        val range = maxV - minV
+        if (range < CORNER_MIN_CONTRAST) {
+            debugLog("Corner: sin contraste suficiente (range=$range) → sin detección")
+            return null
+        }
+
+        val mid = (minV + maxV) / 2
+
+        // Determinar si el dígito es oscuro-sobre-claro o claro-sobre-oscuro
+        val lightCount = region.count { it > mid }
+        val darkIsForeground = lightCount > region.size / 2  // mayoría clara → dígito oscuro
+        val isFg: (Int) -> Boolean = if (darkIsForeground) { v -> v < mid } else { v -> v > mid }
+
+        val fgCount = region.count { isFg(it) }
+        if (fgCount < CORNER_MIN_PIXELS) {
+            debugLog("Corner: pocos px de dígito ($fgCount) → sin detección")
+            return null
+        }
+
+        // Métrica 1: fill ratio
+        val fillRatio = fgCount.toFloat() / region.size
+
+        // Métrica 2: active width ratio (columnas con al menos 1 px de dígito)
+        val activeColumns = (0 until CORNER_W).count { col ->
+            (0 until CORNER_H).any { row -> isFg(region[row * CORNER_W + col]) }
+        }
+        val widthRatio = activeColumns.toFloat() / CORNER_W
+
+        // Métrica 3: transiciones horizontales promedio por fila
+        var totalTrans = 0; var validRows = 0
+        for (ry in 0 until CORNER_H) {
+            var trans = 0; var prevFg = false
+            for (rx in 0 until CORNER_W) {
+                val fg = isFg(region[ry * CORNER_W + rx])
+                if (fg && !prevFg) trans++
+                prevFg = fg
+            }
+            if (trans > 0) { totalTrans += trans; validRows++ }
+        }
+        val avgTrans = if (validRows == 0) 0f else totalTrans.toFloat() / validRows
+
+        // Score combinado: "8" puntúa alto en fill y width; "1" puntúa bajo
+        val score = (fillRatio + widthRatio) / 2f
+
+        debugLog("Corner: fgPx=$fgCount fill=${"%.2f".format(fillRatio)} " +
+                 "width=${"%.2f".format(widthRatio)} avgTrans=${"%.2f".format(avgTrans)} " +
+                 "score=${"%.2f".format(score)}")
+
+        return when {
+            score >= CORNER_EIGHT_SCORE -> {
+                debugLog("Corner: detectado '8' → no flip")
+                false
+            }
+            score >= CORNER_ONE_SCORE_MIN && score < CORNER_EIGHT_SCORE -> {
+                debugLog("Corner: detectado '1' → flip")
+                true
+            }
+            else -> {
+                debugLog("Corner: score=${"%.2f".format(score)} fuera de rango → sin detección")
+                null
+            }
+        }
+    }
+
+    private fun isBoardFlipped(boardGray: IntArray, grid: Array<CharArray>): Boolean {
+        // 0. Número en esquina superior izquierda (máxima prioridad)
+        val cornerResult = detectCornerOrientation(boardGray)
+        if (cornerResult != null) return cornerResult
+
+        // 1. Rey blanco — regla inapelable
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                if (grid[row][col] == 'K') {
+                    val flipped = row < BOARD_SQUARES / 2   // filas 0-3 = girado
+                    debugLog("K encontrado en fila=$row col=$col → isBoardFlipped=$flipped (umbral=${BOARD_SQUARES / 2})")
+                    return flipped
+                }
+            }
+        }
+
+        // 2. Validación por peones
+        var pawnViolation = false
+        var hasPawns = false
+        outer@ for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                val p = grid[row][col]
+                if (p == 'P' || p == 'p') {
+                    hasPawns = true
+                    if (p == 'P' && row <= 1) { pawnViolation = true; break@outer }
+                    if (p == 'p' && row >= 6) { pawnViolation = true; break@outer }
+                }
+            }
+        }
+        if (hasPawns) return pawnViolation
+
+        // 3. Fallback densidad — solo si no hay rey ni peones
+        var whiteRowSum = 0; var whiteCount = 0
+        var blackRowSum = 0; var blackCount = 0
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                val p = grid[row][col]
+                if (p == EMPTY) continue
+                if (p.isUpperCase()) { whiteRowSum += row; whiteCount++ }
+                else                 { blackRowSum += row; blackCount++ }
+            }
+        }
+        if (whiteCount == 0 || blackCount == 0) return false
+        // Normal: blancas en filas altas (6-7), negras en filas bajas (0-1)
+        return (whiteRowSum.toFloat() / whiteCount) < (blackRowSum.toFloat() / blackCount)
     }
 
     /** Gira el tablero 180° (equivale a mirarlo desde el otro lado) */
@@ -165,11 +295,11 @@ class FenEngine(private val context: Context) {
         val threshold = if (bestSymbol == 'b' || bestSymbol == 'B') BISHOP_THRESHOLD else MATCH_THRESHOLD
         if (bestScore < threshold) return EMPTY
 
-        // Par alfil/peón: resolveByHeight siempre que el segundo supere el umbral (sin importar el gap)
+        // Par alfil/peón: resolveByHeight siempre decide, sin importar el score del segundo
         val isBishopPawnPair = secondSymbol != EMPTY &&
             ((bestSymbol.lowercaseChar() == 'b' && secondSymbol.lowercaseChar() == 'p') ||
              (bestSymbol.lowercaseChar() == 'p' && secondSymbol.lowercaseChar() == 'b'))
-        if (isBishopPawnPair && secondScore >= MATCH_THRESHOLD) {
+        if (isBishopPawnPair) {
             return resolveByHeight(square, bestSymbol, secondSymbol)
         }
 
@@ -504,6 +634,16 @@ class FenEngine(private val context: Context) {
         private const val MATCH_THRESHOLD    = 0.45f
         private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
+        // Región de la esquina superior izquierda para detección del número de fila
+        private const val CORNER_X            = 2
+        private const val CORNER_Y            = 2
+        private const val CORNER_W            = 28
+        private const val CORNER_H            = 38
+        private const val CORNER_MIN_CONTRAST = 30   // rango mín de grises para considerar que hay dígito
+        private const val CORNER_MIN_PIXELS   = 15   // píxeles de primer plano mínimos
+        private const val CORNER_EIGHT_SCORE  = 0.35f // score ≥ → "8" (no flip)
+        private const val CORNER_ONE_SCORE_MIN= 0.05f // score ≥ y < EIGHT_SCORE → "1" (flip)
+
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
