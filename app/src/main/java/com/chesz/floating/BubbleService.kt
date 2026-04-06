@@ -950,62 +950,20 @@ class BubbleService : Service() {
 
                 fun procesarFoto(i: Int): Boolean {
                     try {
-                        val isAsset = assets.open("benchmark/$i.png")
-                        val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
-                        if (dir != null && !dir.exists()) dir.mkdirs()
-                        val tempFile = java.io.File(dir, "bench_temp.png")
-                        java.io.FileOutputStream(tempFile).use { out -> isAsset.copyTo(out) }
-                        isAsset.close()
+                        val bmp = assets.open("benchmark/$i.png").use {
+                            android.graphics.BitmapFactory.decodeStream(it)
+                        } ?: throw Exception("No se pudo decodificar benchmark/$i.png")
 
-                        val url = java.net.URL("$URL_ENGINE_PREDICT?bypass=${System.currentTimeMillis()}")
-                        val conn = url.openConnection() as java.net.HttpURLConnection
-                        
-                        // PACIENCIA RESTAURADA: Necesitamos darle tiempo a la IA para calcular el FEN (8.5s max)
-                        conn.connectTimeout = TIMEOUT_BENCH_CONNECT
-                        conn.readTimeout = TIMEOUT_BENCH_READ 
-                        
-                        val boundary = "Boundary-" + System.currentTimeMillis()
-                        conn.requestMethod = "POST"
-                        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                        conn.instanceFollowRedirects = true
-                        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                        
-                        if (i == 5 || i == 10) {
-                            conn.setRequestProperty("Connection", "close")
-                        }
-
-                        conn.outputStream.use { out ->
-                            val writer = java.io.PrintWriter(out.writer())
-                            writer.print("--$boundary\r\n")
-                            writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${tempFile.name}\"\r\n")
-                            writer.print("Content-Type: image/png\r\n\r\n")
-                            writer.flush()
-                            tempFile.inputStream().use { it.copyTo(out) }
-                            writer.print("\r\n--$boundary--\r\n")
-                            writer.flush()
-                        }
-
-                        val rc = conn.responseCode
-                        var predictedFen = ""
-                        val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
-                        val resp = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
-                        
-                        if (rc in 200..299) {
-                            predictedFen = org.json.JSONObject(resp).optString("fen", "").substringBefore(" ")
-                        }
+                        val predictedFen = fenEngine.processBoard(bmp).substringBefore(" ")
+                        bmp.recycle()
 
                         val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
-                        val rawLimpio = resp.take(80).replace("\n", "")
-                        
-                        logFile.appendText("FOTO $i | HTTP $rc | P: [$predictedFen] | E: [$expectedFen] | RAW: $rawLimpio\n")
-                        
-                        // TU METRALLETA: Espera de 1.5s entre disparos
-                        Thread.sleep(DELAY_BENCH_BETWEEN_MS)
+                        logFile.appendText("FOTO $i | LOCAL | P: [$predictedFen] | E: [$expectedFen]\n")
+
                         return predictedFen == expectedFen && expectedFen.isNotEmpty()
-                        
+
                     } catch (e: Exception) {
-                        logFile.appendText("FOTO $i | ERROR DE RED / TIMEOUT: ${e.message}\n")
-                        // Flujo lineal estricto sin reintentos. Avanza inmediatamente a la siguiente foto.
+                        logFile.appendText("FOTO $i | ERROR LOCAL: ${e.message}\n")
                         return false
                     }
                 }

@@ -89,7 +89,7 @@ class FenEngine(private val context: Context) {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
 
-        val isWhiteZone = isPieceWhite(square)
+        val isWhiteZone = isPieceWhite(square, row)
 
         var bestScore = MATCH_THRESHOLD
         var bestSymbol = EMPTY
@@ -120,8 +120,12 @@ class FenEngine(private val context: Context) {
      * tema de tablero o condición de iluminación.
      * Si el contraste global es muy bajo (casilla vacía), la clasificación
      * no importa: matchNormalized no superará MATCH_THRESHOLD de todos modos.
+     *
+     * [row=1] Bias para la fila de peones negros (rank 7 FEN): el umbral se
+     * eleva en ROW1_WHITE_BIAS para compensar el leve exceso de brillo central
+     * que provoca falsos positivos (P en lugar de p).
      */
-    private fun isPieceWhite(square: IntArray): Boolean {
+    private fun isPieceWhite(square: IntArray, row: Int = 0): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
@@ -146,8 +150,11 @@ class FenEngine(private val context: Context) {
         // Sin contraste suficiente → casilla vacía, la clasificación no importa
         if (maxV - minV < MIN_CONTRAST) return true
 
-        // Blanca si el centro supera el punto medio del rango de la casilla
-        return centerMean > (minV + maxV) / 2.0f
+        // Bias de fila: fila 1 (peones negros, rank 7 FEN) necesita umbral más alto
+        val bias = if (row == 1) ROW1_WHITE_BIAS else 0f
+
+        // Blanca si el centro supera el punto medio del rango de la casilla (± bias)
+        return centerMean > (minV + maxV) / 2.0f + bias
     }
 
     // ─────────────────────────────────────────────
@@ -396,6 +403,7 @@ class FenEngine(private val context: Context) {
         private const val CENTER_CROP_START  = 30   // región central 30×30 para bando
         private const val CENTER_CROP_END    = 60
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
+        private const val ROW1_WHITE_BIAS    = 8f   // bias fila 1 (peones negros rank 7): umbral más alto para evitar P→p
         private const val MATCH_THRESHOLD    = 0.45f
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
