@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.*
 
 /**
@@ -68,6 +70,7 @@ class FenEngine(private val context: Context) {
      */
     fun processBoard(board: Bitmap): String {
         val gray = bitmapToGray(board)
+        saveDebugGray(gray)
         val grid = Array(BOARD_SQUARES) { CharArray(BOARD_SQUARES) { EMPTY } }
 
         for (row in 0 until BOARD_SQUARES) {
@@ -107,6 +110,25 @@ class FenEngine(private val context: Context) {
             }
         }
         return bestSymbol
+    }
+
+    // ─────────────────────────────────────────────
+    // Debug: guarda chesz_gray.png junto a chesz_log.txt
+    // ─────────────────────────────────────────────
+
+    private fun saveDebugGray(gray: IntArray) {
+        runCatching {
+            val bmp = Bitmap.createBitmap(BOARD_SIZE, BOARD_SIZE, Bitmap.Config.ARGB_8888)
+            for (i in gray.indices) {
+                val v = gray[i]
+                bmp.setPixel(i % BOARD_SIZE, i / BOARD_SIZE, Color.rgb(v, v, v))
+            }
+            val dir = context.getExternalFilesDir(null) ?: return
+            FileOutputStream(File(dir, "chesz_gray.png")).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bmp.recycle()
+        }
     }
 
     // ─────────────────────────────────────────────
