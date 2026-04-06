@@ -668,6 +668,20 @@ class BubbleService : Service() {
         }
     }
 
+    private fun countdown(seconds: Int, onFinish: (() -> Unit)? = null) {
+        for (sec in seconds downTo 1) {
+            root.post { fenTitle.text = "${sec}s" }
+            Thread.sleep(1000)
+        }
+        root.post { fenTitle.text = "0s" }
+        Thread.sleep(300)
+        root.post { fenTitle.text = "" }
+        if (onFinish != null) {
+            Thread.sleep(300)
+            root.post { onFinish() }
+        }
+    }
+
     private fun pingAndResetHost() {
         if (!isHostChecked) {
             devHandler.removeCallbacksAndMessages(null)
@@ -708,15 +722,7 @@ class BubbleService : Service() {
                             updateDebug(msg)
 
                             Thread {
-                                for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = "${sec}s" }
-                                    Thread.sleep(1000)
-                                }
-                                root.post { fenTitle.text = "0s" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = "" }
-                                Thread.sleep(300)
-                                root.post {
+                                countdown(5) {
                                     if (isHostChecked) {
                                         isHostChecked = false
                                         updateDebug("TIME OUT")
@@ -727,32 +733,14 @@ class BubbleService : Service() {
                         } else {
                             updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
                             Thread {
-                                for (sec in 5 downTo 1) {
-                                    root.post { fenTitle.text = "${sec}s" }
-                                    Thread.sleep(1000)
-                                }
-                                root.post { fenTitle.text = "0s" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = "" }
-                                Thread.sleep(300)
-                                root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
+                                countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
                             }.start()
                         }
                     }
                 } catch (e: Exception) {
                     root.post {
                         updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
-                        Thread {
-                            for (sec in 5 downTo 1) {
-                                root.post { fenTitle.text = "${sec}s" }
-                                Thread.sleep(1000)
-                            }
-                            root.post { fenTitle.text = "0s" }
-                            Thread.sleep(300)
-                            root.post { fenTitle.text = "" }
-                            Thread.sleep(300)
-                            root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
-                        }.start()
+                        Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
                     }
                 }
             }
@@ -760,17 +748,7 @@ class BubbleService : Service() {
             isHostChecked = false
             root.post { updateDebug("HOST RESTARTING...\nREADY IN 1-3MIN.") }
 
-            Thread {
-                for (sec in 5 downTo 1) {
-                    root.post { fenTitle.text = "${sec}s" }
-                    Thread.sleep(1000)
-                }
-                root.post { fenTitle.text = "0s" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = "" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
-            }.start()
+            Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
 
             kotlin.concurrent.thread {
                 try {
@@ -1196,13 +1174,7 @@ class BubbleService : Service() {
                 root.post {
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
                 }
-                for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = "${sec}s" }
-                    Thread.sleep(1000)
-                }
-                root.post { fenTitle.text = "0s" }
-                Thread.sleep(300)
-                root.post { fenTitle.text = "" }
+                countdown(10)
 
             } catch (e: Exception) {
                 if (e.message != "ABORT_MANUAL") {
