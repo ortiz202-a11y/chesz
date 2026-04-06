@@ -200,3 +200,4 @@
 - [x] ADN e Integridad validados automáticamente (23:10)
 - [x] APK lista y verificada (20:10)
 - [x] APK lista y verificada (20:43)
+- [x] APK lista y verificada (21:51)

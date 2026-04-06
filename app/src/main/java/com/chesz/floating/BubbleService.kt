@@ -70,6 +70,9 @@ class BubbleService : Service() {
     private var activeVirtualDisplay: android.hardware.display.VirtualDisplay? = null
     private var activeImageReader: android.media.ImageReader? = null
 
+    // ===== FenEngine local =====
+    private val fenEngine by lazy { com.chesz.engine.FenEngine(this) }
+
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
@@ -102,6 +105,7 @@ class BubbleService : Service() {
         updateScreenCache()
         createRootOverlay()
         createKillArea()
+        Thread { fenEngine.loadTemplates() }.start()
     }
 
     private fun startForegroundForMediaProjection() {
@@ -854,18 +858,16 @@ class BubbleService : Service() {
                             )
                             croppedLimpio.recycle() // Liberar pantalla completa
 
-                            // 2. Imagen en Color Original (Filtro de grises extraido)
+                            // 2. Guardar imagen para debug
                             val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
                             if (dir != null) {
                                 if (!dir.exists()) dir.mkdirs()
-                                val file = java.io.File(dir, "chesz_last.png")
-                                java.io.FileOutputStream(file).use {
+                                java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
                                     recortado.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
-                                updateDebug("ENVIANDO DATOS...")
-                                sendToCheszEngine(file)
                             }
-                            recortado.recycle()
+                            updateDebug("PROCESANDO...")
+                            procesarConFenEngine(recortado) // recycle dentro del hilo
                         } catch (e: Exception) {
                             updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
@@ -891,139 +893,34 @@ class BubbleService : Service() {
         }
     }
 
-    private fun sendToCheszEngine(file: java.io.File) {
+    private fun procesarConFenEngine(bitmap: android.graphics.Bitmap) {
         Thread {
             try {
-                System.setProperty("http.maxConnections", "20")
-                    val url = java.net.URL("$URL_ENGINE_PREDICT?bypass=${System.currentTimeMillis()}")
-                val conn = url.openConnection() as java.net.HttpURLConnection
-                conn.connectTimeout = TIMEOUT_ENGINE_CONNECT
-                conn.readTimeout = TIMEOUT_ENGINE_READ
-                val boundary = "Boundary-" + System.currentTimeMillis()
-
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                conn.instanceFollowRedirects = true
-                // doOutput quitado para POST simple
-                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-                    conn.setRequestProperty("Connection", "close")
-
-                conn.outputStream.use { out ->
-                    val writer = java.io.PrintWriter(out.writer())
-                    writer.print("--$boundary\r\n")
-                    writer.print("Content-Disposition: form-data; name=\"file\"; filename=\"${file.name}\"\r\n")
-                    writer.print("Content-Type: image/png\r\n")
-                    writer.print("\r\n")
-                    writer.flush()
-
-                    file.inputStream().use { it.copyTo(out) }
-
-                    writer.print("\r\n")
-                    writer.print("--$boundary--\r\n")
-                    writer.flush()
-                }
-
-                                                val rc = conn.responseCode
-                    root.post { if (rc != 200 && rc != 302) updateDebug("RESTART STATUS: $rc") }
-                val stream = if (rc in 200..299) conn.inputStream else conn.errorStream
-
-                if (rc == 200) {
-                    val respuesta = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
-                    if (respuesta.isNotBlank()) {
-                        val json = JSONObject(respuesta)
-                        val fen = json.optString("fen", "")
-                        root.post { fenTitle.text = fen.substringBefore(" ") }
-
-                        lastFen = fen
-
-                        if (esFenValido64(fen)) {
-                            var textoFinal = ""
-
-                            val chessdbData = json.optString("chessdb", "")
-                            if (chessdbData.isNotEmpty() && chessdbData != "null") {
-                                textoFinal += "\nCHESSDB: " + chessdbData.trim()
+                val fen = fenEngine.processBoard(bitmap)
+                lastFen = fen
+                val fenPosicion = fen.substringBefore(" ")
+                root.post {
+                    fenTitle.text = fenPosicion
+                    if (esFenValido64(fen)) {
+                        updateDebug(fenPosicion)
+                        runCatching {
+                            val logDir = getExternalFilesDir(null)
+                            if (logDir != null) {
+                                val ts = java.text.SimpleDateFormat(
+                                    "yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()
+                                ).format(java.util.Date())
+                                java.io.File(logDir, "chesz_log.txt")
+                                    .writeText("==== [ $ts ] ====\nFEN: $fen\n")
                             }
-
-                            // --- CAJA NEGRA (LOG) ---
-                            try {
-                                val logDir = getExternalFilesDir(null)
-                                if (logDir != null) {
-                                    if (!logDir.exists()) logDir.mkdirs()
-                                    val logFile = java.io.File(logDir, "chesz_log.txt")
-                                    val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-                                    val fData = json.optString("fen", "Vacio")
-                                    val sData = json.optString("stockfish", "Vacio")
-
-                                    val logContent = "==== [ $ts ] ====\nFEN RAW: $fData\n\nSTOCKFISH RAW: $sData\n"
-                                    logFile.writeText(logContent)
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                            // -------------------------
-                            val stockfishData = json.optString("stockfish", "")
-                            if (stockfishData.isNotEmpty() && stockfishData != "null") {
-                                try {
-                                    val sfJson = org.json.JSONObject(stockfishData)
-                                    val rawMove = sfJson.optString("bestmove", "")
-                                    val evalStr = sfJson.optString("evaluation", "")
-                                    val mateStr = sfJson.optString("mate", "")
-                                    val contStr = sfJson.optString("continuation", "")
-
-                                    var move = rawMove
-                                    var ponder = ""
-                                    if (rawMove.startsWith("bestmove ")) {
-                                        val parts = rawMove.split(" ")
-                                        if (parts.size >= 2) move = parts[1]
-                                        if (parts.size >= 4 && parts[2] == "ponder") ponder = parts[3]
-                                    }
-
-                                    textoFinal += "\n\n[BM] >  ${move.uppercase()}"
-                                    if (ponder.isNotEmpty()) textoFinal += "\n[CA] >  ${ponder.uppercase()}"
-
-                                    if (mateStr.isNotEmpty() && mateStr != "null") {
-                                        textoFinal += "\n[VV] >  M$mateStr"
-                                    } else if (evalStr.isNotEmpty() && evalStr != "null") {
-                                        val d = evalStr.toDoubleOrNull()
-                                        if (d != null && d > 0) {
-                                            textoFinal += "\n[VV] >  +$evalStr"
-                                        } else {
-                                            textoFinal += "\n[VV] >  $evalStr"
-                                        }
-                                    } else {
-                                        textoFinal += "\n[VV] >  0.0"
-                                    }
-
-                                    if (contStr.isNotEmpty() && contStr != "null") {
-                                        val contParts = contStr.split(" ")
-                                        var nmString = ""
-                                        val limit = Math.min(BENCH_CONTINUATION_LIMIT, contParts.size)
-                                        for (i in 2 until limit) {
-                                            val m = contParts[i].uppercase()
-                                            if (i % 2 == 0) nmString += "($m) " else nmString += "$m "
-                                        }
-                                        if (nmString.isNotEmpty()) textoFinal += "\n[NM] >  ${nmString.trim()}"
-                                    }
-                                } catch (e: Exception) {
-                                    textoFinal += "\n[RAW]> " + stockfishData.trim()
-                                }
-                            }
-
-                            updateDebug(textoFinal.trim())
-                        } else {
-                            // EL FEN LLEGO, PERO ESTA CHUECO. IMPRIMIR DE TODOS MODOS:
-                            val sfData = json.optString("stockfish", "Sin datos")
-                            updateDebug("[FEN IMPERFECTO]\n" + fen + "\n\n[SF RAW]\n" + sfData.take(50) + "...")
                         }
                     } else {
-                        updateDebug("[FALLO] JSON vacio o en blanco")
+                        updateDebug("[FEN IMPERFECTO]\n$fenPosicion")
                     }
-                } else {
-                    val errorBody = stream?.bufferedReader()?.use { it.readText() } ?: "Sin detalles"
-                    updateDebug("[FALLO HTTP] Codigo $rc -> $errorBody")
                 }
             } catch (e: Exception) {
-                updateDebug("❌ Error Red: ${e.message}")
+                root.post { updateDebug("Error FenEngine: ${e.message}") }
+            } finally {
+                bitmap.recycle()
             }
         }.start()
     }
@@ -1249,9 +1146,7 @@ class BubbleService : Service() {
         // --- Timeouts de red (ms) ---
         private const val TIMEOUT_PING_CONNECT   = 4000
         private const val TIMEOUT_PING_READ      = 6000
-        private const val TIMEOUT_ENGINE_CONNECT = 8000
-        private const val TIMEOUT_ENGINE_READ    = 10000
-        private const val TIMEOUT_BENCH_CONNECT  = 4000
+private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val TIMEOUT_BENCH_READ     = 8500
 
         // --- Delays (ms) ---
