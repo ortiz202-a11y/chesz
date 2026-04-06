@@ -73,6 +73,11 @@ class FenEngine(private val context: Context) {
      * @return FEN completo, e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
      */
     fun processBoard(board: Bitmap): String {
+        // Limpiar log antes de cada captura
+        runCatching {
+            val dir = context.getExternalFilesDir(null)
+            dir?.let { File(it, "chesz_log.txt").writeText("") }
+        }
         val gray = bitmapToGray(board)
         saveDebugGray(gray)
 
@@ -83,9 +88,19 @@ class FenEngine(private val context: Context) {
             }
         }
 
+        debugLog("=== GRID ANTES DEL FLIP ===")
+        debugLog(gridToString(grid))
+
         // Orientación: rey (inapelable) → peones → densidad
         val flipped = isBoardFlipped(grid)
+        debugLog("isBoardFlipped = $flipped")
+
         val finalGrid = if (flipped) flipGrid(grid) else grid
+
+        if (flipped) {
+            debugLog("=== GRID DESPUÉS DEL FLIP ===")
+            debugLog(gridToString(finalGrid))
+        }
 
         // 2ª pasada CON bias solo en filas de peones (1 y 6), ahora que la orientación es conocida
         for (finalRow in listOf(1, 6)) {
@@ -96,7 +111,9 @@ class FenEngine(private val context: Context) {
             }
         }
 
-        return buildFen(finalGrid)
+        val fen = buildFen(finalGrid)
+        debugLog("FEN final: $fen")
+        return fen
     }
 
     /**
@@ -114,7 +131,9 @@ class FenEngine(private val context: Context) {
         for (row in 0 until BOARD_SQUARES) {
             for (col in 0 until BOARD_SQUARES) {
                 if (grid[row][col] == 'K') {
-                    return row < BOARD_SQUARES / 2   // filas 0-3 = girado
+                    val flipped = row < BOARD_SQUARES / 2   // filas 0-3 = girado
+                    debugLog("K encontrado en fila=$row col=$col → isBoardFlipped=$flipped (umbral=${BOARD_SQUARES / 2})")
+                    return flipped
                 }
             }
         }
@@ -284,6 +303,26 @@ class FenEngine(private val context: Context) {
     // ─────────────────────────────────────────────
     // Debug: guarda chesz_gray.png junto a chesz_log.txt
     // ─────────────────────────────────────────────
+
+    private fun debugLog(msg: String) {
+        runCatching {
+            val dir = context.getExternalFilesDir(null) ?: return
+            File(dir, "chesz_log.txt").appendText("$msg\n")
+        }
+    }
+
+    private fun gridToString(grid: Array<CharArray>): String {
+        val sb = StringBuilder()
+        for (row in 0 until BOARD_SQUARES) {
+            sb.append("  fila $row: ")
+            for (col in 0 until BOARD_SQUARES) {
+                val c = grid[row][col]
+                sb.append(if (c == EMPTY) '.' else c)
+            }
+            sb.append('\n')
+        }
+        return sb.toString()
+    }
 
     private fun saveDebugGray(gray: IntArray) {
         runCatching {
