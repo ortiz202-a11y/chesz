@@ -66,38 +66,75 @@ class FenEngine(private val context: Context) {
      * Procesa un Bitmap de 720×720 px (tablero recortado) y devuelve la cadena FEN.
      * Requiere haber llamado [loadTemplates] antes.
      *
+     * Flujo de dos pasadas:
+     *  1ª pasada: detección sin bias → determinar orientación (rey → peones → densidad).
+     *  2ª pasada: re-detectar filas 1 y 6 del grid final CON bias (ya conocemos la orientación).
+     *
      * @return FEN completo, e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
      */
     fun processBoard(board: Bitmap): String {
         val gray = bitmapToGray(board)
         saveDebugGray(gray)
-        val grid = Array(BOARD_SQUARES) { CharArray(BOARD_SQUARES) { EMPTY } }
 
-        for (row in 0 until BOARD_SQUARES) {
-            for (col in 0 until BOARD_SQUARES) {
-                grid[row][col] = detectPiece(gray, row, col)
+        // 1ª pasada: sin bias de fila
+        val grid = Array(BOARD_SQUARES) { row ->
+            CharArray(BOARD_SQUARES) { col ->
+                detectPiece(gray, row, col, applyBias = false)
             }
         }
-        val finalGrid = if (isBoardFlipped(grid)) flipGrid(grid) else grid
+
+        // Orientación: rey (inapelable) → peones → densidad
+        val flipped = isBoardFlipped(grid)
+        val finalGrid = if (flipped) flipGrid(grid) else grid
+
+        // 2ª pasada CON bias solo en filas de peones (1 y 6), ahora que la orientación es conocida
+        for (finalRow in listOf(1, 6)) {
+            for (finalCol in 0 until BOARD_SQUARES) {
+                val origRow = if (flipped) BOARD_SQUARES - 1 - finalRow else finalRow
+                val origCol = if (flipped) BOARD_SQUARES - 1 - finalCol else finalCol
+                finalGrid[finalRow][finalCol] = detectPiece(gray, origRow, origCol, applyBias = true)
+            }
+        }
+
         return buildFen(finalGrid)
     }
 
     /**
      * Detecta si el tablero está orientado desde la perspectiva de las negras.
-     * Estrategia principal: el rey blanco (K) en la mitad superior indica tablero girado.
-     * Fallback: si las piezas blancas tienen un promedio de fila menor que las negras,
-     * el tablero está girado (normalmente blancas están en filas bajas = números altos).
+     *
+     * Prioridad 1 — Rey blanco (inapelable):
+     *   El rey blanco K correcto siempre está en filas 6-7. Si aparece en filas 0-3 → girado.
+     * Prioridad 2 — Peones:
+     *   P nunca en filas 0-1; p nunca en filas 6-7. Cualquier violación → girado.
+     * Prioridad 3 — Densidad (fallback):
+     *   Solo cuando no hay rey ni peones visibles.
      */
     private fun isBoardFlipped(grid: Array<CharArray>): Boolean {
-        // Buscar rey blanco primero (el indicador más confiable)
+        // 1. Rey blanco — regla inapelable
         for (row in 0 until BOARD_SQUARES) {
             for (col in 0 until BOARD_SQUARES) {
                 if (grid[row][col] == 'K') {
-                    return row < BOARD_SQUARES / 2
+                    return row < BOARD_SQUARES / 2   // filas 0-3 = girado
                 }
             }
         }
-        // Fallback: centro de masa de piezas blancas vs negras
+
+        // 2. Validación por peones
+        var pawnViolation = false
+        var hasPawns = false
+        outer@ for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                val p = grid[row][col]
+                if (p == 'P' || p == 'p') {
+                    hasPawns = true
+                    if (p == 'P' && row <= 1) { pawnViolation = true; break@outer }
+                    if (p == 'p' && row >= 6) { pawnViolation = true; break@outer }
+                }
+            }
+        }
+        if (hasPawns) return pawnViolation
+
+        // 3. Fallback densidad — solo si no hay rey ni peones
         var whiteRowSum = 0; var whiteCount = 0
         var blackRowSum = 0; var blackCount = 0
         for (row in 0 until BOARD_SQUARES) {
@@ -109,7 +146,7 @@ class FenEngine(private val context: Context) {
             }
         }
         if (whiteCount == 0 || blackCount == 0) return false
-        // Perspectiva normal: blancas en filas altas (6-7), negras en filas bajas (0-1)
+        // Normal: blancas en filas altas (6-7), negras en filas bajas (0-1)
         return (whiteRowSum.toFloat() / whiteCount) < (blackRowSum.toFloat() / blackCount)
     }
 
@@ -125,29 +162,81 @@ class FenEngine(private val context: Context) {
     // Detección de pieza en una casilla
     // ─────────────────────────────────────────────
 
-    private fun detectPiece(boardGray: IntArray, row: Int, col: Int): Char {
+    /**
+     * Detecta la pieza en la casilla [row, col].
+     *
+     * [applyBias] activa el ROW1_WHITE_BIAS solo cuando la orientación ya es conocida
+     * (2ª pasada sobre filas 1 y 6 del grid final).
+     *
+     * Desambiguación alfil/peón (reglas 7-9):
+     *  - El alfil requiere BISHOP_THRESHOLD (0.55) en lugar del MATCH_THRESHOLD genérico.
+     *  - Si el top-1 y top-2 forman par alfil/peón con diferencia < AMBIGUOUS_GAP,
+     *    se resuelve por la distribución vertical de masa (alfil = pieza alta).
+     */
+    private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false): Char {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
+        val isWhiteZone = isPieceWhite(square, applyBias)
 
-        val isWhiteZone = isPieceWhite(square, row)
-
-        var bestScore = MATCH_THRESHOLD
-        var bestSymbol = EMPTY
-
+        // Calcular el mejor score por símbolo (no por plantilla individual)
+        val symbolScores = mutableMapOf<Char, Float>()
         for ((symbol, templateList) in templates) {
-            val symbolIsWhite = symbol.isUpperCase()
-            // Descartar bando contrario antes de calcular (optimización)
-            if (symbolIsWhite != isWhiteZone) continue
-
+            if (symbol.isUpperCase() != isWhiteZone) continue
+            var best = -1f
             for (template in templateList) {
-                val score = matchNormalized(silueta, template)
-                if (score > bestScore) {
-                    bestScore = score
-                    bestSymbol = symbol
+                val s = matchNormalized(silueta, template)
+                if (s > best) best = s
+            }
+            symbolScores[symbol] = best
+        }
+
+        val sorted = symbolScores.entries.sortedByDescending { it.value }
+        val top1 = sorted.getOrNull(0) ?: return EMPTY
+        val top2 = sorted.getOrNull(1)
+
+        val bestScore  = top1.value
+        val bestSymbol = top1.key
+        val secondScore  = top2?.value ?: -1f
+        val secondSymbol = top2?.key ?: EMPTY
+
+        // Umbral efectivo: el alfil requiere barra más alta para evitar confusión con peón
+        val threshold = if (bestSymbol == 'b' || bestSymbol == 'B') BISHOP_THRESHOLD else MATCH_THRESHOLD
+        if (bestScore < threshold) return EMPTY
+
+        // Desambiguación alfil/peón por altura cuando scores están muy próximos
+        val isBishopPawnPair = secondSymbol != EMPTY &&
+            ((bestSymbol.lowercaseChar() == 'b' && secondSymbol.lowercaseChar() == 'p') ||
+             (bestSymbol.lowercaseChar() == 'p' && secondSymbol.lowercaseChar() == 'b'))
+        if (isBishopPawnPair && secondScore >= MATCH_THRESHOLD && (bestScore - secondScore) < AMBIGUOUS_GAP) {
+            return resolveByHeight(square, bestSymbol, secondSymbol)
+        }
+
+        return bestSymbol
+    }
+
+    /**
+     * Desempata alfil vs peón usando la distribución vertical de masa de píxeles brillantes.
+     * El alfil es una pieza más alta → centroide de brillo en la mitad superior (y pequeño).
+     * El peón tiene masa concentrada en el centro-bajo.
+     */
+    private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char): Char {
+        val s = SQUARE_SIZE
+        val brightThreshold = 128
+        var weightedSum = 0L
+        var count = 0L
+        for (y in 0 until s) {
+            for (x in 0 until s) {
+                if (square[y * s + x] > brightThreshold) {
+                    weightedSum += y
+                    count++
                 }
             }
         }
-        return bestSymbol
+        val centroid = if (count == 0L) (s / 2f) else weightedSum.toFloat() / count
+        val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
+        val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
+        // Masa en mitad superior (centroide < s/2) → alfil; caso contrario → peón
+        return if (centroid < s / 2f) bishopSymbol else pawnSymbol
     }
 
     /**
@@ -156,16 +245,11 @@ class FenEngine(private val context: Context) {
      *   2. Umbral dinámico = (min + max) / 2 de toda la casilla.
      *   → blanca si el centro es más luminoso que el punto medio del rango.
      *
-     * No depende de ningún umbral absoluto, por lo que funciona con cualquier
-     * tema de tablero o condición de iluminación.
-     * Si el contraste global es muy bajo (casilla vacía), la clasificación
-     * no importa: matchNormalized no superará MATCH_THRESHOLD de todos modos.
-     *
-     * [row=1] Bias para la fila de peones negros (rank 7 FEN): el umbral se
-     * eleva en ROW1_WHITE_BIAS para compensar el leve exceso de brillo central
-     * que provoca falsos positivos (P en lugar de p).
+     * [applyBias] solo debe ser true en la 2ª pasada (filas 1 y 6 del grid final),
+     * cuando la orientación ya está resuelta. Aplicarlo antes provocaba bias en filas
+     * equivocadas si el tablero estaba girado.
      */
-    private fun isPieceWhite(square: IntArray, row: Int = 0): Boolean {
+    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
@@ -190,9 +274,8 @@ class FenEngine(private val context: Context) {
         // Sin contraste suficiente → casilla vacía, la clasificación no importa
         if (maxV - minV < MIN_CONTRAST) return true
 
-        // Bias de fila: fila 1 o fila 6 pueden ser la fila de peones negros
-        // dependiendo de la orientación del tablero (blancas arriba o negras arriba)
-        val bias = if (row == 1 || row == 6) ROW1_WHITE_BIAS else 0f
+        // Bias solo cuando se solicita explícitamente (orientación ya conocida)
+        val bias = if (applyBias) ROW1_WHITE_BIAS else 0f
 
         // Blanca si el centro supera el punto medio del rango de la casilla (± bias)
         return centerMean > (minV + maxV) / 2.0f + bias
@@ -444,8 +527,10 @@ class FenEngine(private val context: Context) {
         private const val CENTER_CROP_START  = 30   // región central 30×30 para bando
         private const val CENTER_CROP_END    = 60
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
-        private const val ROW1_WHITE_BIAS    = 8f   // bias fila 1 (peones negros rank 7): umbral más alto para evitar P→p
+        private const val ROW1_WHITE_BIAS    = 8f   // bias para filas de peones (2ª pasada, orientación conocida)
         private const val MATCH_THRESHOLD    = 0.45f
+        private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
+        private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
