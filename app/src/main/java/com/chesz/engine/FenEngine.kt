@@ -78,8 +78,48 @@ class FenEngine(private val context: Context) {
                 grid[row][col] = detectPiece(gray, row, col)
             }
         }
-        return buildFen(grid)
+        val finalGrid = if (isBoardFlipped(grid)) flipGrid(grid) else grid
+        return buildFen(finalGrid)
     }
+
+    /**
+     * Detecta si el tablero está orientado desde la perspectiva de las negras.
+     * Estrategia principal: el rey blanco (K) en la mitad superior indica tablero girado.
+     * Fallback: si las piezas blancas tienen un promedio de fila menor que las negras,
+     * el tablero está girado (normalmente blancas están en filas bajas = números altos).
+     */
+    private fun isBoardFlipped(grid: Array<CharArray>): Boolean {
+        // Buscar rey blanco primero (el indicador más confiable)
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                if (grid[row][col] == 'K') {
+                    return row < BOARD_SQUARES / 2
+                }
+            }
+        }
+        // Fallback: centro de masa de piezas blancas vs negras
+        var whiteRowSum = 0; var whiteCount = 0
+        var blackRowSum = 0; var blackCount = 0
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                val p = grid[row][col]
+                if (p == EMPTY) continue
+                if (p.isUpperCase()) { whiteRowSum += row; whiteCount++ }
+                else                 { blackRowSum += row; blackCount++ }
+            }
+        }
+        if (whiteCount == 0 || blackCount == 0) return false
+        // Perspectiva normal: blancas en filas altas (6-7), negras en filas bajas (0-1)
+        return (whiteRowSum.toFloat() / whiteCount) < (blackRowSum.toFloat() / blackCount)
+    }
+
+    /** Gira el tablero 180° (equivale a mirarlo desde el otro lado) */
+    private fun flipGrid(grid: Array<CharArray>): Array<CharArray> =
+        Array(BOARD_SQUARES) { row ->
+            CharArray(BOARD_SQUARES) { col ->
+                grid[BOARD_SQUARES - 1 - row][BOARD_SQUARES - 1 - col]
+            }
+        }
 
     // ─────────────────────────────────────────────
     // Detección de pieza en una casilla
@@ -150,8 +190,9 @@ class FenEngine(private val context: Context) {
         // Sin contraste suficiente → casilla vacía, la clasificación no importa
         if (maxV - minV < MIN_CONTRAST) return true
 
-        // Bias de fila: fila 1 (peones negros, rank 7 FEN) necesita umbral más alto
-        val bias = if (row == 1) ROW1_WHITE_BIAS else 0f
+        // Bias de fila: fila 1 o fila 6 pueden ser la fila de peones negros
+        // dependiendo de la orientación del tablero (blancas arriba o negras arriba)
+        val bias = if (row == 1 || row == 6) ROW1_WHITE_BIAS else 0f
 
         // Blanca si el centro supera el punto medio del rango de la casilla (± bias)
         return centerMean > (minV + maxV) / 2.0f + bias
