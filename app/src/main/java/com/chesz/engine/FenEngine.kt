@@ -101,7 +101,7 @@ class FenEngine(private val context: Context) {
             for (finalCol in 0 until BOARD_SQUARES) {
                 val origRow = if (flipped) BOARD_SQUARES - 1 - finalRow else finalRow
                 val origCol = if (flipped) BOARD_SQUARES - 1 - finalCol else finalCol
-                finalGrid[finalRow][finalCol] = detectPiece(gray, origRow, origCol, applyBias = true)
+                finalGrid[finalRow][finalCol] = detectPiece(gray, origRow, origCol)
             }
         }
 
