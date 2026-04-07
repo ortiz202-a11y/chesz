@@ -38,6 +38,9 @@ class FenEngine(private val context: Context) {
     // Plantillas cargadas: símbolo FEN → lista de arrays de píxeles (SQUARE×SQUARE)
     private val templates = mutableMapOf<Char, List<IntArray>>()
 
+    /** Número de foto actual (benchmark). 0 = captura normal. Se fija desde fuera antes de processBoard. */
+    var debugPhotoNum = 0
+
     // ─────────────────────────────────────────────
     // API pública
     // ─────────────────────────────────────────────
@@ -73,10 +76,10 @@ class FenEngine(private val context: Context) {
      * @return FEN completo, e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
      */
     fun processBoard(board: Bitmap): String {
-        // Limpiar log antes de cada captura
+        // Cabecera de log (acumulativo para benchmark, no borra entre fotos)
         runCatching {
             val dir = context.getExternalFilesDir(null)
-            dir?.let { File(it, "chesz_log.txt").writeText("") }
+            dir?.let { File(it, "chesz_log.txt").appendText("\n=== FOTO $debugPhotoNum ===\n") }
         }
         val gray = bitmapToGray(board)
         saveDebugGray(gray)
@@ -179,7 +182,7 @@ class FenEngine(private val context: Context) {
     private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false): Char {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
-        val isWhiteZone = isPieceWhite(square, applyBias)
+        val isWhiteZone = isPieceWhite(square, applyBias, row, col)
 
         // Calcular el mejor score por símbolo (no por plantilla individual)
         val symbolScores = mutableMapOf<Char, Float>()
@@ -254,7 +257,7 @@ class FenEngine(private val context: Context) {
      * cuando la orientación ya está resuelta. Aplicarlo antes provocaba bias en filas
      * equivocadas si el tablero estaba girado.
      */
-    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false): Boolean {
+    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
@@ -277,13 +280,19 @@ class FenEngine(private val context: Context) {
         }
 
         // Sin contraste suficiente → casilla vacía, la clasificación no importa
-        if (maxV - minV < MIN_CONTRAST) return true
+        if (maxV - minV < MIN_CONTRAST) {
+            debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV contrast=${maxV-minV} < MIN_CONTRAST → skip (true)")
+            return true
+        }
 
         // Bias solo cuando se solicita explícitamente (orientación ya conocida)
         val bias = if (applyBias) ROW1_WHITE_BIAS else 0f
+        val threshold = (minV + maxV) / 2.0f + bias
+        val result = centerMean > threshold
 
-        // Blanca si el centro supera el punto medio del rango de la casilla (± bias)
-        return centerMean > (minV + maxV) / 2.0f + bias
+        debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias → $result")
+
+        return result
     }
 
     // ─────────────────────────────────────────────

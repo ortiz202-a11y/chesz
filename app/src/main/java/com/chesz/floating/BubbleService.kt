@@ -954,6 +954,7 @@ class BubbleService : Service() {
                             android.graphics.BitmapFactory.decodeStream(it)
                         } ?: throw Exception("No se pudo decodificar benchmark/$i.png")
 
+                        fenEngine.debugPhotoNum = i
                         val predictedFen = fenEngine.processBoard(bmp).substringBefore(" ")
                         bmp.recycle()
 
