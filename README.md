@@ -505,3 +505,11 @@ SE AGREGO UN MODO DEBUG O MODO DIOS PARA HACER PING Y O REINICIAR EL SERBIDOR
 TAMBIEN UN BOTON PARA PRUEBAS DEL FEN
 EXISTE UN BOTON TEST FEN QUE LAMZA UNA SERIE DE PRUEBAS QUE SE COMPARAN CON IMAGENES ALMACENADASCON FEN VERIFICADOS
 # CHESZ
+
+
+## FLUJO DE DESARROLLO CON CLI DE IA
+
+El proyecto se desarrolla desde Termux usando dos CLI de IA instalados localmente.
+El principal es **Claude Code** (`claude`), usado para razonamiento, edición de código y commits.
+El segundo CLI (Gemini CLI) está instalado y disponible como herramienta auxiliar.
+Ambos operan directamente sobre el repo sin entorno gráfico.
