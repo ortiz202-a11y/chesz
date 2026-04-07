@@ -139,9 +139,8 @@ class FenEngine(private val context: Context) {
      * En un tablero sin girar (blancas abajo) la esquina superior izquierda
      * muestra "8"; en un tablero girado (negras abajo) muestra "1".
      *
-     * Los dígitos se distinguen por masa de píxeles activos: "8" tiene
-     * aproximadamente 3-4× más píxeles que "1" porque es un carácter
-     * bastante más ancho y con dos bucles.
+     * Los dígitos se distinguen por el ancho máximo del dígito en la región:
+     * "8" es ancho (> 5 px) y "1" es estrecho (≤ 5 px).
      */
     private fun isBoardFlipped(boardGray: IntArray): Boolean {
         // Región donde aparece el número: esquina superior izquierda de la casilla [0,0]
@@ -161,11 +160,23 @@ class FenEngine(private val context: Context) {
         val sorted = pixels.sorted()
         val bgValue = sorted[sorted.size / 2].toFloat()
 
-        // Píxeles que se desvían del fondo → forman el dígito
-        val activeCount = pixels.count { kotlin.math.abs(it - bgValue) > COORD_CONTRAST_THRESHOLD }
+        // Ancho máximo del dígito: por cada fila contar píxeles activos consecutivos y tomar el máximo
+        var maxWidth = 0
+        for (row in 0 until regionH) {
+            var rowWidth = 0
+            for (col in 0 until regionW) {
+                val p = pixels[row * regionW + col]
+                if (kotlin.math.abs(p - bgValue) > COORD_CONTRAST_THRESHOLD) {
+                    rowWidth++
+                    if (rowWidth > maxWidth) maxWidth = rowWidth
+                } else {
+                    rowWidth = 0
+                }
+            }
+        }
 
-        val digit = if (activeCount > COORD_PIXEL_THRESHOLD) 8 else 1
-        debugLog("Esquina [0,0]: fondo≈${bgValue.toInt()}, activos=$activeCount → dígito=$digit → flipped=${digit == 1}")
+        val digit = if (maxWidth > 5) 8 else 1
+        debugLog("Esquina [0,0]: fondo≈${bgValue.toInt()}, anchoMax=$maxWidth → dígito=$digit → flipped=${digit == 1}")
         return digit == 1
     }
 
@@ -256,8 +267,9 @@ class FenEngine(private val context: Context) {
         val centroid = if (count == 0L) (s / 2f) else weightedSum.toFloat() / count
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
-        // Masa en mitad superior (centroide < s/2) → alfil; caso contrario → peón
-        return if (centroid < s / 2f) bishopSymbol else pawnSymbol
+        // Masa por encima de s*0.52 (47px) → alfil; caso contrario → peón
+        // Umbral ligeramente por encima del centro para dar más margen a los alfiles (centY ~43)
+        return if (centroid < s * 0.52f) bishopSymbol else pawnSymbol
     }
 
     /**
@@ -610,7 +622,6 @@ class FenEngine(private val context: Context) {
         private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
-        private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
