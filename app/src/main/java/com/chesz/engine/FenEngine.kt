@@ -92,7 +92,7 @@ class FenEngine(private val context: Context) {
         debugLog(gridToString(grid))
 
         // Orientación: rey (inapelable) → peones → densidad
-        val flipped = isBoardFlipped(grid)
+        val flipped = isBoardFlipped(gray)
         debugLog("isBoardFlipped = $flipped")
 
         val finalGrid = if (flipped) flipGrid(grid) else grid
@@ -117,56 +117,40 @@ class FenEngine(private val context: Context) {
     }
 
     /**
-     * Detecta si el tablero está orientado desde la perspectiva de las negras.
+     * Detecta si el tablero está orientado desde la perspectiva de las negras
+     * leyendo el número en la esquina superior izquierda de la casilla [0,0].
      *
-     * Prioridad 1 — Rey blanco (inapelable):
-     *   El rey blanco K correcto siempre está en filas 6-7. Si aparece en filas 0-3 → girado.
-     * Prioridad 2 — Peones:
-     *   P nunca en filas 0-1; p nunca en filas 6-7. Cualquier violación → girado.
-     * Prioridad 3 — Densidad (fallback):
-     *   Solo cuando no hay rey ni peones visibles.
+     * En un tablero sin girar (blancas abajo) la esquina superior izquierda
+     * muestra "8"; en un tablero girado (negras abajo) muestra "1".
+     *
+     * Los dígitos se distinguen por masa de píxeles activos: "8" tiene
+     * aproximadamente 3-4× más píxeles que "1" porque es un carácter
+     * bastante más ancho y con dos bucles.
      */
-    private fun isBoardFlipped(grid: Array<CharArray>): Boolean {
-        // 1. Rey blanco — regla inapelable
-        for (row in 0 until BOARD_SQUARES) {
-            for (col in 0 until BOARD_SQUARES) {
-                if (grid[row][col] == 'K') {
-                    val flipped = row < BOARD_SQUARES / 2   // filas 0-3 = girado
-                    debugLog("K encontrado en fila=$row col=$col → isBoardFlipped=$flipped (umbral=${BOARD_SQUARES / 2})")
-                    return flipped
-                }
+    private fun isBoardFlipped(boardGray: IntArray): Boolean {
+        // Región donde aparece el número: esquina superior izquierda de la casilla [0,0]
+        val regionX = 2;  val regionW = 12
+        val regionY = 2;  val regionH = 16
+
+        // Recopilar píxeles de la región
+        val pixels = IntArray(regionW * regionH)
+        var idx = 0
+        for (y in regionY until regionY + regionH) {
+            for (x in regionX until regionX + regionW) {
+                pixels[idx++] = boardGray[y * BOARD_SIZE + x]
             }
         }
 
-        // 2. Validación por peones
-        var pawnViolation = false
-        var hasPawns = false
-        outer@ for (row in 0 until BOARD_SQUARES) {
-            for (col in 0 until BOARD_SQUARES) {
-                val p = grid[row][col]
-                if (p == 'P' || p == 'p') {
-                    hasPawns = true
-                    if (p == 'P' && row <= 1) { pawnViolation = true; break@outer }
-                    if (p == 'p' && row >= 6) { pawnViolation = true; break@outer }
-                }
-            }
-        }
-        if (hasPawns) return pawnViolation
+        // Fondo ≈ mediana (la mayor parte de la región es fondo, no dígito)
+        val sorted = pixels.sorted()
+        val bgValue = sorted[sorted.size / 2].toFloat()
 
-        // 3. Fallback densidad — solo si no hay rey ni peones
-        var whiteRowSum = 0; var whiteCount = 0
-        var blackRowSum = 0; var blackCount = 0
-        for (row in 0 until BOARD_SQUARES) {
-            for (col in 0 until BOARD_SQUARES) {
-                val p = grid[row][col]
-                if (p == EMPTY) continue
-                if (p.isUpperCase()) { whiteRowSum += row; whiteCount++ }
-                else                 { blackRowSum += row; blackCount++ }
-            }
-        }
-        if (whiteCount == 0 || blackCount == 0) return false
-        // Normal: blancas en filas altas (6-7), negras en filas bajas (0-1)
-        return (whiteRowSum.toFloat() / whiteCount) < (blackRowSum.toFloat() / blackCount)
+        // Píxeles que se desvían del fondo → forman el dígito
+        val activeCount = pixels.count { kotlin.math.abs(it - bgValue) > COORD_CONTRAST_THRESHOLD }
+
+        val digit = if (activeCount > COORD_PIXEL_THRESHOLD) 8 else 1
+        debugLog("Esquina [0,0]: fondo≈${bgValue.toInt()}, activos=$activeCount → dígito=$digit → flipped=${digit == 1}")
+        return digit == 1
     }
 
     /** Gira el tablero 180° (equivale a mirarlo desde el otro lado) */
@@ -222,11 +206,13 @@ class FenEngine(private val context: Context) {
         val threshold = if (bestSymbol == 'b' || bestSymbol == 'B') BISHOP_THRESHOLD else MATCH_THRESHOLD
         if (bestScore < threshold) return EMPTY
 
-        // Desambiguación alfil/peón por altura cuando scores están muy próximos
+        // Desambiguación alfil/peón por altura: siempre que el par top-1/top-2
+        // sea específicamente alfil vs peón, resolveByHeight es el árbitro final
+        // sin importar el gap entre scores.
         val isBishopPawnPair = secondSymbol != EMPTY &&
             ((bestSymbol.lowercaseChar() == 'b' && secondSymbol.lowercaseChar() == 'p') ||
              (bestSymbol.lowercaseChar() == 'p' && secondSymbol.lowercaseChar() == 'b'))
-        if (isBishopPawnPair && secondScore >= MATCH_THRESHOLD && (bestScore - secondScore) < AMBIGUOUS_GAP) {
+        if (isBishopPawnPair) {
             return resolveByHeight(square, bestSymbol, secondSymbol)
         }
 
@@ -570,6 +556,8 @@ class FenEngine(private val context: Context) {
         private const val MATCH_THRESHOLD    = 0.45f
         private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
+        private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
+        private const val COORD_PIXEL_THRESHOLD    = 25   // activos > 25 → "8" (no girado); ≤ 25 → "1" (girado)
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
