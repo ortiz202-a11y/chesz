@@ -106,8 +106,8 @@ class FenEngine(private val context: Context) {
         debugLog("=== GRID ANTES DEL FLIP ===")
         debugLog(gridToString(grid))
 
-        // Orientación: rey (inapelable) → peones → densidad
-        val flipped = isBoardFlipped(gray)
+        // Orientación: esquina → reyes (fallback) → peones → densidad
+        val flipped = isBoardFlipped(gray) ?: isBoardFlippedByKings(grid) ?: false
         debugFlipped = flipped
         debugLog("isBoardFlipped = $flipped")
 
@@ -139,10 +139,11 @@ class FenEngine(private val context: Context) {
      * En un tablero sin girar (blancas abajo) la esquina superior izquierda
      * muestra "8"; en un tablero girado (negras abajo) muestra "1".
      *
-     * Los dígitos se distinguen por el ancho máximo del dígito en la región:
-     * "8" es ancho (> 5 px) y "1" es estrecho (≤ 5 px).
+     * Los dígitos se distinguen por masa de píxeles activos: "8" tiene
+     * aproximadamente 3-4× más píxeles que "1" porque es un carácter
+     * bastante más ancho y con dos bucles.
      */
-    private fun isBoardFlipped(boardGray: IntArray): Boolean {
+    private fun isBoardFlipped(boardGray: IntArray): Boolean? {
         // Región donde aparece el número: esquina superior izquierda de la casilla [0,0]
         val regionX = 2;  val regionW = 12
         val regionY = 2;  val regionH = 16
@@ -160,24 +161,56 @@ class FenEngine(private val context: Context) {
         val sorted = pixels.sorted()
         val bgValue = sorted[sorted.size / 2].toFloat()
 
-        // Ancho máximo del dígito: por cada fila contar píxeles activos consecutivos y tomar el máximo
-        var maxWidth = 0
-        for (row in 0 until regionH) {
-            var rowWidth = 0
-            for (col in 0 until regionW) {
-                val p = pixels[row * regionW + col]
-                if (kotlin.math.abs(p - bgValue) > COORD_CONTRAST_THRESHOLD) {
-                    rowWidth++
-                    if (rowWidth > maxWidth) maxWidth = rowWidth
-                } else {
-                    rowWidth = 0
+        // Píxeles que se desvían del fondo → forman el dígito
+        val activeCount = pixels.count { kotlin.math.abs(it - bgValue) > COORD_CONTRAST_THRESHOLD }
+
+        debugLog("Esquina [0,0]: fondo≈${bgValue.toInt()}, activos=$activeCount (umbral=$COORD_PIXEL_THRESHOLD)")
+        if (kotlin.math.abs(activeCount - COORD_PIXEL_THRESHOLD) < COORD_AMBIGUITY_MARGIN) {
+            debugLog("isBoardFlipped: zona ambigua → null (se usará fallback por reyes)")
+            return null
+        }
+        val flipped = activeCount <= COORD_PIXEL_THRESHOLD
+        debugLog("isBoardFlipped: flipped=$flipped")
+        return flipped
+    }
+
+    /**
+     * Fallback de orientación: detecta si el tablero está girado según la posición
+     * de los reyes en el grid de la 1ª pasada.
+     *
+     * Normal (blancas abajo): K en filas 4-7, k en filas 0-3.
+     * Girado (negras abajo):  K en filas 0-3, k en filas 4-7.
+     */
+    private fun isBoardFlippedByKings(grid: Array<CharArray>): Boolean? {
+        var whiteKingRow = -1
+        var blackKingRow = -1
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                when (grid[row][col]) {
+                    'K' -> whiteKingRow = row
+                    'k' -> blackKingRow = row
                 }
             }
         }
-
-        val digit = if (maxWidth > 5) 8 else 1
-        debugLog("Esquina [0,0]: fondo≈${bgValue.toInt()}, anchoMax=$maxWidth → dígito=$digit → flipped=${digit == 1}")
-        return digit == 1
+        debugLog("isBoardFlippedByKings: K fila=$whiteKingRow k fila=$blackKingRow")
+        return when {
+            whiteKingRow >= 0 && blackKingRow >= 0 ->
+                (whiteKingRow < blackKingRow).also {
+                    debugLog("isBoardFlippedByKings: ambos reyes → flipped=$it")
+                }
+            whiteKingRow >= 0 ->
+                (whiteKingRow < BOARD_SQUARES / 2).also {
+                    debugLog("isBoardFlippedByKings: solo K → flipped=$it")
+                }
+            blackKingRow >= 0 ->
+                (blackKingRow >= BOARD_SQUARES / 2).also {
+                    debugLog("isBoardFlippedByKings: solo k → flipped=$it")
+                }
+            else -> {
+                debugLog("isBoardFlippedByKings: sin reyes → null")
+                null
+            }
+        }
     }
 
     /** Gira el tablero 180° (equivale a mirarlo desde el otro lado) */
@@ -234,12 +267,17 @@ class FenEngine(private val context: Context) {
         if (bestScore < threshold) return EMPTY
 
         // Desambiguación alfil/peón por altura: siempre que el par top-1/top-2
-        // sea específicamente alfil vs peón, resolveByHeight es el árbitro final
-        // sin importar el gap entre scores.
+        // sea específicamente alfil vs peón, resolveByHeight es el árbitro final.
+        // Umbral adaptativo: el 2° candidato debe superar MATCH_THRESHOLD para que
+        // la ambigüedad sea real; si no, el ganador de template matching es suficiente.
         val isBishopPawnPair = secondSymbol != EMPTY &&
             ((bestSymbol.lowercaseChar() == 'b' && secondSymbol.lowercaseChar() == 'p') ||
              (bestSymbol.lowercaseChar() == 'p' && secondSymbol.lowercaseChar() == 'b'))
         if (isBishopPawnPair) {
+            if (secondScore < MATCH_THRESHOLD) {
+                debugLog("detectPiece [r=$row c=$col] par alfil/peón: 2°=${"%.3f".format(secondScore)} < MATCH_THRESHOLD → confianza en $bestSymbol")
+                return bestSymbol
+            }
             return resolveByHeight(square, bestSymbol, secondSymbol)
         }
 
@@ -247,29 +285,45 @@ class FenEngine(private val context: Context) {
     }
 
     /**
-     * Desempata alfil vs peón usando la distribución vertical de masa de píxeles brillantes.
-     * El alfil es una pieza más alta → centroide de brillo en la mitad superior (y pequeño).
-     * El peón tiene masa concentrada en el centro-bajo.
+     * Desempata alfil vs peón dividiendo la casilla en 3 tercios verticales y
+     * calculando el centroide de masa ponderada por tercio.
+     *
+     * Tercio superior (filas 0-29)   → índice 0 → característico del alfil (pieza alta)
+     * Tercio central  (filas 30-59)  → índice 1 → neutro
+     * Tercio inferior (filas 60-89)  → índice 2 → característico del peón (pieza baja)
+     *
+     * centroidThird < 1.0 → masa en la zona alta → alfil
+     * centroidThird ≥ 1.0 → masa en la zona baja → peón
      */
     private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char): Char {
         val s = SQUARE_SIZE
+        val third = s / 3   // 30 píxeles por tercio
         val brightThreshold = 128
-        var weightedSum = 0L
-        var count = 0L
+        var massTop = 0L
+        var massMid = 0L
+        var massBot = 0L
         for (y in 0 until s) {
             for (x in 0 until s) {
                 if (square[y * s + x] > brightThreshold) {
-                    weightedSum += y
-                    count++
+                    when {
+                        y < third       -> massTop++
+                        y < 2 * third   -> massMid++
+                        else            -> massBot++
+                    }
                 }
             }
         }
-        val centroid = if (count == 0L) (s / 2f) else weightedSum.toFloat() / count
+        val total = massTop + massMid + massBot
+        // Centroide en unidades de tercio: 0 = todo arriba, 2 = todo abajo
+        val centroidThird = if (total == 0L) 1.0f
+                            else (massMid + massBot * 2L).toFloat() / total.toFloat()
+
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
-        // Masa por encima de s*0.52 (47px) → alfil; caso contrario → peón
-        // Umbral ligeramente por encima del centro para dar más margen a los alfiles (centY ~43)
-        return if (centroid < s * 0.52f) bishopSymbol else pawnSymbol
+
+        debugLog("resolveByHeight: massTop=$massTop massMid=$massMid massBot=$massBot centroidThird=${"%.2f".format(centroidThird)} → ${if (centroidThird < 1.0f) "alfil" else "peón"}")
+
+        return if (centroidThird < 1.0f) bishopSymbol else pawnSymbol
     }
 
     /**
@@ -622,6 +676,8 @@ class FenEngine(private val context: Context) {
         private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
+        private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)
+        private const val COORD_AMBIGUITY_MARGIN   = 8    // zona de ambigüedad alrededor del umbral → activa fallback por reyes
         private const val CANNY_LOW          = 50
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
