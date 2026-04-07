@@ -93,6 +93,9 @@ class FenEngine(private val context: Context) {
         val gray = bitmapToGray(board)
         saveDebugGray(gray)
 
+        // Inicializar grid de referencia antes de la 1ª pasada para que isPieceWhite filtre correctamente
+        debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
+
         // 1ª pasada: sin bias de fila
         val grid = Array(BOARD_SQUARES) { row ->
             CharArray(BOARD_SQUARES) { col ->
@@ -106,7 +109,6 @@ class FenEngine(private val context: Context) {
         // Orientación: rey (inapelable) → peones → densidad
         val flipped = isBoardFlipped(gray)
         debugFlipped = flipped
-        debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
         debugLog("isBoardFlipped = $flipped")
 
         val finalGrid = if (flipped) flipGrid(grid) else grid
