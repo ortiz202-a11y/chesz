@@ -41,6 +41,15 @@ class FenEngine(private val context: Context) {
     /** Número de foto actual (benchmark). 0 = captura normal. Se fija desde fuera antes de processBoard. */
     var debugPhotoNum = 0
 
+    /**
+     * FEN de referencia para benchmark. Si se fija, isPieceWhite solo registra en el log
+     * las casillas donde su decisión no coincide con el color esperado según este FEN.
+     * Si es null, se registra todo (comportamiento anterior).
+     */
+    var debugExpectedFen: String? = null
+    private var debugExpectedGrid: Array<CharArray>? = null
+    private var debugFlipped = false
+
     // ─────────────────────────────────────────────
     // API pública
     // ─────────────────────────────────────────────
@@ -96,6 +105,8 @@ class FenEngine(private val context: Context) {
 
         // Orientación: rey (inapelable) → peones → densidad
         val flipped = isBoardFlipped(gray)
+        debugFlipped = flipped
+        debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
         debugLog("isBoardFlipped = $flipped")
 
         val finalGrid = if (flipped) flipGrid(grid) else grid
@@ -281,7 +292,9 @@ class FenEngine(private val context: Context) {
 
         // Sin contraste suficiente → casilla vacía, la clasificación no importa
         if (maxV - minV < MIN_CONTRAST) {
-            debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV contrast=${maxV-minV} < MIN_CONTRAST → skip (true)")
+            if (debugExpectedGrid == null) {
+                debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV contrast=${maxV-minV} < MIN_CONTRAST → skip (true)")
+            }
             return true
         }
 
@@ -290,7 +303,22 @@ class FenEngine(private val context: Context) {
         val threshold = (minV + maxV) / 2.0f + bias
         val result = centerMean > threshold
 
-        debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias → $result")
+        val grid = debugExpectedGrid
+        if (grid != null && row >= 0 && col >= 0) {
+            // Con FEN de referencia: solo loguear si el resultado no coincide con lo esperado
+            val finalRow = if (debugFlipped) BOARD_SQUARES - 1 - row else row
+            val finalCol = if (debugFlipped) BOARD_SQUARES - 1 - col else col
+            val expected = grid[finalRow][finalCol]
+            if (expected != '.' && !expected.isDigit()) {
+                val expectedIsWhite = expected.isUpperCase()
+                if (result != expectedIsWhite) {
+                    debugLog("ERROR isPieceWhite [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
+                }
+            }
+        } else {
+            // Sin FEN de referencia: log normal
+            debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias → $result")
+        }
 
         return result
     }
@@ -531,6 +559,20 @@ class FenEngine(private val context: Context) {
     // ─────────────────────────────────────────────
     // Paso 5: Construir cadena FEN desde la cuadrícula 8×8
     // ─────────────────────────────────────────────
+
+    /** Convierte una cadena FEN en un grid 8×8 de caracteres ('.' = vacío). */
+    private fun parseFenToGrid(fen: String): Array<CharArray> {
+        val grid = Array(BOARD_SQUARES) { CharArray(BOARD_SQUARES) { '.' } }
+        val ranks = fen.split(" ")[0].split("/")
+        for ((rankIdx, rank) in ranks.withIndex()) {
+            var col = 0
+            for (ch in rank) {
+                if (ch.isDigit()) col += ch.digitToInt()
+                else { grid[rankIdx][col] = ch; col++ }
+            }
+        }
+        return grid
+    }
 
     private fun buildFen(grid: Array<CharArray>): String {
         val rows = grid.map { row ->
