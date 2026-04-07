@@ -50,6 +50,10 @@ class FenEngine(private val context: Context) {
     private var debugExpectedGrid: Array<CharArray>? = null
     private var debugFlipped = false
 
+    // Buffer de log por foto: solo se vuelca a disco si hubo al menos un error
+    private val logBuffer = StringBuilder()
+    private var logHasError = false
+
     // ─────────────────────────────────────────────
     // API pública
     // ─────────────────────────────────────────────
@@ -85,13 +89,12 @@ class FenEngine(private val context: Context) {
      * @return FEN completo, e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
      */
     fun processBoard(board: Bitmap): String {
-        // Cabecera de log (acumulativo para benchmark, no borra entre fotos)
-        runCatching {
-            val dir = context.getExternalFilesDir(null)
-            dir?.let { File(it, "chesz_log.txt").appendText("\n=== FOTO $debugPhotoNum ===\n") }
-        }
+        // Reiniciar buffer por cada foto
+        logBuffer.clear()
+        logHasError = false
+        logBuffer.append("\n=== FOTO $debugPhotoNum ===\n")
+
         val gray = bitmapToGray(board)
-        saveDebugGray(gray)
 
         // Inicializar grid de referencia antes de la 1ª pasada para que isPieceWhite filtre correctamente
         debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
@@ -129,6 +132,16 @@ class FenEngine(private val context: Context) {
 
         val fen = buildFen(finalGrid)
         debugLog("FEN final: $fen")
+
+        // Volcar buffer a disco solo si hubo errores
+        if (logHasError) {
+            runCatching {
+                val dir = context.getExternalFilesDir(null) ?: return@runCatching
+                File(dir, "chesz_log.txt").appendText(logBuffer.toString())
+            }
+            saveDebugGray(gray)
+        }
+
         return fen
     }
 
@@ -380,7 +393,7 @@ class FenEngine(private val context: Context) {
             if (expected != '.' && !expected.isDigit()) {
                 val expectedIsWhite = expected.isUpperCase()
                 if (result != expectedIsWhite) {
-                    debugLog("ERROR isPieceWhite [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
+                    errorLog("ERROR isPieceWhite [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
                 }
             }
         } else {
@@ -395,11 +408,15 @@ class FenEngine(private val context: Context) {
     // Debug: guarda chesz_gray.png junto a chesz_log.txt
     // ─────────────────────────────────────────────
 
+    /** Acumula un mensaje en el buffer de la foto actual. */
     private fun debugLog(msg: String) {
-        runCatching {
-            val dir = context.getExternalFilesDir(null) ?: return
-            File(dir, "chesz_log.txt").appendText("$msg\n")
-        }
+        logBuffer.append(msg).append('\n')
+    }
+
+    /** Como debugLog pero además marca que esta foto tuvo un error → el buffer se volcará a disco. */
+    private fun errorLog(msg: String) {
+        logHasError = true
+        logBuffer.append(msg).append('\n')
     }
 
     private fun gridToString(grid: Array<CharArray>): String {

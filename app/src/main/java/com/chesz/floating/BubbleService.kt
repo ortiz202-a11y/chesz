@@ -314,7 +314,8 @@ class BubbleService : Service() {
         rootLp.x = clampedA.first
         rootLp.y = clampedA.second
 
-        runCatching { wm.updateViewLayout(root, rootLp) }
+        root.requestLayout()
+        root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
     }
 
     private fun showPanelIfFits() {
@@ -368,8 +369,10 @@ class BubbleService : Service() {
         panelShown = true
         resetToGodMode()
         updatePermUi()
+        // requestLayout primero: el botón baja su topMargin antes de que el root suba,
+        // evitando el salto visual de un frame.
         root.requestLayout()
-        runCatching { wm.updateViewLayout(root, rootLp) }
+        root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
     }
 
     private fun hidePanel() {
@@ -859,7 +862,7 @@ class BubbleService : Service() {
                             croppedLimpio.recycle() // Liberar pantalla completa
 
                             // 2. Guardar imagen para debug
-                            val dir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                            val dir = getExternalFilesDir(null)
                             if (dir != null) {
                                 if (!dir.exists()) dir.mkdirs()
                                 java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
@@ -933,11 +936,12 @@ class BubbleService : Service() {
         Thread {
             try {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
-                val dirLog = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                val dirLog = getExternalFilesDir(null)
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
-                
+                // Limpiar ambos logs al iniciar — cada ejecución del test parte de cero
                 logFile.writeText("=== NUEVO REPORTE FEN BENCHMARK ===\n")
+                java.io.File(dirLog, "chesz_log.txt").writeText("")
                 
                 var correctWhite = 0
                 var correctBlack = 0
