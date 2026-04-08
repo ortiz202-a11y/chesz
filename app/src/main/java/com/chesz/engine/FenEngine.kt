@@ -92,7 +92,8 @@ class FenEngine(private val context: Context) {
         // Reiniciar buffer por cada foto
         logBuffer.clear()
         logHasError = false
-        logBuffer.append("\n=== FOTO $debugPhotoNum ===\n")
+        val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+        logBuffer.append("\n=== FOTO $debugPhotoNum [$ts] ===\n")
 
         val gray = bitmapToGray(board)
         saveDebugGray(gray)   // siempre: foto del último tablero procesado
