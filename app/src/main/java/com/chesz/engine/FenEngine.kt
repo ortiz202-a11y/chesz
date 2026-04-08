@@ -50,9 +50,10 @@ class FenEngine(private val context: Context) {
     private var debugExpectedGrid: Array<CharArray>? = null
     private var debugFlipped = false
 
-    // Buffer de log por foto: solo se vuelca a disco si hubo al menos un error
+    // Buffer de log por foto: solo se vuelca a disco si hubo al menos un error o resolveByHeight
     private val logBuffer = StringBuilder()
     private var logHasError = false
+    private var logHasResolveByHeight = false
 
     // ─────────────────────────────────────────────
     // API pública
@@ -92,6 +93,7 @@ class FenEngine(private val context: Context) {
         // Reiniciar buffer por cada foto
         logBuffer.clear()
         logHasError = false
+        logHasResolveByHeight = false
         val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
         logBuffer.append("\n=== FOTO $debugPhotoNum [$ts] ===\n")
 
@@ -101,10 +103,10 @@ class FenEngine(private val context: Context) {
         // Inicializar grid de referencia antes de la 1ª pasada para que isPieceWhite filtre correctamente
         debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
 
-        // 1ª pasada: sin bias de fila
+        // 1ª pasada: sin bias de fila, sin errorLog (flip aún desconocido → comparación inválida)
         val grid = Array(BOARD_SQUARES) { row ->
             CharArray(BOARD_SQUARES) { col ->
-                detectPiece(gray, row, col, applyBias = false)
+                detectPiece(gray, row, col, applyBias = false, isFirstPass = true)
             }
         }
 
@@ -142,13 +144,8 @@ class FenEngine(private val context: Context) {
             errorLog("FEN INCORRECTO\nESPERADO : $expectedPos\nOBTENIDO : $predictedPos")
         }
 
-        // En modo normal sin referencia, FEN inválido también es error
-        if (debugExpectedFen == null && !isFenValid(fen)) {
-            errorLog("ERROR FEN inválido: $fen")
-        }
-
-        // Volcar buffer a disco solo si hubo errores
-        if (logHasError) {
+        // Volcar buffer a disco solo si hubo errores (solo en benchmark)
+        if (logHasError || logHasResolveByHeight) {
             runCatching {
                 val dir = context.getExternalFilesDir(null) ?: return@runCatching
                 File(dir, "chesz_log.txt").appendText(logBuffer.toString())
@@ -262,10 +259,10 @@ class FenEngine(private val context: Context) {
      *  - Si el top-1 y top-2 forman par alfil/peón con diferencia < AMBIGUOUS_GAP,
      *    se resuelve por la distribución vertical de masa (alfil = pieza alta).
      */
-    private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false): Char {
+    private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false, isFirstPass: Boolean = false): Char {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
-        val isWhiteZone = isPieceWhite(square, applyBias, row, col)
+        val isWhiteZone = isPieceWhite(square, applyBias, row, col, isFirstPass = isFirstPass)
 
         // Calcular el mejor score por símbolo (no por plantilla individual)
         val symbolScores = mutableMapOf<Char, Float>()
@@ -284,18 +281,26 @@ class FenEngine(private val context: Context) {
         val top2 = sorted.getOrNull(1)
 
         val bestScore  = top1.value
-        val bestSymbol = top1.key
+        var bestSymbol = top1.key
         val secondScore  = top2?.value ?: -1f
         val secondSymbol = top2?.key ?: EMPTY
 
         // Umbral efectivo: el alfil requiere barra más alta para evitar confusión con peón;
-        // el rey usa umbral ligeramente más estricto para evitar K blanca/negra en finales
+        // el rey usa umbral más estricto para evitar K/k confusos en finales
         val threshold = when (bestSymbol.lowercaseChar()) {
             'b' -> BISHOP_THRESHOLD
             'k' -> KING_THRESHOLD
             else -> MATCH_THRESHOLD
         }
         if (bestScore < threshold) return EMPTY
+
+        // Para reyes: re-verificar el color con KING_THRESHOLD en isPieceWhite
+        if (bestSymbol.lowercaseChar() == 'k') {
+            val isWhiteKing = isPieceWhite(square, applyBias, row, col, forKing = true, isFirstPass = isFirstPass)
+            if (isWhiteKing != isWhiteZone) {
+                bestSymbol = if (isWhiteKing) 'K' else 'k'
+            }
+        }
 
         // Desambiguación alfil/peón por altura: siempre que el par top-1/top-2
         // sea específicamente alfil vs peón, resolveByHeight es el árbitro final.
@@ -353,6 +358,7 @@ class FenEngine(private val context: Context) {
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
 
         val ratio = if (total == 0L) 0f else massTop.toFloat() / total.toFloat()
+        logHasResolveByHeight = true
         debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topMass=$massTop botMass=$massBot totalMass=$total ratio=${"%.3f".format(ratio)} centroidThird=${"%.2f".format(centroidThird)} → ${if (centroidThird < 1.0f) "alfil" else "peón"}")
 
         return if (centroidThird < 1.0f) bishopSymbol else pawnSymbol
@@ -368,7 +374,7 @@ class FenEngine(private val context: Context) {
      * cuando la orientación ya está resuelta. Aplicarlo antes provocaba bias en filas
      * equivocadas si el tablero estaba girado.
      */
-    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1): Boolean {
+    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1, forKing: Boolean = false, isFirstPass: Boolean = false): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
@@ -398,13 +404,17 @@ class FenEngine(private val context: Context) {
             return true
         }
 
-        // Bias solo cuando se solicita explícitamente (orientación ya conocida)
-        val bias = if (applyBias) ROW1_WHITE_BIAS else 0f
-        val threshold = (minV + maxV) / 2.0f + bias
+        // Para reyes: umbral basado en KING_THRESHOLD (fracción del rango, independiente del bias)
+        // Para el resto: umbral dinámico con bias de fila si aplica
+        val bias = if (!forKing && applyBias) ROW1_WHITE_BIAS else 0f
+        val threshold = if (forKing)
+            minV + (maxV - minV) * KING_THRESHOLD
+        else
+            (minV + maxV) / 2.0f + bias
         val result = centerMean > threshold
 
         val grid = debugExpectedGrid
-        if (grid != null && row >= 0 && col >= 0) {
+        if (grid != null && row >= 0 && col >= 0 && !isFirstPass) {
             // Con FEN de referencia: solo loguear si el resultado no coincide con lo esperado
             val finalRow = if (debugFlipped) BOARD_SQUARES - 1 - row else row
             val finalCol = if (debugFlipped) BOARD_SQUARES - 1 - col else col
@@ -412,10 +422,11 @@ class FenEngine(private val context: Context) {
             if (expected != '.' && !expected.isDigit()) {
                 val expectedIsWhite = expected.isUpperCase()
                 if (result != expectedIsWhite) {
-                    errorLog("ERROR isPieceWhite [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
+                    val kingTag = if (forKing) " [KING_THRESHOLD]" else ""
+                    errorLog("ERROR isPieceWhite$kingTag [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
                 }
             }
-        } else {
+        } else if (grid == null) {
             // Sin FEN de referencia: log normal
             debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias → $result")
         }

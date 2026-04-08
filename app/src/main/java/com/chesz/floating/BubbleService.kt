@@ -1060,11 +1060,11 @@ class BubbleService : Service() {
                 }
                 countdown(10)
 
-                // Fusionar FEN.TXT + chesz_log.txt → chesz_debug.txt
+                // Fusionar FEN.TXT + errores → chesz_log.txt
                 runCatching {
                     val benchContent = logFile.readText()
                     val errContent = java.io.File(dirLog, "chesz_log.txt").readText()
-                    java.io.File(dirLog, "chesz_debug.txt").writeText(buildString {
+                    java.io.File(dirLog, "chesz_log.txt").writeText(buildString {
                         append(benchContent)
                         if (errContent.isNotBlank()) {
                             append("\n=== ERRORES DETALLADOS ===\n")
