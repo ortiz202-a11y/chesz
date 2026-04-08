@@ -95,6 +95,7 @@ class FenEngine(private val context: Context) {
         logBuffer.append("\n=== FOTO $debugPhotoNum ===\n")
 
         val gray = bitmapToGray(board)
+        saveDebugGray(gray)   // siempre: foto del último tablero procesado
 
         // Inicializar grid de referencia antes de la 1ª pasada para que isPieceWhite filtre correctamente
         debugExpectedGrid = debugExpectedFen?.let { parseFenToGrid(it) }
@@ -133,13 +134,17 @@ class FenEngine(private val context: Context) {
         val fen = buildFen(finalGrid)
         debugLog("FEN final: $fen")
 
+        // En modo normal (sin FEN de referencia), un FEN inválido también es un error
+        if (debugExpectedGrid == null && !isFenValid(fen)) {
+            errorLog("ERROR FEN inválido: $fen")
+        }
+
         // Volcar buffer a disco solo si hubo errores
         if (logHasError) {
             runCatching {
                 val dir = context.getExternalFilesDir(null) ?: return@runCatching
                 File(dir, "chesz_log.txt").appendText(logBuffer.toString())
             }
-            saveDebugGray(gray)
         }
 
         return fen
@@ -644,6 +649,15 @@ class FenEngine(private val context: Context) {
     // ─────────────────────────────────────────────
     // Paso 5: Construir cadena FEN desde la cuadrícula 8×8
     // ─────────────────────────────────────────────
+
+    /** Valida que el FEN tenga exactamente 64 casillas (8 filas × 8 columnas). */
+    private fun isFenValid(fen: String): Boolean {
+        val ranks = fen.split(" ")[0].split("/")
+        if (ranks.size != 8) return false
+        return ranks.all { rank ->
+            rank.sumOf { if (it.isDigit()) it.digitToInt() else 1 } == 8
+        }
+    }
 
     /** Convierte una cadena FEN en un grid 8×8 de caracteres ('.' = vacío). */
     private fun parseFenToGrid(fen: String): Array<CharArray> {
