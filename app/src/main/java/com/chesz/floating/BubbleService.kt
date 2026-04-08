@@ -943,11 +943,11 @@ class BubbleService : Service() {
                 val dirLog = getExternalFilesDir(null)
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
                 val logFile = java.io.File(dirLog, "FEN.TXT")
-                // Limpiar ambos logs al iniciar — cada ejecución del test parte de cero
+                // Limpiar ambos logs al iniciar — cada ejecución parte de cero
                 val tsB = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
                 logFile.writeText("=== BENCHMARK [$tsB] ===\n")
                 java.io.File(dirLog, "chesz_log.txt").writeText("")
-                
+
                 var correctWhite = 0
                 var correctBlack = 0
                 val fallosBlancas = mutableListOf<Int>()
@@ -963,13 +963,14 @@ class BubbleService : Service() {
                             android.graphics.BitmapFactory.decodeStream(it)
                         } ?: throw Exception("No se pudo decodificar benchmark/$i.png")
 
+                        val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
                         fenEngine.debugPhotoNum = i
+                        fenEngine.debugExpectedFen = expectedFen  // FenEngine sabrá qué esperar
                         val predictedFen = fenEngine.processBoard(bmp).substringBefore(" ")
+                        fenEngine.debugExpectedFen = null
                         bmp.recycle()
 
-                        val expectedFen = truthLines.getOrNull(i - 1)?.substringBefore(" ") ?: ""
                         logFile.appendText("FOTO $i | LOCAL | P: [$predictedFen] | E: [$expectedFen]\n")
-
                         return predictedFen == expectedFen && expectedFen.isNotEmpty()
 
                     } catch (e: Exception) {
@@ -1035,9 +1036,19 @@ class BubbleService : Service() {
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
                 logFile.appendText("=== CHESZ ===\n")
-                
+
                 root.post {
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
+                    if (pctTotal < 100 && this::btnBench.isInitialized) {
+                        btnBench.text = "ERROR FIX MOTOR"
+                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(COLOR_NEON_RED_BG)
+                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_NEON_RED_STROKE)
+                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
+                        }
+                        btnBench.setTextColor(COLOR_WHITE)
+                        btnBench.visibility = android.view.View.VISIBLE
+                    }
                 }
                 countdown(10)
 
