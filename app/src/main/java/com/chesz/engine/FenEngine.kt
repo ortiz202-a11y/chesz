@@ -328,6 +328,7 @@ class FenEngine(private val context: Context) {
 
         if (debugPhotoNum == 9 && row == 5 && col == 4) {
             debugLog(">>> [foto=9 r=5 c=4] bestSymbol=$bestSymbol bestScore=${"%.3f".format(bestScore)} secondSymbol=$secondSymbol secondScore=${"%.3f".format(secondScore)}")
+            debugSaveSquare(square, silueta, row, col)
         }
 
         return bestSymbol
@@ -517,6 +518,33 @@ class FenEngine(private val context: Context) {
                 bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             bmp.recycle()
+        }
+    }
+
+    private fun debugSaveSquare(square: IntArray, silueta: IntArray, row: Int, col: Int) {
+        runCatching {
+            val s = SQUARE_SIZE
+            val dir = context.getExternalFilesDir(null) ?: return
+            // Guarda la casilla en escala de grises
+            val bmpSquare = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+            for (i in square.indices) {
+                val v = square[i]
+                bmpSquare.setPixel(i % s, i / s, Color.rgb(v, v, v))
+            }
+            FileOutputStream(File(dir, "debug_square_r${row}_c${col}.png")).use { out ->
+                bmpSquare.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bmpSquare.recycle()
+            // Guarda la silueta (resultado de cannyDilate)
+            val bmpSil = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+            for (i in silueta.indices) {
+                val v = silueta[i]
+                bmpSil.setPixel(i % s, i / s, Color.rgb(v, v, v))
+            }
+            FileOutputStream(File(dir, "debug_silueta_r${row}_c${col}.png")).use { out ->
+                bmpSil.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bmpSil.recycle()
         }
     }
 
