@@ -135,8 +135,15 @@ class FenEngine(private val context: Context) {
         val fen = buildFen(finalGrid)
         debugLog("FEN final: $fen")
 
-        // En modo normal (sin FEN de referencia), un FEN inválido también es un error
-        if (debugExpectedGrid == null && !isFenValid(fen)) {
+        // Si hay FEN de referencia y no coincide → error (vuelca todo el log detallado)
+        val expectedPos = debugExpectedFen?.substringBefore(" ")
+        val predictedPos = fen.substringBefore(" ")
+        if (expectedPos != null && predictedPos != expectedPos) {
+            errorLog("FEN INCORRECTO\nESPERADO : $expectedPos\nOBTENIDO : $predictedPos")
+        }
+
+        // En modo normal sin referencia, FEN inválido también es error
+        if (debugExpectedFen == null && !isFenValid(fen)) {
             errorLog("ERROR FEN inválido: $fen")
         }
 
