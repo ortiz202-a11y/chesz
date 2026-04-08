@@ -326,6 +326,10 @@ class FenEngine(private val context: Context) {
             return resolveByHeight(square, bestSymbol, secondSymbol, row, col)
         }
 
+        if (debugPhotoNum == 9 && row == 2 && col == 3) {
+            debugLog(">>> [foto=9 r=2 c=3] bestSymbol=$bestSymbol bestScore=${"%.3f".format(bestScore)} secondSymbol=$secondSymbol secondScore=${"%.3f".format(secondScore)}")
+        }
+
         return bestSymbol
     }
 
