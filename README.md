@@ -513,7 +513,7 @@ El proyecto se desarrolla desde Termux usando dos CLI de IA instalados localment
 El principal es **Claude Code** (`claude`), usado para razonamiento, edición de código y commits.
 El segundo CLI (Gemini CLI) está instalado y disponible como herramienta auxiliar.
 Ambos operan directamente sobre el repo sin entorno gráfico.
-
+voy a agregar agentes y temoletes segun se de la oportunidad
 ---
 
 ## Agentes y Templates instalados
