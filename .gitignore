@@ -19,3 +19,4 @@ chesz-debug-apk/
 *.bak
 *.RV1.bak
 ktlint_all.txt
+.claude/skills/claude-android-ninja
