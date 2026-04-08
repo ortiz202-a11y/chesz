@@ -389,11 +389,16 @@ class FenEngine(private val context: Context) {
         }
 
         val third = s / 3
-        // Tercio superior → alfil; tercio medio o inferior → peón
-        val isBishop = topActiveRow < third
+        // Tercio superior → alfil; tercio medio o inferior → peón; sin pixel activo → alfil por fallback
+        val isBishop = if (topActiveRow == s) true else topActiveRow < third
 
         logHasResolveByHeight = true
-        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topActiveRow=$topActiveRow third=$third → ${if (isBishop) "alfil" else "peón"}")
+        val resolveReason = when {
+            topActiveRow == s -> "CANNY CIEGO → alfil por fallback"
+            isBishop          -> "alfil"
+            else              -> "peón"
+        }
+        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topActiveRow=$topActiveRow third=$third → $resolveReason")
 
         return if (isBishop) bishopSymbol else pawnSymbol
     }
