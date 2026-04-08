@@ -1035,7 +1035,7 @@ class BubbleService : Service() {
                 val resBlack = formatRes("BLACK", pctBlack, fallosNegras)
                 val pctTotal = ((correctWhite + correctBlack) * 100) / 10
                 
-                logFile.appendText("=== CHESZ ===\n")
+                logFile.appendText("=== CHESZ ===\n$resWhite\n$resBlack\nTOTAL $pctTotal%\n")
 
                 root.post {
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
@@ -1059,6 +1059,19 @@ class BubbleService : Service() {
                     }
                 }
                 countdown(10)
+
+                // Fusionar FEN.TXT + chesz_log.txt → chesz_debug.txt
+                runCatching {
+                    val benchContent = logFile.readText()
+                    val errContent = java.io.File(dirLog, "chesz_log.txt").readText()
+                    java.io.File(dirLog, "chesz_debug.txt").writeText(buildString {
+                        append(benchContent)
+                        if (errContent.isNotBlank()) {
+                            append("\n=== ERRORES DETALLADOS ===\n")
+                            append(errContent)
+                        }
+                    })
+                }
 
             } catch (e: Exception) {
                 if (e.message != "ABORT_MANUAL") {
