@@ -125,6 +125,15 @@ class FenEngine(private val context: Context) {
             debugLog(gridToString(finalGrid))
         }
 
+        // Debug puntual: densidades de las tres franjas para la casilla final r=2 c=3
+        if (debugPhotoNum == 9) {
+            val origR = if (flipped) BOARD_SQUARES - 1 - 2 else 2
+            val origC = if (flipped) BOARD_SQUARES - 1 - 3 else 3
+            val (dTop, dMid, dBot) = stripDensities(extractSquare(gray, origR, origC))
+            debugLog(">>> [foto=9 finalRow=2 finalCol=3 flip=$flipped origRow=$origR origCol=$origC] densTop=${"%.3f".format(dTop)} densMid=${"%.3f".format(dMid)} densBot=${"%.3f".format(dBot)}")
+            logHasResolveByHeight = true   // forzar volcado al log de disco
+        }
+
         // 2ª pasada CON bias solo en filas de peones (1 y 6), ahora que la orientación es conocida
         for (finalRow in listOf(1, 6)) {
             for (finalCol in 0 until BOARD_SQUARES) {
@@ -331,30 +340,24 @@ class FenEngine(private val context: Context) {
      * centroidThird < 1.0 → masa en la zona alta → alfil
      * centroidThird ≥ 1.0 → masa en la zona baja → peón
      */
-    private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char, row: Int = -1, col: Int = -1): Char {
+    /** Calcula la densidad de píxeles brillantes (>128) en las tres franjas verticales. */
+    private fun stripDensities(square: IntArray): Triple<Float, Float, Float> {
         val s = SQUARE_SIZE
-        val third = s / 3   // píxeles por franja
+        val third = s / 3
         val bandPixels = (third * s).toFloat()
-        val brightThreshold = 128
-        var massTop = 0L
-        var massMid = 0L
-        var massBot = 0L
-        for (y in 0 until s) {
-            for (x in 0 until s) {
-                if (square[y * s + x] > brightThreshold) {
-                    when {
-                        y < third       -> massTop++
-                        y < 2 * third   -> massMid++
-                        else            -> massBot++
-                    }
-                }
+        var massTop = 0L; var massMid = 0L; var massBot = 0L
+        for (y in 0 until s) for (x in 0 until s) {
+            if (square[y * s + x] > 128) when {
+                y < third       -> massTop++
+                y < 2 * third   -> massMid++
+                else            -> massBot++
             }
         }
+        return Triple(massTop / bandPixels, massMid / bandPixels, massBot / bandPixels)
+    }
 
-        // Densidad de píxeles brillantes en cada franja (0..1)
-        val densTop = massTop / bandPixels
-        val densMid = massMid / bandPixels
-        val densBot = massBot / bandPixels
+    private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char, row: Int = -1, col: Int = -1): Char {
+        val (densTop, densMid, densBot) = stripDensities(square)
 
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
@@ -364,9 +367,6 @@ class FenEngine(private val context: Context) {
         val isBishop = densTop > densMid * BISHOP_GAP_RATIO && densTop > BISHOP_TOP_MIN_DENSITY
 
         logHasResolveByHeight = true
-        if (row == 2 && col == 3) {
-            debugLog(">>> [r2c3 alfil negro] resolveByHeight densTop=${"%.3f".format(densTop)} densMid=${"%.3f".format(densMid)} densBot=${"%.3f".format(densBot)}")
-        }
         debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] densTop=${"%.3f".format(densTop)} densMid=${"%.3f".format(densMid)} densBot=${"%.3f".format(densBot)} → ${if (isBishop) "alfil" else "peón"}")
 
         return if (isBishop) bishopSymbol else pawnSymbol
