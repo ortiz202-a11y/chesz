@@ -1132,7 +1132,7 @@ class BubbleService : Service() {
         val COLOR_GREEN         = 0xFF33FF00.toInt()
         val COLOR_BLACK         = 0xFF000000.toInt()
         val COLOR_WHITE         = 0xFFFFFFFF.toInt()
-        val COLOR_PANEL_BG      = 0xA8000000.toInt()
+        val COLOR_PANEL_BG      = 0xBF000000.toInt()
         val COLOR_FLASH_RED     = 0xFFFF3333.toInt()
         val COLOR_KILL_RED      = 0xCCFF0000.toInt()
         val COLOR_NEON_RED_BG   = 0xD9FF0033.toInt()
