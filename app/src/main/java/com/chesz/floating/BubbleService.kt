@@ -1054,6 +1054,7 @@ class BubbleService : Service() {
                                 cornerRadius = 0f
                             }
                         }
+                        btnBench.textSize = 15f
                         btnBench.setTextColor(COLOR_WHITE)
                         btnBench.visibility = android.view.View.VISIBLE
                     }
@@ -1082,6 +1083,7 @@ class BubbleService : Service() {
                 root.post {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
+                        btnBench.textSize = TEXT_SIZE_BTN
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
                             setColor(COLOR_BLACK)
                             setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
