@@ -340,14 +340,28 @@ class FenEngine(private val context: Context) {
      * centroidThird < 1.0 → masa en la zona alta → alfil
      * centroidThird ≥ 1.0 → masa en la zona baja → peón
      */
-    /** Calcula la densidad de píxeles brillantes (>128) en las tres franjas verticales. */
+    /** Calcula la densidad de píxeles brillantes en las tres franjas verticales,
+     *  restando el brillo de fondo estimado a partir de las 4 esquinas de la casilla. */
     private fun stripDensities(square: IntArray): Triple<Float, Float, Float> {
         val s = SQUARE_SIZE
+        val cs = 8  // tamaño de región de esquina (8×8 px)
+        // Promedio de las 4 esquinas como referencia de fondo
+        var cornerSum = 0L
+        val cornerCount = (cs * cs * 4).toFloat()
+        for (y in 0 until cs) for (x in 0 until cs) {
+            cornerSum += square[y * s + x]                          // top-left
+            cornerSum += square[y * s + (s - 1 - x)]               // top-right
+            cornerSum += square[(s - 1 - y) * s + x]               // bottom-left
+            cornerSum += square[(s - 1 - y) * s + (s - 1 - x)]    // bottom-right
+        }
+        val bg = (cornerSum / cornerCount).toInt().coerceIn(0, 255)
+
         val third = s / 3
         val bandPixels = (third * s).toFloat()
         var massTop = 0L; var massMid = 0L; var massBot = 0L
         for (y in 0 until s) for (x in 0 until s) {
-            if (square[y * s + x] > 128) when {
+            val v = (square[y * s + x] - bg).coerceAtLeast(0)
+            if (v > STRIP_FG_THRESHOLD) when {
                 y < third       -> massTop++
                 y < 2 * third   -> massMid++
                 else            -> massBot++
@@ -742,6 +756,7 @@ class FenEngine(private val context: Context) {
         private const val BISHOP_THRESHOLD      = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val BISHOP_GAP_RATIO      = 1.4f  // densTop debe ser al menos 1.4× densMid para ser alfil
         private const val BISHOP_TOP_MIN_DENSITY = 0.10f // densTop mínima absoluta para activar la regla de alfil
+        private const val STRIP_FG_THRESHOLD    = 30    // píxel debe superar el fondo de la casilla en ≥30 para contar en stripDensities
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
         private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)
