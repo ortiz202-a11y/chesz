@@ -513,3 +513,20 @@ El proyecto se desarrolla desde Termux usando dos CLI de IA instalados localment
 El principal es **Claude Code** (`claude`), usado para razonamiento, edición de código y commits.
 El segundo CLI (Gemini CLI) está instalado y disponible como herramienta auxiliar.
 Ambos operan directamente sobre el repo sin entorno gráfico.
+
+---
+
+## Agentes y Templates instalados
+
+Agentes especializados disponibles para usar con Claude Code en este proyecto:
+
+| Agente | Para qué sirve en CHESZ |
+|---|---|
+| **android-ninja** | Genera y mantiene código Android production-ready: Compose, MVVM, Hilt, Room. Úsalo para scaffolding de nuevas features o revisión de arquitectura. |
+| **code-reviewer** | Revisa PRs y diffs buscando bugs, problemas de seguridad y violaciones de las reglas del README. Ideal antes de cada commit importante. |
+| **unused-code-cleaner** | Detecta y elimina código muerto: variables sin usar, imports, funciones obsoletas. Útil tras refactors de FenEngine o BubbleService. |
+| **performance-profiler** | Analiza cuellos de botella en el procesamiento de imágenes (Canny, template matching, extractSquare). Identifica qué operaciones bloquean el hilo principal. |
+| **refactoring-specialist** | Reestructura código complejo manteniendo comportamiento. Úsalo para limpiar `detectPiece`, `resolveByHeight` o la lógica del ciclo de captura. |
+| **error-detective** | Investiga bugs específicos rastreando el flujo de ejecución en el código fuente. Úsalo cuando una casilla devuelve la pieza incorrecta y necesitas saber por qué. |
+| **debugger** | Analiza logs de runtime e identifica el estado exacto del sistema en el momento del fallo. Complementa a error-detective cuando hay logs disponibles. |
+| **test-automator** | Genera tests instrumentados y unitarios para FenEngine, verificando detección de piezas contra FENs conocidos (integra con el botón TEST FEN existente). |
