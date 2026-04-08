@@ -371,17 +371,29 @@ class FenEngine(private val context: Context) {
     }
 
     private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char, row: Int = -1, col: Int = -1): Char {
-        val (densTop, densMid, densBot) = stripDensities(square)
+        val s = SQUARE_SIZE
+        val silueta = cannyDilate(square)
 
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
 
-        // Alfil: cabeza densa arriba + hueco en el centro → densTop alta y densTop > densMid
-        // Peón: cuerpo redondeado → densidad uniforme o con máximo en el centro
-        val isBishop = densTop > densMid * BISHOP_GAP_RATIO && densTop > BISHOP_TOP_MIN_DENSITY
+        // Buscar el pixel activo más alto (menor y) en la silueta Canny
+        var topActiveRow = s  // sin pixel activo → fuera de rango
+        outer@ for (y in 0 until s) {
+            for (x in 0 until s) {
+                if (silueta[y * s + x] > 0) {
+                    topActiveRow = y
+                    break@outer
+                }
+            }
+        }
+
+        val third = s / 3
+        // Tercio superior → alfil; tercio medio o inferior → peón
+        val isBishop = topActiveRow < third
 
         logHasResolveByHeight = true
-        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] densTop=${"%.3f".format(densTop)} densMid=${"%.3f".format(densMid)} densBot=${"%.3f".format(densBot)} → ${if (isBishop) "alfil" else "peón"}")
+        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topActiveRow=$topActiveRow third=$third → ${if (isBishop) "alfil" else "peón"}")
 
         return if (isBishop) bishopSymbol else pawnSymbol
     }
