@@ -227,3 +227,4 @@
 - [x] APK lista y verificada (20:12)
 - [x] APK lista y verificada (20:37)
 - [x] APK lista y verificada (22:26)
+- [x] APK lista y verificada (22:39)

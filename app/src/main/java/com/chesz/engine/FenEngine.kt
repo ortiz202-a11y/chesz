@@ -289,12 +289,12 @@ class FenEngine(private val context: Context) {
         // el rey usa umbral más estricto para evitar K/k confusos en finales
         val threshold = when (bestSymbol.lowercaseChar()) {
             'b' -> BISHOP_THRESHOLD
-            'k' -> KING_THRESHOLD
+            'k' -> KING_MATCH_THRESHOLD
             else -> MATCH_THRESHOLD
         }
         if (bestScore < threshold) return EMPTY
 
-        // Para reyes: re-verificar el color con KING_THRESHOLD en isPieceWhite
+        // Para reyes: re-verificar el color con KING_COLOR_FRACTION en isPieceWhite
         if (bestSymbol.lowercaseChar() == 'k') {
             val isWhiteKing = isPieceWhite(square, applyBias, row, col, forKing = true, isFirstPass = isFirstPass)
             if (isWhiteKing != isWhiteZone) {
@@ -333,7 +333,8 @@ class FenEngine(private val context: Context) {
      */
     private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char, row: Int = -1, col: Int = -1): Char {
         val s = SQUARE_SIZE
-        val third = s / 3   // 30 píxeles por tercio
+        val third = s / 3   // píxeles por franja
+        val bandPixels = (third * s).toFloat()
         val brightThreshold = 128
         var massTop = 0L
         var massMid = 0L
@@ -349,19 +350,26 @@ class FenEngine(private val context: Context) {
                 }
             }
         }
-        val total = massTop + massMid + massBot
-        // Centroide en unidades de tercio: 0 = todo arriba, 2 = todo abajo
-        val centroidThird = if (total == 0L) 1.0f
-                            else (massMid + massBot * 2L).toFloat() / total.toFloat()
+
+        // Densidad de píxeles brillantes en cada franja (0..1)
+        val densTop = massTop / bandPixels
+        val densMid = massMid / bandPixels
+        val densBot = massBot / bandPixels
 
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
 
-        val ratio = if (total == 0L) 0f else massTop.toFloat() / total.toFloat()
-        logHasResolveByHeight = true
-        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topMass=$massTop botMass=$massBot totalMass=$total ratio=${"%.3f".format(ratio)} centroidThird=${"%.2f".format(centroidThird)} → ${if (centroidThird < 1.0f) "alfil" else "peón"}")
+        // Alfil: cabeza densa arriba + hueco en el centro → densTop alta y densTop > densMid
+        // Peón: cuerpo redondeado → densidad uniforme o con máximo en el centro
+        val isBishop = densTop > densMid * BISHOP_GAP_RATIO && densTop > BISHOP_TOP_MIN_DENSITY
 
-        return if (centroidThird < 1.0f) bishopSymbol else pawnSymbol
+        logHasResolveByHeight = true
+        if (row == 2 && col == 3) {
+            debugLog(">>> [r2c3 alfil negro] resolveByHeight densTop=${"%.3f".format(densTop)} densMid=${"%.3f".format(densMid)} densBot=${"%.3f".format(densBot)}")
+        }
+        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] densTop=${"%.3f".format(densTop)} densMid=${"%.3f".format(densMid)} densBot=${"%.3f".format(densBot)} → ${if (isBishop) "alfil" else "peón"}")
+
+        return if (isBishop) bishopSymbol else pawnSymbol
     }
 
     /**
@@ -404,11 +412,11 @@ class FenEngine(private val context: Context) {
             return true
         }
 
-        // Para reyes: umbral basado en KING_THRESHOLD (fracción del rango, independiente del bias)
+        // Para reyes: umbral basado en KING_COLOR_FRACTION (fracción del rango, independiente del bias)
         // Para el resto: umbral dinámico con bias de fila si aplica
         val bias = if (!forKing && applyBias) ROW1_WHITE_BIAS else 0f
         val threshold = if (forKing)
-            minV + (maxV - minV) * KING_THRESHOLD
+            minV + (maxV - minV) * KING_COLOR_FRACTION
         else
             (minV + maxV) / 2.0f + bias
         val result = centerMean > threshold
@@ -422,7 +430,7 @@ class FenEngine(private val context: Context) {
             if (expected != '.' && !expected.isDigit()) {
                 val expectedIsWhite = expected.isUpperCase()
                 if (result != expectedIsWhite) {
-                    val kingTag = if (forKing) " [KING_THRESHOLD]" else ""
+                    val kingTag = if (forKing) " [KING_COLOR_FRACTION]" else ""
                     errorLog("ERROR isPieceWhite$kingTag [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
                 }
             }
@@ -729,8 +737,11 @@ class FenEngine(private val context: Context) {
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
         private const val ROW1_WHITE_BIAS    = 8f   // bias para filas de peones (2ª pasada, orientación conocida)
         private const val MATCH_THRESHOLD    = 0.45f
-        private const val KING_THRESHOLD     = 0.48f // umbral más estricto para rey (evita K/k confusos en finales)
-        private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
+        private const val KING_MATCH_THRESHOLD  = 0.40f // score mínimo de template matching para aceptar un rey
+        private const val KING_COLOR_FRACTION   = 0.60f // fracción del rango dinámico para determinar color del rey
+        private const val BISHOP_THRESHOLD      = 0.55f // umbral más alto para alfil (evita confusión con peón)
+        private const val BISHOP_GAP_RATIO      = 1.4f  // densTop debe ser al menos 1.4× densMid para ser alfil
+        private const val BISHOP_TOP_MIN_DENSITY = 0.10f // densTop mínima absoluta para activar la regla de alfil
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
         private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)

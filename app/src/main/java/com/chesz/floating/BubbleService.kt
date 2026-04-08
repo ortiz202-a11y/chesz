@@ -1041,7 +1041,7 @@ class BubbleService : Service() {
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
                     if (this::btnBench.isInitialized) {
                         if (pctTotal < 100) {
-                            btnBench.text = "ERROR ---FIX ENGINE"
+                            btnBench.text = "ERROR -FIX ENGINE"
                             btnBench.background = android.graphics.drawable.GradientDrawable().apply {
                                 setColor(COLOR_NEON_RED_BG)
                                 setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_NEON_RED_STROKE)
@@ -1054,7 +1054,7 @@ class BubbleService : Service() {
                                 cornerRadius = 0f
                             }
                         }
-                        btnBench.textSize = 15f
+                        btnBench.textSize = 13f
                         btnBench.setTextColor(COLOR_WHITE)
                         btnBench.visibility = android.view.View.VISIBLE
                     }
