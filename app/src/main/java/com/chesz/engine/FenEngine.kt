@@ -352,13 +352,8 @@ class FenEngine(private val context: Context) {
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
 
-        debugLog("resolveByHeight: massTop=$massTop massMid=$massMid massBot=$massBot centroidThird=${"%.2f".format(centroidThird)} → ${if (centroidThird < 1.0f) "alfil" else "peón"}")
-
-        // Log extra para diagnosticar foto 9 r=2 c=3
-        if (debugPhotoNum == 9 && row == 2 && col == 3) {
-            val ratio = if (total == 0L) 0f else massTop.toFloat() / total.toFloat()
-            debugLog("DIAG foto9[r=2,c=3] topMass=$massTop botMass=$massBot totalMass=$total ratio=${"%.3f".format(ratio)} centroidThird=${"%.3f".format(centroidThird)} → ${if (centroidThird < 1.0f) "ALFIL" else "PEON"}")
-        }
+        val ratio = if (total == 0L) 0f else massTop.toFloat() / total.toFloat()
+        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topMass=$massTop botMass=$massBot totalMass=$total ratio=${"%.3f".format(ratio)} centroidThird=${"%.2f".format(centroidThird)} → ${if (centroidThird < 1.0f) "alfil" else "peón"}")
 
         return if (centroidThird < 1.0f) bishopSymbol else pawnSymbol
     }
@@ -723,7 +718,7 @@ class FenEngine(private val context: Context) {
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
         private const val ROW1_WHITE_BIAS    = 8f   // bias para filas de peones (2ª pasada, orientación conocida)
         private const val MATCH_THRESHOLD    = 0.45f
-        private const val KING_THRESHOLD     = 0.47f // umbral más estricto para rey (evita K/k confusos en finales)
+        private const val KING_THRESHOLD     = 0.48f // umbral más estricto para rey (evita K/k confusos en finales)
         private const val BISHOP_THRESHOLD   = 0.55f // umbral más alto para alfil (evita confusión con peón)
         private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
