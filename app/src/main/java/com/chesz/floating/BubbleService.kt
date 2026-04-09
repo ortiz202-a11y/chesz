@@ -1050,7 +1050,8 @@ class BubbleService : Service() {
                         } else {
                             btnBench.text = "ENGINE OK 100%"
                             btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                                setColor(COLOR_GREEN)
+                                setColor(COLOR_ORANGE_BG)
+                                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
                                 cornerRadius = 0f
                             }
                         }
