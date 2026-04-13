@@ -532,3 +532,15 @@ Agentes especializados disponibles para usar con Claude Code en este proyecto:
 | **test-automator** | Genera tests instrumentados y unitarios para FenEngine, verificando detección de piezas contra FENs conocidos (integra con el botón TEST FEN existente). |
 TEST AUTO PATCH
 Tambien usamos grafo para bjsacr cosas sin gatsarabtantos tokens
+
+---
+
+## NOTA: GitHub Token (GH_TOKEN)
+
+El token de GitHub guardado en `~/.secrets/gh_token` se renueva cada 90 días.
+
+- **Generado**: 13/04/2026
+- **Expira**: 12/07/2026
+- **Ruta**: `~/.secrets/gh_token`
+- **Permisos necesarios**: `repo` + `workflow`
+- **Renovar en**: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
