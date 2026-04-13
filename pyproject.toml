@@ -1,0 +1,5 @@
+[project]
+name = "chesz"
+version = "0.1.0"
+description = "Motor de ajedrez con reconocimiento de imagen"
+dependencies = []

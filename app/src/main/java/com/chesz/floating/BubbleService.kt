@@ -464,10 +464,14 @@ class BubbleService : Service() {
         btnPing = TextView(this).apply {
             text = "HOST P/R"
             typeface = customFont
-            setTextColor(COLOR_GREEN)
+            setTextColor(COLOR_WHITE)
             textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
-            background = btnBg
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_ORANGE_BG)
+                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
             setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { pingAndResetHost() }
         }
@@ -692,87 +696,7 @@ class BubbleService : Service() {
         }
     }
 
-    private fun pingAndResetHost() {
-        if (!isHostChecked) {
-            devHandler.removeCallbacksAndMessages(null)
-            root.post { 
-                fenTitle.text = ""
-                updateDebug("PING ENVIADO...") 
-            }
-            if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
-            if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
-
-            kotlin.concurrent.thread {
-                try {
-                    val conn = java.net.URL(URL_ENGINE_PING).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = TIMEOUT_PING_CONNECT
-                    conn.readTimeout = TIMEOUT_PING_READ
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.instanceFollowRedirects = true
-                    val rc = conn.responseCode
-
-                    root.post {
-                        if (rc == 200 || rc == 503 || rc == 404) {
-                            isHostChecked = true
-                            val isOnline = (rc == 200 || rc == 404)
-                            val nColor = if (isOnline) COLOR_ORANGE_BG else COLOR_NEON_RED_BG
-                            val nStroke = if (isOnline) COLOR_ORANGE_STROKE else COLOR_NEON_RED_STROKE
-
-                            if (this::btnPing.isInitialized) {
-                                btnPing.visibility = android.view.View.VISIBLE
-                                btnPing.background = android.graphics.drawable.GradientDrawable().apply {
-                                    setColor(nColor)
-                                    setStroke(dp(BTN_STROKE_ALERT_DP), nStroke)
-                                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
-                                }
-                                btnPing.setTextColor(COLOR_WHITE)
-                            }
-
-                            val msg = if (isOnline) "HOST : ONLINE\nOPTIONAL RESTART: ORANGE BTN" else "HOST : SLEEP\nWAKE UP HOST: RED BTN"
-                            updateDebug(msg)
-
-                            Thread {
-                                countdown(5) {
-                                    if (isHostChecked) {
-                                        isHostChecked = false
-                                        updateDebug("TIME OUT")
-                                        root.postDelayed({ fenTitle.text = "MODE DEBUG"; resetToGodMode() }, 1500)
-                                    }
-                                }
-                            }.start()
-                        } else {
-                            updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
-                            Thread {
-                                countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
-                            }.start()
-                        }
-                    }
-                } catch (e: Exception) {
-                    root.post {
-                        updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
-                        Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
-                    }
-                }
-            }
-        } else {
-            isHostChecked = false
-            root.post { updateDebug("HOST RESTARTING...\nREADY IN 1-3MIN.") }
-
-            Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
-
-            kotlin.concurrent.thread {
-                try {
-                    val conn = java.net.URL(URL_HF_RESTART).openConnection() as java.net.HttpURLConnection
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")
-                    val rc = conn.responseCode
-                } catch (e: Exception) {}
-            }
-        }
-    }
-
+    private fun pingAndResetHost() {}
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
@@ -1147,8 +1071,6 @@ class BubbleService : Service() {
         private const val BOARD_SIZE = 720
 
         // --- Timeouts de red (ms) ---
-        private const val TIMEOUT_PING_CONNECT   = 4000
-        private const val TIMEOUT_PING_READ      = 6000
 private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val TIMEOUT_BENCH_READ     = 8500
 
@@ -1167,9 +1089,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val BENCH_CONTINUATION_LIMIT = 8
 
         // --- URLs ---
-        private const val URL_ENGINE_PING    = "https://daxer2-chesz-engine.hf.space/"
         private const val URL_ENGINE_PREDICT = "https://daxer2-chesz-engine.hf.space/predict"
-        private const val URL_HF_RESTART     = "https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart"
     }
 
     private fun esFenValido64(fen: String): Boolean {
