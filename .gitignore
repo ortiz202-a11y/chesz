@@ -20,3 +20,4 @@ chesz-debug-apk/
 *.RV1.bak
 ktlint_all.txt
 .claude/skills/claude-android-ninja
+tree-sitter-kotlin/
