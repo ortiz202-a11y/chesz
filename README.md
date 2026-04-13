@@ -531,3 +531,4 @@ Agentes especializados disponibles para usar con Claude Code en este proyecto:
 | **debugger** | Analiza logs de runtime e identifica el estado exacto del sistema en el momento del fallo. Complementa a error-detective cuando hay logs disponibles. |
 | **test-automator** | Genera tests instrumentados y unitarios para FenEngine, verificando detección de piezas contra FENs conocidos (integra con el botón TEST FEN existente). |
 TEST AUTO PATCH
+Tambien usamos grafo para bjsacr cosas sin gatsarabtantos tokens
