@@ -46,6 +46,9 @@ class BubbleService : Service() {
     private var dragging = false
     private var ignoreTouchUntil = 0L
     private var isCapturing = false
+    private val dotsHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var dotsRunnable: Runnable? = null
+    private var dotsCount = 1
     private var sw = 0
     private var sh = 0
     private var bottomInsetCache = 0
@@ -285,11 +288,27 @@ class BubbleService : Service() {
         wm.addView(root, rootLp)
     }
 
-    private fun togglePanel() {
-        if (isCapturing) {
-            if (panelShown) updateDebug("⏳ PROCESANDO...")
-            return
+    private fun startDotsAnimation() {
+        dotsCount = 1
+        stopDotsAnimation()
+        dotsRunnable = object : Runnable {
+            override fun run() {
+                debugText.visibility = View.VISIBLE
+                debugText.text = "PROCESANDO" + ".".repeat(dotsCount)
+                dotsCount = if (dotsCount >= 3) 1 else dotsCount + 1
+                dotsHandler.postDelayed(this, 400)
+            }
         }
+        dotsHandler.post(dotsRunnable!!)
+    }
+
+    private fun stopDotsAnimation() {
+        dotsRunnable?.let { dotsHandler.removeCallbacks(it) }
+        dotsRunnable = null
+    }
+
+    private fun togglePanel() {
+        if (isCapturing) return
         val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
         if (!panelShown) {
             showPanelIfFits()
@@ -374,7 +393,7 @@ class BubbleService : Service() {
             }
 
         panelShown = true
-        resetToGodMode()
+        if (isDeveloperMode) resetToGodMode()
         updatePermUi()
         // requestLayout primero: el botón baja su topMargin antes de que el root suba,
         // evitando el salto visual de un frame.
@@ -384,6 +403,7 @@ class BubbleService : Service() {
 
     private fun hidePanel() {
         benchmarkCancelled = true
+        stopDotsAnimation()
         devHandler.removeCallbacksAndMessages(null)
         isHostChecked = false
         isDeveloperMode = false
@@ -748,7 +768,7 @@ class BubbleService : Service() {
     private fun takeScreenshotOnce() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
-        updateDebug("⚙ Iniciando captura...")
+        startDotsAnimation()
         root.post { fenTitle.text = "" }
         isCapturing = true
         root.postDelayed({ isCapturing = false }, DELAY_CAPTURE_RESET_MS)
@@ -788,7 +808,8 @@ class BubbleService : Service() {
                 try {
                     val image = reader.acquireLatestImage()
                     if (image == null) {
-                        updateDebug("⏳ Esperando frame (Toca de nuevo)")
+                        stopDotsAnimation()
+                        updateDebug("TRY AGAIN")
                         return@postDelayed
                     }
 
@@ -835,21 +856,23 @@ class BubbleService : Service() {
                                     recortado.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                                 }
                             }
-                            updateDebug("PROCESANDO...")
                             procesarConFenEngine(recortado) // recycle dentro del hilo
                         } catch (e: Exception) {
-                            updateDebug("📂 Error de archivo: ${e.message}")
+                            stopDotsAnimation()
+                            updateDebug("❌ Error: ${e.message}")
                         } finally {
                             image.close()
                         }
                     }.start()
                 } catch (e: Exception) {
+                    stopDotsAnimation()
                     updateDebug("❌ Error de lectura: ${e.message}")
                 }
             }, DELAY_SCREENSHOT_MS)
 
         }.onFailure {
-            updateDebug("❌ " + it.javaClass.simpleName + ": " + it.message)
+            stopDotsAnimation()
+            updateDebug("❌ ${it.javaClass.simpleName}: ${it.message}")
             activeVirtualDisplay?.release()
             activeVirtualDisplay = null
             activeImageReader?.close()
@@ -871,7 +894,6 @@ class BubbleService : Service() {
                 if (!isDeveloperMode) root.post {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
-                        updateDebug("Consultando Lichess...")
                         consultarLichess(fen)
                         runCatching {
                             val logDir = getExternalFilesDir(null)
@@ -885,13 +907,15 @@ class BubbleService : Service() {
                             }
                         }
                     } else {
-                        updateDebug("[FEN IMPERFECTO]\n$fenPosicion")
+                        stopDotsAnimation()
+                        updateDebug("❌ Error FEN")
                     }
                 }
             } catch (e: Exception) {
-                if (!isDeveloperMode) root.post { updateDebug("Error FenEngine: ${e.message}") }
+                if (!isDeveloperMode) root.post { stopDotsAnimation(); updateDebug("❌ Error FenEngine: ${e.message}") }
             } finally {
                 bitmap.recycle()
+                isCapturing = false
             }
         }.start()
     }
@@ -942,18 +966,18 @@ class BubbleService : Service() {
                             }
                         }.trim()
                     } else {
-                        "Lichess: sin variantes"
+                        "❌ Error MOTOR: sin variantes"
                     }
                 } else if (code == 404) {
-                    "IT'S NOT YOUR TURN"
+                    "❌ Error HTTP 404"
                 } else {
                     val errBody = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull() ?: ""
-                    "HTTP $code\n$errBody"
+                    "❌ Error HTTP $code\n$errBody"
                 }
                 conn.disconnect()
-                if (!isDeveloperMode) root.post { updateDebug(resultado) }
+                if (!isDeveloperMode) root.post { stopDotsAnimation(); updateDebug(resultado) }
             } catch (e: Exception) {
-                if (!isDeveloperMode) root.post { updateDebug("Lichess: ${e.message}") }
+                if (!isDeveloperMode) root.post { stopDotsAnimation(); updateDebug("❌ Error MOTOR: ${e.message}") }
             }
         }.start()
     }
@@ -1073,7 +1097,7 @@ class BubbleService : Service() {
                 if (!benchmarkCancelled) {
                     root.post {
                         // Limpiar pantalla al terminar el contador
-                        fenTitle.text = ""
+                        fenTitle.text = "DEBUG MODE"
                         debugText.text = ""
                         debugText.visibility = View.GONE
                         if (this::btnBench.isInitialized) {
@@ -1148,10 +1172,10 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         // --- Delays (ms) ---
         private const val DELAY_DEV_MODE_MS       = 3000L
         private const val DELAY_GOD_TOUCH_IGNORE_MS = 1000L  // ms que se ignora el touch al activar modo dios
-        private const val DELAY_SCREENSHOT_MS     = 600L
+        private const val DELAY_SCREENSHOT_MS     = 300L
         private const val DELAY_FLASH_MS          = 220L
         private const val DELAY_KILL_ANIM_MS      = 60L
-        private const val DELAY_CAPTURE_RESET_MS  = 3000L
+        private const val DELAY_CAPTURE_RESET_MS  = 1500L
         private const val DELAY_BENCH_BETWEEN_MS  = 1500L
 
         // --- Misc ---
