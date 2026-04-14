@@ -63,6 +63,7 @@ class BubbleService : Service() {
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
     private lateinit var devBar: LinearLayout
+    @Volatile private var benchmarkCancelled = false
 
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
@@ -379,6 +380,7 @@ class BubbleService : Service() {
     }
 
     private fun hidePanel() {
+        benchmarkCancelled = true
         devHandler.removeCallbacksAndMessages(null)
         isHostChecked = false
         isDeveloperMode = false
@@ -683,11 +685,14 @@ class BubbleService : Service() {
 
     private fun countdown(seconds: Int, onFinish: (() -> Unit)? = null) {
         for (sec in seconds downTo 1) {
+            if (benchmarkCancelled) return
             root.post { fenTitle.text = "${sec}s" }
             Thread.sleep(1000)
         }
+        if (benchmarkCancelled) return
         root.post { fenTitle.text = "0s" }
         Thread.sleep(300)
+        if (benchmarkCancelled) return
         root.post { fenTitle.text = "" }
         if (onFinish != null) {
             Thread.sleep(300)
@@ -699,7 +704,7 @@ class BubbleService : Service() {
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
-            debugText.maxLines = DEBUG_MAX_LINES
+            debugText.maxLines = Int.MAX_VALUE
 
             debugText.text = msg
         }
@@ -828,7 +833,7 @@ class BubbleService : Service() {
                 val fen = fenEngine.processBoard(bitmap)
                 lastFen = fen
                 val fenPosicion = fen.substringBefore(" ")
-                root.post {
+                if (!isDeveloperMode) root.post {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
                         updateDebug("Consultando Lichess...")
@@ -849,7 +854,7 @@ class BubbleService : Service() {
                     }
                 }
             } catch (e: Exception) {
-                root.post { updateDebug("Error FenEngine: ${e.message}") }
+                if (!isDeveloperMode) root.post { updateDebug("Error FenEngine: ${e.message}") }
             } finally {
                 bitmap.recycle()
             }
@@ -871,37 +876,55 @@ class BubbleService : Service() {
                 val resultado = if (code == 200) {
                     val body = conn.inputStream.bufferedReader().readText()
                     val json = org.json.JSONObject(body)
-                    val pvs = json.getJSONArray("pvs")
-                    val depth = json.optInt("depth", 0)
-                    val sb = StringBuilder("Lichess d=$depth\n")
-                    for (i in 0 until pvs.length()) {
-                        val pv = pvs.getJSONObject(i)
-                        val jugada = pv.optString("moves", "?").split(" ").firstOrNull() ?: "?"
-                        val score = when {
-                            pv.has("mate") -> "M${pv.getInt("mate")}"
-                            pv.has("cp") -> {
-                                val cp = pv.getInt("cp")
-                                if (cp >= 0) "+${"%.2f".format(cp / 100.0)}" else "${"%.2f".format(cp / 100.0)}"
+                    val pvs = json.optJSONArray("pvs")
+                    val pv0 = pvs?.optJSONObject(0)
+
+                    if (pv0 != null && pv0.has("mate")) {
+                        // ── MATE FORZADO: todos los datos de Lichess ──
+                        val mateIn = pv0.getInt("mate")
+                        val moves  = pv0.optString("moves", "").split(" ").filter { it.isNotEmpty() }
+                        buildString {
+                            append("MAT MATE EN $mateIn\n")
+                            val chunks = moves.chunked(3)
+                            chunks.forEachIndexed { idx, chunk ->
+                                val label = if (idx == 0) "SEQ" else "   "
+                                append("$label ${chunk.joinToString(" ")}\n")
                             }
-                            else -> "?"
-                        }
-                        sb.append("${i + 1}. $jugada ($score)\n")
+                        }.trim()
+                    } else if (pv0 != null) {
+                        // ── CASO NORMAL ──
+                        val moves      = pv0.optString("moves", "").split(" ").filter { it.isNotEmpty() }
+                        val bestMove   = moves.getOrNull(0) ?: "?"
+                        val oppMove    = moves.getOrNull(1) ?: ""
+                        val seq        = moves.drop(2).take(6)
+                        buildString {
+                            append("JUG $bestMove\n")
+                            if (oppMove.isNotEmpty()) append("RIV $oppMove\n")
+                            if (seq.isNotEmpty()) {
+                                val mid = (seq.size + 1) / 2
+                                append("SEQ ${seq.take(mid).joinToString(" ")}\n")
+                                if (seq.size > mid) append("    ${seq.drop(mid).joinToString(" ")}\n")
+                            }
+                        }.trim()
+                    } else {
+                        "Lichess: sin variantes"
                     }
-                    sb.toString().trim()
                 } else if (code == 404) {
-                    "Sin datos Lichess\n(posición nueva)"
+                    "Sin datos Lichess\n(posicion nueva)"
                 } else {
-                    "Lichess error $code"
+                    val errBody = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull() ?: ""
+                    "HTTP $code\n$errBody"
                 }
                 conn.disconnect()
-                root.post { updateDebug(resultado) }
+                if (!isDeveloperMode) root.post { updateDebug(resultado) }
             } catch (e: Exception) {
-                root.post { updateDebug("Lichess: ${e.message}") }
+                if (!isDeveloperMode) root.post { updateDebug("Lichess: ${e.message}") }
             }
         }.start()
     }
 
     private fun runBenchmark() {
+        benchmarkCancelled = false
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
         if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
 
@@ -949,6 +972,7 @@ class BubbleService : Service() {
 
                 root.post { fenTitle.text = "" }
                 for (i in 1..5) {
+                    if (benchmarkCancelled) return@Thread
                     root.post { updateDebug("TEST 1/2\nFOTO $i / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctWhite++ else fallosBlancas.add(i)
@@ -957,6 +981,7 @@ class BubbleService : Service() {
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
 
                 for (i in 6..10) {
+                    if (benchmarkCancelled) return@Thread
                     val currentFoto = i - 5
                     root.post { updateDebug("TEST 2/2\nFOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
@@ -988,6 +1013,7 @@ class BubbleService : Service() {
                         }
                         btnBench.textSize = 13f
                         btnBench.setTextColor(COLOR_WHITE)
+                        btnBench.setOnClickListener(null) // botón cuadrado naranja/rojo: sin acción
                         btnBench.visibility = android.view.View.VISIBLE
                     }
                 }
@@ -1009,22 +1035,26 @@ class BubbleService : Service() {
                 root.post { updateDebug("ERROR: ${e.message}") }
             } finally {
                 countdown(10)
-                root.post {
-                    if (this::btnBench.isInitialized) {
-                        btnBench.text = "TEST FEN"
-                        btnBench.textSize = TEXT_SIZE_BTN
-                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(COLOR_BLACK)
-                            setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
-                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
+                if (!benchmarkCancelled) {
+                    root.post {
+                        // Limpiar pantalla al terminar el contador
+                        fenTitle.text = ""
+                        debugText.text = ""
+                        debugText.visibility = View.GONE
+                        if (this::btnBench.isInitialized) {
+                            btnBench.text = "TEST FEN"
+                            btnBench.textSize = TEXT_SIZE_BTN
+                            btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                                setColor(COLOR_BLACK)
+                                setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+                            }
+                            btnBench.setTextColor(COLOR_GREEN)
+                            btnBench.setOnClickListener { runBenchmark() }
+                            btnBench.visibility = android.view.View.VISIBLE
                         }
-                        btnBench.setTextColor(COLOR_GREEN)
-                        btnBench.setOnClickListener { runBenchmark() }
-                        btnBench.visibility = android.view.View.VISIBLE
+                        if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.VISIBLE
                     }
-                    if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.VISIBLE
-                    fenTitle.text = "MODE DEBUG"
-                    resetToGodMode()
                 }
             }
         }.start()
