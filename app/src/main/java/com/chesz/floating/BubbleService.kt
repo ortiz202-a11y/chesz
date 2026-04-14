@@ -213,7 +213,7 @@ class BubbleService : Service() {
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
                         root.post {
-                            fenTitle.text = "MODE DEBUG"
+                            fenTitle.text = "DEBUG MODE"
                             debugText.text = "" // Consola en silencio
                         }
                     }
@@ -286,7 +286,10 @@ class BubbleService : Service() {
     }
 
     private fun togglePanel() {
-        if (isCapturing) return
+        if (isCapturing) {
+            if (panelShown) updateDebug("⏳ PROCESANDO...")
+            return
+        }
         val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
         if (!panelShown) {
             showPanelIfFits()
@@ -388,7 +391,28 @@ class BubbleService : Service() {
         debugText.text = ""
         debugText.visibility = View.GONE
         if (this::devBar.isInitialized) devBar.visibility = View.GONE
-        
+
+        // Resetear btnBench a estado inicial (quitar botones cuadrados de resultado)
+        if (this::btnBench.isInitialized) {
+            btnBench.text = "TEST FEN"
+            btnBench.textSize = TEXT_SIZE_BTN
+            btnBench.setTextColor(COLOR_GREEN)
+            btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_BLACK)
+                setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
+            btnBench.setOnClickListener { runBenchmark() }
+        }
+        if (this::btnPing.isInitialized) {
+            btnPing.background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_ORANGE_BG)
+                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
+            btnPing.setTextColor(COLOR_WHITE)
+        }
+
         if (panelShown) {
             val dm = resources.displayMetrics
             val btnH = dp(BUBBLE_SIZE_DP)
@@ -666,19 +690,30 @@ class BubbleService : Service() {
         bottomInsetCache = insets.bottom
     }
 
-            private fun resetToGodMode() {
+    private fun resetToGodMode() {
         root.post {
+            fenTitle.text = "DEBUG MODE"
             if (this::btnPing.isInitialized) {
                 btnPing.visibility = android.view.View.VISIBLE
-                val g = android.graphics.drawable.GradientDrawable().apply {
+                btnPing.background = android.graphics.drawable.GradientDrawable().apply {
                     setColor(COLOR_BLACK)
                     setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
                     cornerRadius = dp(BTN_CORNER_DP).toFloat()
                 }
-                btnPing.background = g
                 btnPing.setTextColor(COLOR_GREEN)
             }
-            if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
+            if (this::btnBench.isInitialized) {
+                btnBench.text = "TEST FEN"
+                btnBench.textSize = TEXT_SIZE_BTN
+                btnBench.setTextColor(COLOR_GREEN)
+                btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(COLOR_BLACK)
+                    setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
+                }
+                btnBench.setOnClickListener { runBenchmark() }
+                btnBench.visibility = android.view.View.VISIBLE
+            }
             updateDebug("")
         }
     }
@@ -910,7 +945,7 @@ class BubbleService : Service() {
                         "Lichess: sin variantes"
                     }
                 } else if (code == 404) {
-                    "Sin datos Lichess\n(posicion nueva)"
+                    "IT'S NOT YOUR TURN"
                 } else {
                     val errBody = runCatching { conn.errorStream?.bufferedReader()?.readText() }.getOrNull() ?: ""
                     "HTTP $code\n$errBody"
@@ -1086,7 +1121,7 @@ class BubbleService : Service() {
 
         // --- Tamaños de texto (sp) ---
         private const val TEXT_SIZE_FEN        = 11f
-        private const val TEXT_SIZE_DEBUG      = 13f
+        private const val TEXT_SIZE_DEBUG      = 15f
         private const val TEXT_SIZE_BTN        = 12f
 
         // --- Colores ---
