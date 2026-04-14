@@ -473,7 +473,6 @@ class BubbleService : Service() {
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            setOnClickListener { pingAndResetHost() }
         }
 
             btnBench = TextView(this).apply {
@@ -696,7 +695,7 @@ class BubbleService : Service() {
         }
     }
 
-    private fun pingAndResetHost() {}
+
     private fun updateDebug(msg: String) {
         root.post {
             debugText.visibility = View.VISIBLE
@@ -832,7 +831,8 @@ class BubbleService : Service() {
                 root.post {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
-                        updateDebug(fenPosicion)
+                        updateDebug("Consultando Lichess...")
+                        consultarLichess(fen)
                         runCatching {
                             val logDir = getExternalFilesDir(null)
                             if (logDir != null) {
@@ -856,6 +856,50 @@ class BubbleService : Service() {
         }.start()
     }
 
+
+    private fun consultarLichess(fen: String) {
+        Thread {
+            try {
+                val encoded = java.net.URLEncoder.encode(fen, "UTF-8")
+                val url = java.net.URL("https://lichess.org/api/cloud-eval?fen=$encoded&multiPv=3")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("Accept", "application/json")
+                conn.connectTimeout = 8000
+                conn.readTimeout = 8000
+                val code = conn.responseCode
+                val resultado = if (code == 200) {
+                    val body = conn.inputStream.bufferedReader().readText()
+                    val json = org.json.JSONObject(body)
+                    val pvs = json.getJSONArray("pvs")
+                    val depth = json.optInt("depth", 0)
+                    val sb = StringBuilder("Lichess d=$depth\n")
+                    for (i in 0 until pvs.length()) {
+                        val pv = pvs.getJSONObject(i)
+                        val jugada = pv.optString("moves", "?").split(" ").firstOrNull() ?: "?"
+                        val score = when {
+                            pv.has("mate") -> "M${pv.getInt("mate")}"
+                            pv.has("cp") -> {
+                                val cp = pv.getInt("cp")
+                                if (cp >= 0) "+${"%.2f".format(cp / 100.0)}" else "${"%.2f".format(cp / 100.0)}"
+                            }
+                            else -> "?"
+                        }
+                        sb.append("${i + 1}. $jugada ($score)\n")
+                    }
+                    sb.toString().trim()
+                } else if (code == 404) {
+                    "Sin datos Lichess\n(posición nueva)"
+                } else {
+                    "Lichess error $code"
+                }
+                conn.disconnect()
+                root.post { updateDebug(resultado) }
+            } catch (e: Exception) {
+                root.post { updateDebug("Lichess: ${e.message}") }
+            }
+        }.start()
+    }
 
     private fun runBenchmark() {
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
@@ -911,44 +955,7 @@ class BubbleService : Service() {
                 }
                 val pctWhite = (correctWhite * 100) / 5
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
-                
-                var phase2Triggered = false
-                root.post { 
-                    updateDebug("TEST 1/2\nMATCH\n$resWhite\nOPTIONAL 2 TEST")
-                    if (this::btnBench.isInitialized) {
-                        btnBench.text = "TEST 2/2"
-                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(COLOR_ORANGE_BG)
-                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
-                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
-                        }
-                        btnBench.setTextColor(COLOR_WHITE)
-                        btnBench.visibility = android.view.View.VISIBLE
-                        btnBench.setOnClickListener {
-                            phase2Triggered = true
-                            btnBench.visibility = android.view.View.GONE
-                        }
-                    }
-                }
-                
-                for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = "${sec}s" }
-                    for (ms in 0 until 10) {
-                        if (phase2Triggered) break
-                        Thread.sleep(100)
-                    }
-                    if (phase2Triggered) break
-                }
 
-                if (!phase2Triggered) {
-                    root.post { fenTitle.text = "0s" }
-                    Thread.sleep(300)
-                    root.post { fenTitle.text = "" }
-                    logFile.appendText("=== ABORTO MANUAL ===\n")
-                    throw Exception("ABORT_MANUAL")
-                }
-
-                root.post { fenTitle.text = "" }
                 for (i in 6..10) {
                     val currentFoto = i - 5
                     root.post { updateDebug("TEST 2/2\nFOTO $currentFoto / 5") }
@@ -984,7 +991,6 @@ class BubbleService : Service() {
                         btnBench.visibility = android.view.View.VISIBLE
                     }
                 }
-                countdown(10)
 
                 // Fusionar FEN.TXT + errores → chesz_log.txt
                 runCatching {
@@ -1000,11 +1006,9 @@ class BubbleService : Service() {
                 }
 
             } catch (e: Exception) {
-                if (e.message != "ABORT_MANUAL") {
-                    root.post { updateDebug("ERROR: ${e.message}") }
-                    Thread.sleep(5000)
-                }
+                root.post { updateDebug("ERROR: ${e.message}") }
             } finally {
+                countdown(10)
                 root.post {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
@@ -1016,7 +1020,9 @@ class BubbleService : Service() {
                         }
                         btnBench.setTextColor(COLOR_GREEN)
                         btnBench.setOnClickListener { runBenchmark() }
+                        btnBench.visibility = android.view.View.VISIBLE
                     }
+                    if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.VISIBLE
                     fenTitle.text = "MODE DEBUG"
                     resetToGodMode()
                 }
@@ -1088,8 +1094,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val DEBUG_MAX_LINES         = 15
         private const val BENCH_CONTINUATION_LIMIT = 8
 
-        // --- URLs ---
-        private const val URL_ENGINE_PREDICT = "https://daxer2-chesz-engine.hf.space/predict"
+
     }
 
     private fun esFenValido64(fen: String): Boolean {
