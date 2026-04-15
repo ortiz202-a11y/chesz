@@ -55,6 +55,18 @@ class FenEngine(private val context: Context) {
     private var logHasError = false
     private var logHasResolveByHeight = false
 
+    // Buffers preasignados — eliminan allocations en el hot path (processBoard)
+    private val argbBuf    = IntArray(BOARD_SIZE * BOARD_SIZE)
+    private val boardGrayBuf = IntArray(BOARD_SIZE * BOARD_SIZE)
+    private val squareBuf  = IntArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val blurBuf    = IntArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val magBuf     = FloatArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val dirBuf     = FloatArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val nmsBuf     = FloatArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val edgeBuf    = IntArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val dilateBuf  = IntArray(SQUARE_SIZE * SQUARE_SIZE)
+    private val bfsQueue   = ArrayDeque<Int>(SQUARE_SIZE * SQUARE_SIZE)
+
     // ─────────────────────────────────────────────
     // API pública
     // ─────────────────────────────────────────────
@@ -71,6 +83,11 @@ class FenEngine(private val context: Context) {
                     context.assets.open("siluetas/$name.png").use { stream ->
                         BitmapFactory.decodeStream(stream)
                     }?.let { bmp ->
+                        if (bmp.width != SQUARE_SIZE || bmp.height != SQUARE_SIZE) {
+                            android.util.Log.w("FenEngine", "Plantilla $name.png ignorada: ${bmp.width}×${bmp.height} ≠ ${SQUARE_SIZE}×${SQUARE_SIZE}")
+                            bmp.recycle()
+                            return@let null
+                        }
                         bitmapToGray(bmp).also { bmp.recycle() }
                     }
                 }.getOrNull()
@@ -97,7 +114,7 @@ class FenEngine(private val context: Context) {
         val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
         logBuffer.append("\n=== FOTO $debugPhotoNum [$ts] ===\n")
 
-        val gray = bitmapToGray(board)
+        val gray = bitmapToGray(board, boardGrayBuf)
         saveDebugGray(gray)   // siempre: foto del último tablero procesado
 
         // Inicializar grid de referencia antes de la 1ª pasada para que isPieceWhite filtre correctamente
@@ -106,15 +123,15 @@ class FenEngine(private val context: Context) {
         // 1ª pasada: sin bias de fila, sin errorLog (flip aún desconocido → comparación inválida)
         val grid = Array(BOARD_SQUARES) { row ->
             CharArray(BOARD_SQUARES) { col ->
-                detectPiece(gray, row, col, applyBias = false, isFirstPass = true)
+                detectPiece(gray, row, col, applyBias = false, logErrors = false)
             }
         }
 
         debugLog("=== GRID ANTES DEL FLIP ===")
         debugLog(gridToString(grid))
 
-        // Orientación: esquina → reyes (fallback) → peones → densidad
-        val flipped = isBoardFlipped(gray) ?: isBoardFlippedByKings(grid) ?: false
+        // Orientación: esquina → reyes → peones (fallback progresivo)
+        val flipped = isBoardFlipped(gray) ?: isBoardFlippedByKings(grid) ?: isBoardFlippedByPawns(grid)
         debugFlipped = flipped
         debugLog("isBoardFlipped = $flipped")
 
@@ -177,8 +194,10 @@ class FenEngine(private val context: Context) {
      */
     private fun isBoardFlipped(boardGray: IntArray): Boolean? {
         // Región donde aparece el número: esquina superior izquierda de la casilla [0,0]
-        val regionX = 2;  val regionW = 12
-        val regionY = 2;  val regionH = 16
+        val regionX = 2
+        val regionW = 12
+        val regionY = 2
+        val regionH = 16
 
         // Recopilar píxeles de la región
         val pixels = IntArray(regionW * regionH)
@@ -245,6 +264,23 @@ class FenEngine(private val context: Context) {
         }
     }
 
+    /**
+     * Tercer fallback de orientación: más peones blancos en la mitad superior → tablero girado.
+     * Se activa solo cuando no hay coordenadas visibles ni reyes detectados.
+     */
+    private fun isBoardFlippedByPawns(grid: Array<CharArray>): Boolean {
+        var whitePawnsTop = 0
+        var whitePawnsBot = 0
+        for (row in 0 until BOARD_SQUARES) {
+            for (col in 0 until BOARD_SQUARES) {
+                if (grid[row][col] == 'P') {
+                    if (row < BOARD_SQUARES / 2) whitePawnsTop++ else whitePawnsBot++
+                }
+            }
+        }
+        return whitePawnsTop > whitePawnsBot
+    }
+
     /** Gira el tablero 180° (equivale a mirarlo desde el otro lado) */
     private fun flipGrid(grid: Array<CharArray>): Array<CharArray> =
         Array(BOARD_SQUARES) { row ->
@@ -257,6 +293,14 @@ class FenEngine(private val context: Context) {
     // Detección de pieza en una casilla
     // ─────────────────────────────────────────────
 
+    /** Devuelve true si los dos símbolos forman exactamente el par alfil/peón (en cualquier orden). */
+    private fun isBishopPawnPair(a: Char, b: Char): Boolean {
+        if (b == EMPTY) return false
+        val al = a.lowercaseChar()
+        val bl = b.lowercaseChar()
+        return (al == 'b' && bl == 'p') || (al == 'p' && bl == 'b')
+    }
+
     /**
      * Detecta la pieza en la casilla [row, col].
      *
@@ -265,13 +309,19 @@ class FenEngine(private val context: Context) {
      *
      * Desambiguación alfil/peón (reglas 7-9):
      *  - El alfil requiere BISHOP_THRESHOLD (0.55) en lugar del MATCH_THRESHOLD genérico.
-     *  - Si el top-1 y top-2 forman par alfil/peón con diferencia < AMBIGUOUS_GAP,
-     *    se resuelve por la distribución vertical de masa (alfil = pieza alta).
+     *  - Si el top-1 y top-2 forman par alfil/peón se resuelve por la distribución vertical
+     *    de masa (alfil = pieza alta). El 2° candidato debe superar MATCH_THRESHOLD para
+     *    que la ambigüedad sea real; si no, el ganador de template matching es suficiente.
      */
-    private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false, isFirstPass: Boolean = false): Char {
+    private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false, logErrors: Boolean = true): Char {
         val square = extractSquare(boardGray, row, col)
+        // Early exit: sin contraste suficiente → casilla vacía, ahorra todo el pipeline Canny
+        var minV = 255; var maxV = 0
+        for (v in square) { if (v < minV) minV = v; if (v > maxV) maxV = v }
+        if (maxV - minV < MIN_CONTRAST) return EMPTY
+
         val silueta = cannyDilate(square)
-        val isWhiteZone = isPieceWhite(square, applyBias, row, col, isFirstPass = isFirstPass)
+        val isWhiteZone = isPieceWhite(square, applyBias, row, col, logErrors = logErrors)
 
         // Calcular el mejor score por símbolo (no por plantilla individual)
         val symbolScores = mutableMapOf<Char, Float>()
@@ -305,20 +355,13 @@ class FenEngine(private val context: Context) {
 
         // Para reyes: re-verificar el color con KING_COLOR_FRACTION en isPieceWhite
         if (bestSymbol.lowercaseChar() == 'k') {
-            val isWhiteKing = isPieceWhite(square, applyBias, row, col, forKing = true, isFirstPass = isFirstPass)
+            val isWhiteKing = isPieceWhite(square, applyBias, row, col, forKing = true, logErrors = logErrors)
             if (isWhiteKing != isWhiteZone) {
                 bestSymbol = if (isWhiteKing) 'K' else 'k'
             }
         }
 
-        // Desambiguación alfil/peón por altura: siempre que el par top-1/top-2
-        // sea específicamente alfil vs peón, resolveByHeight es el árbitro final.
-        // Umbral adaptativo: el 2° candidato debe superar MATCH_THRESHOLD para que
-        // la ambigüedad sea real; si no, el ganador de template matching es suficiente.
-        val isBishopPawnPair = secondSymbol != EMPTY &&
-            ((bestSymbol.lowercaseChar() == 'b' && secondSymbol.lowercaseChar() == 'p') ||
-             (bestSymbol.lowercaseChar() == 'p' && secondSymbol.lowercaseChar() == 'b'))
-        if (isBishopPawnPair) {
+        if (isBishopPawnPair(bestSymbol, secondSymbol)) {
             if (secondScore < MATCH_THRESHOLD) {
                 debugLog("detectPiece [r=$row c=$col] par alfil/peón: 2°=${"%.3f".format(secondScore)} < MATCH_THRESHOLD → confianza en $bestSymbol")
                 return bestSymbol
@@ -328,7 +371,6 @@ class FenEngine(private val context: Context) {
 
         if (debugPhotoNum == 9 && row == 5 && col == 4) {
             debugLog(">>> [foto=9 r=5 c=4] bestSymbol=$bestSymbol bestScore=${"%.3f".format(bestScore)} secondSymbol=$secondSymbol secondScore=${"%.3f".format(secondScore)}")
-            debugSaveSquare(square, silueta, row, col)
         }
 
         return bestSymbol
@@ -376,34 +418,18 @@ class FenEngine(private val context: Context) {
     }
 
     private fun resolveByHeight(square: IntArray, symbol1: Char, symbol2: Char, row: Int = -1, col: Int = -1): Char {
-        val s = SQUARE_SIZE
-        val silueta = cannyDilate(square)
-
         val bishopSymbol = if (symbol1.lowercaseChar() == 'b') symbol1 else symbol2
         val pawnSymbol   = if (symbol1.lowercaseChar() == 'p') symbol1 else symbol2
 
-        // Buscar el pixel activo más alto (menor y) en la silueta Canny
-        var topActiveRow = s  // sin pixel activo → fuera de rango
-        outer@ for (y in 0 until s) {
-            for (x in 0 until s) {
-                if (silueta[y * s + x] > 0) {
-                    topActiveRow = y
-                    break@outer
-                }
-            }
-        }
-
-        val third = s / 3
-        // Tercio superior → alfil; tercio medio o inferior → peón; sin pixel activo → alfil por fallback
-        val isBishop = if (topActiveRow == s) true else topActiveRow < third
+        // Densidad por tercios sobre la imagen gris cruda (con sustracción de fondo por esquinas)
+        // — más robusto que buscar el píxel activo en la silueta dilatada, que puede tener
+        //   artefactos de bordes de casillas adyacentes.
+        val (dTop, dMid, dBot) = stripDensities(square)
+        val topRatio = dTop / (dMid + dBot + 1e-6f)
+        val isBishop = topRatio > BISHOP_HEIGHT_RATIO
 
         logHasResolveByHeight = true
-        val resolveReason = when {
-            topActiveRow == s -> "CANNY CIEGO → alfil por fallback"
-            isBishop          -> "alfil"
-            else              -> "peón"
-        }
-        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] topActiveRow=$topActiveRow third=$third → $resolveReason")
+        debugLog("resolveByHeight [foto=$debugPhotoNum r=$row c=$col] dTop=${"%.3f".format(dTop)} dMid=${"%.3f".format(dMid)} dBot=${"%.3f".format(dBot)} ratio=${"%.3f".format(topRatio)} → ${if (isBishop) "alfil" else "peón"}")
 
         return if (isBishop) bishopSymbol else pawnSymbol
     }
@@ -418,7 +444,7 @@ class FenEngine(private val context: Context) {
      * cuando la orientación ya está resuelta. Aplicarlo antes provocaba bias en filas
      * equivocadas si el tablero estaba girado.
      */
-    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1, forKing: Boolean = false, isFirstPass: Boolean = false): Boolean {
+    private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1, forKing: Boolean = false, logErrors: Boolean = true): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
@@ -458,7 +484,7 @@ class FenEngine(private val context: Context) {
         val result = centerMean > threshold
 
         val grid = debugExpectedGrid
-        if (grid != null && row >= 0 && col >= 0 && !isFirstPass) {
+        if (grid != null && row >= 0 && col >= 0 && logErrors) {
             // Con FEN de referencia: solo loguear si el resultado no coincide con lo esperado
             val finalRow = if (debugFlipped) BOARD_SQUARES - 1 - row else row
             val finalCol = if (debugFlipped) BOARD_SQUARES - 1 - col else col
@@ -508,43 +534,17 @@ class FenEngine(private val context: Context) {
 
     private fun saveDebugGray(gray: IntArray) {
         runCatching {
+            val pixels = IntArray(gray.size) { i -> Color.rgb(gray[i], gray[i], gray[i]) }
             val bmp = Bitmap.createBitmap(BOARD_SIZE, BOARD_SIZE, Bitmap.Config.ARGB_8888)
-            for (i in gray.indices) {
-                val v = gray[i]
-                bmp.setPixel(i % BOARD_SIZE, i / BOARD_SIZE, Color.rgb(v, v, v))
+            try {
+                bmp.setPixels(pixels, 0, BOARD_SIZE, 0, 0, BOARD_SIZE, BOARD_SIZE)
+                val dir = context.getExternalFilesDir(null) ?: return@runCatching
+                FileOutputStream(File(dir, "chesz_gray.png")).use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+            } finally {
+                bmp.recycle()
             }
-            val dir = context.getExternalFilesDir(null) ?: return
-            FileOutputStream(File(dir, "chesz_gray.png")).use { out ->
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            bmp.recycle()
-        }
-    }
-
-    private fun debugSaveSquare(square: IntArray, silueta: IntArray, row: Int, col: Int) {
-        runCatching {
-            val s = SQUARE_SIZE
-            val dir = context.getExternalFilesDir(null) ?: return
-            // Guarda la casilla en escala de grises
-            val bmpSquare = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
-            for (i in square.indices) {
-                val v = square[i]
-                bmpSquare.setPixel(i % s, i / s, Color.rgb(v, v, v))
-            }
-            FileOutputStream(File(dir, "debug_square_r${row}_c${col}.png")).use { out ->
-                bmpSquare.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            bmpSquare.recycle()
-            // Guarda la silueta (resultado de cannyDilate)
-            val bmpSil = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
-            for (i in silueta.indices) {
-                val v = silueta[i]
-                bmpSil.setPixel(i % s, i / s, Color.rgb(v, v, v))
-            }
-            FileOutputStream(File(dir, "debug_silueta_r${row}_c${col}.png")).use { out ->
-                bmpSil.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            bmpSil.recycle()
         }
     }
 
@@ -552,18 +552,23 @@ class FenEngine(private val context: Context) {
     // Paso 1: Bitmap → array de grises (luma ITU-R BT.601)
     // ─────────────────────────────────────────────
 
-    private fun bitmapToGray(bmp: Bitmap): IntArray {
+    /**
+     * Convierte un Bitmap a escala de grises (luma ITU-R BT.601).
+     * Si se pasa [dst], escribe en ese buffer en lugar de allocar uno nuevo
+     * (usar [boardGrayBuf] en el hot path de processBoard para evitar allocations).
+     */
+    private fun bitmapToGray(bmp: Bitmap, dst: IntArray? = null): IntArray {
         val w = bmp.width
         val h = bmp.height
-        val argb = IntArray(w * h)
-        bmp.getPixels(argb, 0, w, 0, 0, w, h)
-        return IntArray(w * h) { i ->
-            val c = argb[i]
-            val r = Color.red(c)
-            val g = Color.green(c)
-            val b = Color.blue(c)
-            (0.299 * r + 0.587 * g + 0.114 * b).roundToInt().coerceIn(0, 255)
+        val n = w * h
+        bmp.getPixels(argbBuf, 0, w, 0, 0, w, h)
+        val out = dst ?: IntArray(n)
+        for (i in 0 until n) {
+            val c = argbBuf[i]
+            out[i] = (0.299 * Color.red(c) + 0.587 * Color.green(c) + 0.114 * Color.blue(c))
+                .roundToInt().coerceIn(0, 255)
         }
+        return out
     }
 
     // ─────────────────────────────────────────────
@@ -574,11 +579,10 @@ class FenEngine(private val context: Context) {
         val s = SQUARE_SIZE
         val offsetY = row * s
         val offsetX = col * s
-        return IntArray(s * s) { i ->
-            val r = i / s
-            val c = i % s
-            boardGray[(offsetY + r) * BOARD_SIZE + (offsetX + c)]
+        for (i in 0 until s * s) {
+            squareBuf[i] = boardGray[(offsetY + i / s) * BOARD_SIZE + (offsetX + i % s)]
         }
+        return squareBuf
     }
 
     // ─────────────────────────────────────────────
@@ -591,9 +595,11 @@ class FenEngine(private val context: Context) {
         return dilate3x3(edges)
     }
 
-    /** Gaussian blur 5×5 — reduce ruido antes de Canny */
+    /** Gaussian blur 5×5 — reduce ruido antes de Canny.
+     *  Usa zero-padding (omite píxeles fuera de bounds) para evitar gradientes
+     *  Sobel espurios en los bordes de la casilla que produce clamp-to-edge. */
     private fun gaussianBlur5x5(src: IntArray): IntArray {
-        // Kernel Pascal normalizado (σ ≈ 1.0), suma = 273
+        // Kernel Pascal (σ ≈ 1.0)
         val k = intArrayOf(
              1,  4,  7,  4,  1,
              4, 16, 26, 16,  4,
@@ -602,101 +608,104 @@ class FenEngine(private val context: Context) {
              1,  4,  7,  4,  1
         )
         val s = SQUARE_SIZE
-        val dst = IntArray(s * s)
         for (y in 0 until s) {
             for (x in 0 until s) {
-                var sum = 0
+                var sum = 0; var weight = 0
                 for (ky in -2..2) {
                     for (kx in -2..2) {
-                        val ny = (y + ky).coerceIn(0, s - 1)
-                        val nx = (x + kx).coerceIn(0, s - 1)
-                        sum += src[ny * s + nx] * k[(ky + 2) * 5 + (kx + 2)]
+                        val ny = y + ky; val nx = x + kx
+                        if (ny < 0 || ny >= s || nx < 0 || nx >= s) continue
+                        val w = k[(ky + 2) * 5 + (kx + 2)]
+                        sum += src[ny * s + nx] * w
+                        weight += w
                     }
                 }
-                dst[y * s + x] = (sum / 273).coerceIn(0, 255)
+                blurBuf[y * s + x] = if (weight > 0) (sum / weight).coerceIn(0, 255) else 0
             }
         }
-        return dst
+        return blurBuf
     }
 
     /**
      * Detección de bordes Canny:
-     *   1. Gradientes Sobel
-     *   2. Non-maximum suppression (NMS)
-     *   3. Hysteresis con umbral doble [low, high]
+     *   1. Gradientes Sobel → magBuf, dirBuf
+     *   2. Non-maximum suppression → nmsBuf
+     *   3. Hysteresis con BFS desde bordes fuertes (propagación completa,
+     *      sin el error de cadenas débil→débil→fuerte del barrido raster)
      */
     private fun canny(src: IntArray, low: Int, high: Int): IntArray {
         val s = SQUARE_SIZE
-        val mag = FloatArray(s * s)
-        val dir = FloatArray(s * s) // ángulo en grados 0..180
 
         // --- Gradientes Sobel ---
+        // Limpiar bordes del array de magnitud
+        for (x in 0 until s) { magBuf[x] = 0f; magBuf[(s - 1) * s + x] = 0f }
+        for (y in 0 until s) { magBuf[y * s] = 0f; magBuf[y * s + (s - 1)] = 0f }
         for (y in 1 until s - 1) {
             for (x in 1 until s - 1) {
                 val tl = src[(y-1)*s+(x-1)]; val tm = src[(y-1)*s+x]; val tr = src[(y-1)*s+(x+1)]
                 val ml = src[  y  *s+(x-1)];                            val mr = src[  y  *s+(x+1)]
                 val bl = src[(y+1)*s+(x-1)]; val bm = src[(y+1)*s+x]; val br = src[(y+1)*s+(x+1)]
-
                 val gx = -tl - 2*ml - bl + tr + 2*mr + br
                 val gy = -tl - 2*tm - tr + bl + 2*bm + br
-
-                mag[y*s+x] = sqrt((gx*gx + gy*gy).toFloat())
-                // Normalizar ángulo a 0..180 para NMS
-                dir[y*s+x] = ((atan2(gy.toFloat(), gx.toFloat()) * RAD_TO_DEG) + 180f) % 180f
+                magBuf[y*s+x] = sqrt((gx*gx + gy*gy).toFloat())
+                dirBuf[y*s+x] = ((atan2(gy.toFloat(), gx.toFloat()) * RAD_TO_DEG) + 180f) % 180f
             }
         }
 
         // --- Non-maximum suppression ---
-        val nms = FloatArray(s * s)
+        for (i in nmsBuf.indices) nmsBuf[i] = 0f
         for (y in 1 until s - 1) {
             for (x in 1 until s - 1) {
-                val angle = dir[y*s+x]
-                val m = mag[y*s+x]
+                val angle = dirBuf[y*s+x]
+                val m = magBuf[y*s+x]
                 val (n1, n2) = when {
-                    angle < 22.5f  || angle >= 157.5f -> // Horizontal (0°)
-                        Pair(mag[y*s+(x+1)], mag[y*s+(x-1)])
-                    angle < 67.5f                      -> // Diagonal (45°)
-                        Pair(mag[(y-1)*s+(x+1)], mag[(y+1)*s+(x-1)])
-                    angle < 112.5f                     -> // Vertical (90°)
-                        Pair(mag[(y-1)*s+x], mag[(y+1)*s+x])
-                    else                               -> // Diagonal (135°)
-                        Pair(mag[(y-1)*s+(x-1)], mag[(y+1)*s+(x+1)])
+                    angle < 22.5f  || angle >= 157.5f -> Pair(magBuf[y*s+(x+1)],       magBuf[y*s+(x-1)])
+                    angle < 67.5f                      -> Pair(magBuf[(y-1)*s+(x+1)],   magBuf[(y+1)*s+(x-1)])
+                    angle < 112.5f                     -> Pair(magBuf[(y-1)*s+x],        magBuf[(y+1)*s+x])
+                    else                               -> Pair(magBuf[(y-1)*s+(x-1)],   magBuf[(y+1)*s+(x+1)])
                 }
-                nms[y*s+x] = if (m >= n1 && m >= n2) m else 0f
+                nmsBuf[y*s+x] = if (m >= n1 && m >= n2) m else 0f
             }
         }
 
-        // --- Umbral doble (hysteresis) ---
-        val edges = IntArray(s * s) // 0=suprimido, 128=débil, 255=fuerte
+        // --- Umbral doble ---
         for (i in 0 until s * s) {
-            edges[i] = when {
-                nms[i] >= high -> STRONG_EDGE
-                nms[i] >= low  -> WEAK_EDGE
-                else           -> 0
+            edgeBuf[i] = when {
+                nmsBuf[i] >= high -> STRONG_EDGE
+                nmsBuf[i] >= low  -> WEAK_EDGE
+                else              -> 0
             }
         }
 
-        // Conectar bordes débiles que tocan al menos un borde fuerte (8-vecinos)
-        for (y in 1 until s - 1) {
-            for (x in 1 until s - 1) {
-                if (edges[y*s+x] != WEAK_EDGE) continue
-                val connected = (-1..1).any { dy ->
-                    (-1..1).any { dx -> edges[(y+dy)*s+(x+dx)] == STRONG_EDGE }
+        // --- Hysteresis BFS desde bordes fuertes (propagación completa) ---
+        bfsQueue.clear()
+        for (i in 0 until s * s) {
+            if (edgeBuf[i] == STRONG_EDGE) bfsQueue.add(i)
+        }
+        while (bfsQueue.isNotEmpty()) {
+            val idx = bfsQueue.removeFirst()
+            val cy = idx / s; val cx = idx % s
+            for (dy in -1..1) {
+                for (dx in -1..1) {
+                    if (dy == 0 && dx == 0) continue
+                    val ny = cy + dy; val nx = cx + dx
+                    if (ny < 0 || ny >= s || nx < 0 || nx >= s) continue
+                    val ni = ny * s + nx
+                    if (edgeBuf[ni] == WEAK_EDGE) {
+                        edgeBuf[ni] = STRONG_EDGE
+                        bfsQueue.add(ni)
+                    }
                 }
-                edges[y*s+x] = if (connected) STRONG_EDGE else 0
             }
         }
-        // Eliminar débiles no conectados
-        for (i in 0 until s * s) {
-            if (edges[i] == WEAK_EDGE) edges[i] = 0
-        }
-        return edges
+        for (i in 0 until s * s) if (edgeBuf[i] == WEAK_EDGE) edgeBuf[i] = 0
+
+        return edgeBuf
     }
 
     /** Dilatación morfológica 3×3 con elemento estructurante lleno (igual que np.ones(3,3)) */
     private fun dilate3x3(src: IntArray): IntArray {
         val s = SQUARE_SIZE
-        val dst = IntArray(s * s)
         for (y in 0 until s) {
             for (x in 0 until s) {
                 var maxVal = 0
@@ -708,10 +717,10 @@ class FenEngine(private val context: Context) {
                         if (v > maxVal) maxVal = v
                     }
                 }
-                dst[y * s + x] = maxVal
+                dilateBuf[y * s + x] = maxVal
             }
         }
-        return dst
+        return dilateBuf
     }
 
     // ─────────────────────────────────────────────
@@ -721,23 +730,19 @@ class FenEngine(private val context: Context) {
     // ─────────────────────────────────────────────
 
     private fun matchNormalized(source: IntArray, template: IntArray): Float {
+        // Pasada única con sumas acumuladas (evita dos iteraciones sobre 8100 elementos)
         val n = source.size
-        var sumS = 0L
-        var sumT = 0L
-        for (i in 0 until n) { sumS += source[i]; sumT += template[i] }
-        val meanS = sumS.toFloat() / n
-        val meanT = sumT.toFloat() / n
-
-        var num  = 0f
-        var denS = 0f
-        var denT = 0f
+        var sumS = 0L; var sumT = 0L
+        var sumSS = 0L; var sumTT = 0L; var sumST = 0L
         for (i in 0 until n) {
-            val s = source[i]   - meanS
-            val t = template[i] - meanT
-            num  += s * t
-            denS += s * s
-            denT += t * t
+            val s = source[i].toLong(); val t = template[i].toLong()
+            sumS += s; sumT += t; sumSS += s * s; sumTT += t * t; sumST += s * t
         }
+        val num  = (sumST - sumS * sumT / n).toFloat()
+        val denS = (sumSS - sumS * sumS / n).toFloat()
+        val denT = (sumTT - sumT * sumT / n).toFloat()
+        // Sin energía de bordes en la fuente → casilla sin silueta reconocible
+        if (denS < MIN_SOURCE_ENERGY) return 0f
         val denom = sqrt(denS * denT)
         return if (denom < 1e-8f) 0f else (num / denom).coerceIn(-1f, 1f)
     }
@@ -745,15 +750,6 @@ class FenEngine(private val context: Context) {
     // ─────────────────────────────────────────────
     // Paso 5: Construir cadena FEN desde la cuadrícula 8×8
     // ─────────────────────────────────────────────
-
-    /** Valida que el FEN tenga exactamente 64 casillas (8 filas × 8 columnas). */
-    private fun isFenValid(fen: String): Boolean {
-        val ranks = fen.split(" ")[0].split("/")
-        if (ranks.size != 8) return false
-        return ranks.all { rank ->
-            rank.sumOf { if (it.isDigit()) it.digitToInt() else 1 } == 8
-        }
-    }
 
     /** Convierte una cadena FEN en un grid 8×8 de caracteres ('.' = vacío). */
     private fun parseFenToGrid(fen: String): Array<CharArray> {
@@ -769,7 +765,7 @@ class FenEngine(private val context: Context) {
         return grid
     }
 
-    private fun buildFen(grid: Array<CharArray>): String {
+    private fun buildFen(grid: Array<CharArray>, activeColor: Char = 'w'): String {
         val rows = grid.map { row ->
             val sb = StringBuilder()
             var empty = 0
@@ -784,7 +780,7 @@ class FenEngine(private val context: Context) {
             if (empty > 0) sb.append(empty)
             sb.toString()
         }
-        return rows.joinToString("/") + " w - - 0 1"
+        return rows.joinToString("/") + " $activeColor - - 0 1"
     }
 
     // ─────────────────────────────────────────────
@@ -794,7 +790,7 @@ class FenEngine(private val context: Context) {
     companion object {
         private const val BOARD_SIZE         = 720
         private const val BOARD_SQUARES      = 8
-        private const val SQUARE_SIZE        = 90   // BOARD_SIZE / BOARD_SQUARES
+        private const val SQUARE_SIZE        = BOARD_SIZE / BOARD_SQUARES
         private const val CENTER_CROP_START  = 30   // región central 30×30 para bando
         private const val CENTER_CROP_END    = 60
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
@@ -803,10 +799,9 @@ class FenEngine(private val context: Context) {
         private const val KING_MATCH_THRESHOLD  = 0.40f // score mínimo de template matching para aceptar un rey
         private const val KING_COLOR_FRACTION   = 0.60f // fracción del rango dinámico para determinar color del rey
         private const val BISHOP_THRESHOLD      = 0.55f // umbral más alto para alfil (evita confusión con peón)
-        private const val BISHOP_GAP_RATIO      = 1.4f  // densTop debe ser al menos 1.4× densMid para ser alfil
-        private const val BISHOP_TOP_MIN_DENSITY = 0.10f // densTop mínima absoluta para activar la regla de alfil
+        private const val BISHOP_HEIGHT_RATIO   = 0.35f // ratio dTop/(dMid+dBot) mínimo para clasificar como alfil en resolveByHeight
+        private const val MIN_SOURCE_ENERGY     = 500f  // varianza mínima de la silueta fuente para matchNormalized (evita matches espurios en casillas vacías)
         private const val STRIP_FG_THRESHOLD    = 30    // píxel debe superar el fondo de la casilla en ≥30 para contar en stripDensities
-        private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
         private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)
         private const val COORD_AMBIGUITY_MARGIN   = 8    // zona de ambigüedad alrededor del umbral → activa fallback por reyes
@@ -814,7 +809,7 @@ class FenEngine(private val context: Context) {
         private const val CANNY_HIGH         = 150
         private const val STRONG_EDGE        = 255
         private const val WEAK_EDGE          = 128
-        private const val EMPTY              = ' '
+        private const val EMPTY              = '.'
         private val RAD_TO_DEG              = (180.0 / PI).toFloat()
     }
 }
