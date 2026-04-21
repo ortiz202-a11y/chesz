@@ -21,7 +21,9 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.CheckBox
 import com.chesz.R
+import com.chesz.api.LichessApiClient
 import kotlin.math.abs
 
 class BubbleService : Service() {
@@ -76,6 +78,9 @@ class BubbleService : Service() {
     // ===== FenEngine local =====
     private val fenEngine by lazy { com.chesz.engine.FenEngine(this) }
 
+    // ===== Lichess API =====
+    private val lichessApiClient by lazy { LichessApiClient() }
+
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
@@ -83,6 +88,28 @@ class BubbleService : Service() {
     private lateinit var fenTitle: TextView
     private lateinit var btnBench: TextView
     private lateinit var btnPrueba: TextView
+
+    // ===== Lichess UI refs =====
+    private lateinit var lichessStatusIndicator: TextView
+    private lateinit var lichessContainer: LinearLayout
+    private lateinit var cbOpeningName: CheckBox
+    private lateinit var tvOpeningName: TextView
+    private lateinit var cbNextMoves: CheckBox
+    private lateinit var tvNextMoves: TextView
+    private lateinit var cbBestMove: CheckBox
+    private lateinit var tvBestMove: TextView
+    private lateinit var cbCounterAttack: CheckBox
+    private lateinit var tvCounterAttack: TextView
+    private lateinit var cbTablebaseResult: CheckBox
+    private lateinit var tvTablebaseResult: TextView
+    private lateinit var cbMateIn: CheckBox
+    private lateinit var tvMateIn: TextView
+    private lateinit var rowOpeningName: LinearLayout
+    private lateinit var rowNextMoves: LinearLayout
+    private lateinit var rowBestMove: LinearLayout
+    private lateinit var rowCounterAttack: LinearLayout
+    private lateinit var rowTablebaseResult: LinearLayout
+    private lateinit var rowMateIn: LinearLayout
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -444,6 +471,91 @@ class BubbleService : Service() {
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = 0; rightMargin = dp(27) }
         }
         col.addView(fenTitle)
+
+        // ===== INDICADOR DE ESTADO LICHESS =====
+        lichessStatusIndicator = TextView(this).apply {
+            text = ""
+            textSize = TEXT_SIZE_DEBUG
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            gravity = android.view.Gravity.CENTER
+            visibility = View.GONE
+            setPadding(0, dp(2), 0, 0)
+        }
+        col.addView(lichessStatusIndicator, LinearLayout.LayoutParams(-1, -2))
+
+        // ===== INFORMACIÓN LICHESS =====
+        lichessContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(5), dp(2), dp(5), 0)
+            visibility = View.GONE
+        }
+
+        // Helper para crear filas con checkbox + TextView
+        fun createLichessRow(checkbox: CheckBox, textView: TextView, label: String): LinearLayout {
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+
+                checkbox.apply {
+                    isChecked = true
+                    setTextColor(COLOR_GREEN)
+                    typeface = customFont
+                    textSize = 9f
+                    text = label
+                    setPadding(0, 0, dp(3), 0)
+                    scaleX = 0.8f
+                    scaleY = 0.8f
+                    setOnCheckedChangeListener { _, isChecked ->
+                        textView.visibility = if (isChecked) View.VISIBLE else View.GONE
+                    }
+                }
+                addView(checkbox, LinearLayout.LayoutParams(-2, -2))
+
+                textView.apply {
+                    text = ""
+                    textSize = 9f
+                    typeface = customFont
+                    setTextColor(COLOR_GREEN)
+                    includeFontPadding = false
+                    maxLines = 1
+                    setSingleLine(true)
+                }
+                addView(textView, LinearLayout.LayoutParams(0, -2, 1f))
+            }
+        }
+
+        cbOpeningName = CheckBox(this)
+        tvOpeningName = TextView(this)
+        rowOpeningName = createLichessRow(cbOpeningName, tvOpeningName, "")
+        lichessContainer.addView(rowOpeningName)
+
+        cbNextMoves = CheckBox(this)
+        tvNextMoves = TextView(this)
+        rowNextMoves = createLichessRow(cbNextMoves, tvNextMoves, "SEQ")
+        lichessContainer.addView(rowNextMoves)
+
+        cbBestMove = CheckBox(this)
+        tvBestMove = TextView(this)
+        rowBestMove = createLichessRow(cbBestMove, tvBestMove, "BM")
+        lichessContainer.addView(rowBestMove)
+
+        cbCounterAttack = CheckBox(this)
+        tvCounterAttack = TextView(this)
+        rowCounterAttack = createLichessRow(cbCounterAttack, tvCounterAttack, "CA")
+        lichessContainer.addView(rowCounterAttack)
+
+        cbTablebaseResult = CheckBox(this)
+        tvTablebaseResult = TextView(this)
+        rowTablebaseResult = createLichessRow(cbTablebaseResult, tvTablebaseResult, "TB")
+        lichessContainer.addView(rowTablebaseResult)
+
+        cbMateIn = CheckBox(this)
+        tvMateIn = TextView(this)
+        rowMateIn = createLichessRow(cbMateIn, tvMateIn, "M#")
+        lichessContainer.addView(rowMateIn)
+
+        col.addView(lichessContainer, LinearLayout.LayoutParams(-1, -2))
 
         debugText = TextView(this).apply {
             typeface = customFont
@@ -836,6 +948,15 @@ class BubbleService : Service() {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
                         updateDebug(fenPosicion)
+
+                        // Consultar APIs de Lichess automáticamente
+                        updateLichessStatus("🟡")
+                        lichessApiClient.queryLichess(fen) { info ->
+                            root.post {
+                                updateLichessInfo(info)
+                            }
+                        }
+
                         runCatching {
                             val logDir = getExternalFilesDir(null)
                             if (logDir != null) {
@@ -857,6 +978,107 @@ class BubbleService : Service() {
                 bitmap.recycle()
             }
         }.start()
+    }
+
+    private fun updateLichessStatus(status: String) {
+        if (this::lichessStatusIndicator.isInitialized) {
+            lichessStatusIndicator.text = status
+            lichessStatusIndicator.visibility = View.VISIBLE
+        }
+    }
+
+    private fun updateLichessInfo(info: LichessApiClient.LichessInfo) {
+        if (!this::lichessContainer.isInitialized) return
+
+        when (info.status) {
+            LichessApiClient.Status.LOADING -> {
+                updateLichessStatus("🟡")
+                lichessContainer.visibility = View.GONE
+            }
+            LichessApiClient.Status.ERROR -> {
+                updateLichessStatus("🔴")
+                lichessContainer.visibility = View.GONE
+            }
+            LichessApiClient.Status.SUCCESS -> {
+                lichessStatusIndicator.visibility = View.GONE
+                lichessContainer.visibility = View.VISIBLE
+
+                // Actualizar campos según el número de piezas
+                if (info.pieceCount <= 7) {
+                    // Tablebase mode - ocultar campos de apertura
+                    rowOpeningName.visibility = View.GONE
+                    rowNextMoves.visibility = View.GONE
+                    rowCounterAttack.visibility = View.GONE
+
+                    // Mostrar mejor movimiento si existe
+                    if (!info.bestMove.isNullOrEmpty()) {
+                        rowBestMove.visibility = View.VISIBLE
+                        tvBestMove.text = info.bestMove
+                        if (cbBestMove.isChecked) tvBestMove.visibility = View.VISIBLE
+                    } else {
+                        rowBestMove.visibility = View.GONE
+                    }
+
+                    // Mostrar resultado tablebase si existe
+                    if (!info.tbResult.isNullOrEmpty()) {
+                        rowTablebaseResult.visibility = View.VISIBLE
+                        tvTablebaseResult.text = info.tbResult
+                        if (cbTablebaseResult.isChecked) tvTablebaseResult.visibility = View.VISIBLE
+                    } else {
+                        rowTablebaseResult.visibility = View.GONE
+                    }
+
+                    // Mostrar mate en N si existe
+                    if (info.mateIn != null) {
+                        rowMateIn.visibility = View.VISIBLE
+                        tvMateIn.text = "M${info.mateIn}"
+                        if (cbMateIn.isChecked) tvMateIn.visibility = View.VISIBLE
+                    } else {
+                        rowMateIn.visibility = View.GONE
+                    }
+                } else {
+                    // Cloud Eval + Opening mode - ocultar campos de tablebase
+                    rowTablebaseResult.visibility = View.GONE
+                    rowMateIn.visibility = View.GONE
+
+                    // Mostrar nombre de apertura si existe
+                    if (!info.openingName.isNullOrEmpty()) {
+                        rowOpeningName.visibility = View.VISIBLE
+                        cbOpeningName.text = info.openingName
+                        tvOpeningName.text = ""
+                    } else {
+                        rowOpeningName.visibility = View.GONE
+                    }
+
+                    // Mostrar secuencia de movimientos si existe
+                    if (!info.nextMoves.isNullOrEmpty()) {
+                        rowNextMoves.visibility = View.VISIBLE
+                        tvNextMoves.text = info.nextMoves
+                        if (cbNextMoves.isChecked) tvNextMoves.visibility = View.VISIBLE
+                    } else {
+                        rowNextMoves.visibility = View.GONE
+                    }
+
+                    // Mostrar mejor movimiento si existe
+                    if (!info.bestMove.isNullOrEmpty()) {
+                        rowBestMove.visibility = View.VISIBLE
+                        tvBestMove.text = info.bestMove
+                        if (cbBestMove.isChecked) tvBestMove.visibility = View.VISIBLE
+                    } else {
+                        rowBestMove.visibility = View.GONE
+                    }
+
+                    // Mostrar contraataque si existe
+                    if (!info.counterAttack.isNullOrEmpty()) {
+                        rowCounterAttack.visibility = View.VISIBLE
+                        tvCounterAttack.text = info.counterAttack
+                        if (cbCounterAttack.isChecked) tvCounterAttack.visibility = View.VISIBLE
+                    } else {
+                        rowCounterAttack.visibility = View.GONE
+                    }
+                }
+            }
+        }
     }
 
 

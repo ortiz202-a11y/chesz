@@ -1,35 +1,34 @@
 <!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
+## 🧠 Grafo de código (MCP)
 
-**CRITICAL: This project has a knowledge graph. You MUST ALWAYS use the
-code-review-graph MCP tools as your FIRST action before using Grep/Glob/Read
-to explore the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file scanning cannot.
+**CRÍTICO: Este proyecto tiene un grafo de dependencias. SIEMPRE úsalo PRIMERO antes de Grep/Glob/Read.**
+El grafo es más rápido, más barato (menos tokens) y da contexto estructural que el escaneo de archivos no puede dar.
 
-**NEVER skip the graph tools. Start with them, then use Grep/Glob/Read only if needed.**
+**NUNCA omitas el grafo. Empieza con él, luego usa Grep/Glob/Read solo si es necesario.**
 
-### When to use graph tools FIRST
+### Cuándo usar el grafo PRIMERO
 
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
+- **Explorar código**: `semantic_search_nodes` o `query_graph` en lugar de Grep
+- **Entender impacto**: `get_impact_radius` en lugar de rastrear imports manualmente
+- **Revisión de código**: `detect_changes` + `get_review_context` en lugar de leer archivos enteros
+- **Relaciones**: `query_graph` con callers_of/callees_of/imports_of/tests_for
+- **Arquitectura**: `get_architecture_overview` + `list_communities`
 
-Only use Grep/Glob/Read AFTER consulting the graph, and only if the graph doesn't provide what you need.
+### Herramientas clave
 
-### Key Tools
+| Herramienta | Cuándo usarla |
+|---|---|
+| `detect_changes` | Revisar cambios — análisis con puntuación de riesgo |
+| `get_review_context` | Obtener fragmentos de código — eficiente en tokens |
+| `get_impact_radius` | Entender el impacto de un cambio |
+| `get_affected_flows` | Ver qué flujos de ejecución se afectan |
+| `query_graph` | Rastrear callers, callees, imports, tests, dependencias |
+| `semantic_search_nodes` | Encontrar funciones/clases por nombre o concepto |
+| `get_architecture_overview` | Entender la estructura general del proyecto |
+| `refactor_tool` | Planear renombrados, encontrar código muerto |
 
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
+## 🤖 Agentes y Skills
+Para elegir el mejor sin gastar tokens: lee `~/.claude/INDEX.md`
 
-## Si faltan archivos
+## 🚨 Si faltan archivos
 Revisa primero: `git stash list`. Si muestra algo, corre `git stash pop`.
