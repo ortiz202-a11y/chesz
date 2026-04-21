@@ -63,6 +63,8 @@ class BubbleService : Service() {
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
     private lateinit var devBar: LinearLayout
+    private var benchmarkThread: Thread? = null
+    private var abortBenchmark = false
 
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
@@ -379,14 +381,23 @@ class BubbleService : Service() {
     }
 
     private fun hidePanel() {
+        // Terminar todos los procesos pendientes
         devHandler.removeCallbacksAndMessages(null)
+
+        // Abortar benchmark si está corriendo
+        abortBenchmark = true
+        benchmarkThread?.interrupt()
+        benchmarkThread = null
+
+        // Resetear estado
         isHostChecked = false
         isDeveloperMode = false
+        isCapturing = false
         fenTitle.text = ""
         debugText.text = ""
         debugText.visibility = View.GONE
         if (this::devBar.isInitialized) devBar.visibility = View.GONE
-        
+
         if (panelShown) {
             val dm = resources.displayMetrics
             val btnH = dp(BUBBLE_SIZE_DP)
@@ -675,9 +686,11 @@ class BubbleService : Service() {
 
     private fun countdown(seconds: Int, onFinish: (() -> Unit)? = null) {
         for (sec in seconds downTo 1) {
+            if (abortBenchmark) return
             root.post { fenTitle.text = "${sec}s" }
             Thread.sleep(1000)
         }
+        if (abortBenchmark) return
         root.post { fenTitle.text = "0s" }
         Thread.sleep(300)
         root.post { fenTitle.text = "" }
@@ -851,7 +864,8 @@ class BubbleService : Service() {
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
         if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.GONE
 
-        Thread {
+        abortBenchmark = false
+        benchmarkThread = Thread {
             try {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
                 val dirLog = getExternalFilesDir(null)
@@ -897,6 +911,7 @@ class BubbleService : Service() {
 
                 // Fase 1: Blancas (fotos 1-5)
                 for (i in 1..5) {
+                    if (abortBenchmark) throw Exception("ABORT_MANUAL")
                     root.post { updateDebug("TESTING WHITE\nFOTO $i / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctWhite++ else fallosBlancas.add(i)
@@ -904,8 +919,11 @@ class BubbleService : Service() {
                 val pctWhite = (correctWhite * 100) / 5
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
 
+                if (abortBenchmark) throw Exception("ABORT_MANUAL")
+
                 // Fase 2: Negras (fotos 6-10) - ejecuta automáticamente
                 for (i in 6..10) {
+                    if (abortBenchmark) throw Exception("ABORT_MANUAL")
                     val currentFoto = i - 5
                     root.post { updateDebug("TESTING BLACK\nFOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
@@ -962,6 +980,7 @@ class BubbleService : Service() {
                     Thread.sleep(5000)
                 }
             } finally {
+                benchmarkThread = null
                 root.post {
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
@@ -974,8 +993,10 @@ class BubbleService : Service() {
                         btnBench.setTextColor(COLOR_GREEN)
                         btnBench.setOnClickListener { runBenchmark() }
                     }
-                    fenTitle.text = "DEBUG MODE"
-                    resetToGodMode()
+                    if (!abortBenchmark) {
+                        fenTitle.text = "DEBUG MODE"
+                        resetToGodMode()
+                    }
                 }
             }
         }.start()
