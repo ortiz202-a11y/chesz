@@ -532,3 +532,4 @@ Agentes especializados disponibles para usar con Claude Code en este proyecto:
 | **test-automator** | Genera tests instrumentados y unitarios para FenEngine, verificando detección de piezas contra FENs conocidos (integra con el botón TEST FEN existente). |
 TEST AUTO PATC
 20 Abril se regreso a version mas estsble
+merwnteeminsr ls app emn2 dias
