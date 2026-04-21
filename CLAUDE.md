@@ -29,3 +29,6 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 | `semantic_search_nodes` | Finding functions/classes by name or keyword |
 | `get_architecture_overview` | Understanding high-level codebase structure |
 | `refactor_tool` | Planning renames, finding dead code |
+
+## Si faltan archivos
+Revisa primero: `git stash list`. Si muestra algo, corre `git stash pop`.

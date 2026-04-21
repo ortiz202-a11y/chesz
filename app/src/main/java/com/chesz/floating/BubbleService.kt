@@ -1055,13 +1055,12 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val TIMEOUT_BENCH_READ     = 8500
 
         // --- Delays (ms) ---
-        private const val DELAY_DEV_MODE_MS       = 3000L
+        private const val DELAY_DEV_MODE_MS       = 2300L
         private const val DELAY_GOD_TOUCH_IGNORE_MS = 1000L  // ms que se ignora el touch al activar modo dios
-        private const val DELAY_SCREENSHOT_MS     = 600L
+        private const val DELAY_SCREENSHOT_MS     = 400L
         private const val DELAY_FLASH_MS          = 220L
         private const val DELAY_KILL_ANIM_MS      = 60L
         private const val DELAY_CAPTURE_RESET_MS  = 3000L
-        private const val DELAY_BENCH_BETWEEN_MS  = 1500L
 
         // --- Misc ---
         private const val KILL_HOVER_SCALE        = 1.40f

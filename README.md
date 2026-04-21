@@ -533,3 +533,6 @@ Agentes especializados disponibles para usar con Claude Code en este proyecto:
 TEST AUTO PATC
 20 Abril se regreso a version mas estsble
 merwnteeminsr ls app emn2 dias
+
+## 🚨 Archivos que desaparecen
+Si falta `.mcp.json`, `CLAUDE.md` u otro archivo: `git stash list`. Si hay algo, `git stash pop`.
