@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "code-review-graph",
+      "args": ["serve"],
+      "cwd": "/data/data/com.termux/files/home/chesz"
+    }
+  }
+}
