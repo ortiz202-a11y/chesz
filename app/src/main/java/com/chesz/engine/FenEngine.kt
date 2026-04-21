@@ -440,13 +440,8 @@ class FenEngine(private val context: Context) {
             if (v > maxV) maxV = v
         }
 
-        // Sin contraste suficiente → casilla vacía, la clasificación no importa
-        if (maxV - minV < MIN_CONTRAST) {
-            if (debugExpectedGrid == null) {
-                debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV contrast=${maxV-minV} < MIN_CONTRAST → skip (true)")
-            }
-            return true
-        }
+        // Sin contraste suficiente → usar brillo absoluto en lugar de asumir blanca
+        if (maxV - minV < MIN_CONTRAST) return centerMean > 128f
 
         // Para reyes: umbral basado en KING_COLOR_FRACTION (fracción del rango, independiente del bias)
         // Para el resto: umbral dinámico con bias de fila si aplica

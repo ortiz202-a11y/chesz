@@ -947,8 +947,6 @@ class BubbleService : Service() {
                 root.post {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
-                        updateDebug(fenPosicion)
-
                         // Consultar APIs de Lichess automáticamente
                         updateLichessStatus("🟡")
                         lichessApiClient.queryLichess(fen) { info ->
@@ -1077,6 +1075,40 @@ class BubbleService : Service() {
                         rowCounterAttack.visibility = View.GONE
                     }
                 }
+            }
+        }
+
+        // Actualizar debugText con campos activos de Lichess
+        if (info.status == LichessApiClient.Status.SUCCESS) {
+            val debugLines = mutableListOf<String>()
+
+            // Best Move (disponible en ambos modos)
+            if (rowBestMove.visibility == View.VISIBLE && cbBestMove.isChecked && tvBestMove.text.isNotEmpty()) {
+                debugLines.add("BM: ${tvBestMove.text}")
+            }
+
+            if (info.pieceCount <= 7) {
+                // Modo tablebase
+                if (rowTablebaseResult.visibility == View.VISIBLE && cbTablebaseResult.isChecked && tvTablebaseResult.text.isNotEmpty()) {
+                    debugLines.add("TB: ${tvTablebaseResult.text}")
+                }
+                if (rowMateIn.visibility == View.VISIBLE && cbMateIn.isChecked && tvMateIn.text.isNotEmpty()) {
+                    debugLines.add("M#: ${tvMateIn.text}")
+                }
+            } else {
+                // Modo apertura/cloud eval
+                if (rowNextMoves.visibility == View.VISIBLE && cbNextMoves.isChecked && tvNextMoves.text.isNotEmpty()) {
+                    debugLines.add("SEQ: ${tvNextMoves.text}")
+                }
+                if (rowCounterAttack.visibility == View.VISIBLE && cbCounterAttack.isChecked && tvCounterAttack.text.isNotEmpty()) {
+                    debugLines.add("CA: ${tvCounterAttack.text}")
+                }
+            }
+
+            if (debugLines.isNotEmpty()) {
+                updateDebug(debugLines.joinToString("\n"))
+            } else {
+                debugText.visibility = View.GONE
             }
         }
     }
