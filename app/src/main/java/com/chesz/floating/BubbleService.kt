@@ -999,7 +999,7 @@ class BubbleService : Service() {
                     }
                 }
             }
-        }.start()
+        }.also { it.start() }
     }
 
 
