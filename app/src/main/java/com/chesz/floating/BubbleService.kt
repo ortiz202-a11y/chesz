@@ -79,8 +79,8 @@ class BubbleService : Service() {
     private lateinit var permText: TextView
     private lateinit var debugText: TextView
     private lateinit var fenTitle: TextView
-    private lateinit var btnPing: TextView
     private lateinit var btnBench: TextView
+    private lateinit var btnPrueba: TextView
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -212,7 +212,7 @@ class BubbleService : Service() {
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
                         root.post {
-                            fenTitle.text = "MODE DEBUG"
+                            fenTitle.text = "DEBUG MODE"
                             debugText.text = "" // Consola en silencio
                         }
                     }
@@ -461,18 +461,7 @@ class BubbleService : Service() {
             cornerRadius = dp(BTN_CORNER_DP).toFloat() // Forma Pastilla
         }
 
-        btnPing = TextView(this).apply {
-            text = "HOST P/R"
-            typeface = customFont
-            setTextColor(COLOR_GREEN)
-            textSize = TEXT_SIZE_BTN
-            gravity = android.view.Gravity.CENTER
-            background = btnBg
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            setOnClickListener { pingAndResetHost() }
-        }
-
-            btnBench = TextView(this).apply {
+        btnBench = TextView(this).apply {
             text = "TEST FEN"
             typeface = customFont
             setTextColor(COLOR_GREEN)
@@ -483,9 +472,24 @@ class BubbleService : Service() {
             setOnClickListener { runBenchmark() }
         }
 
-        devBar.addView(btnPing, LinearLayout.LayoutParams(-2, -2))
-        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
+        btnPrueba = TextView(this).apply {
+            text = "PRUEBA"
+            typeface = customFont
+            setTextColor(COLOR_WHITE)
+            textSize = TEXT_SIZE_BTN
+            gravity = android.view.Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_ORANGE_BG)
+                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            setOnClickListener { /* Acción del botón PRUEBA */ }
+        }
+
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
+        devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
+        devBar.addView(btnPrueba, LinearLayout.LayoutParams(-2, -2))
         col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
@@ -663,17 +667,8 @@ class BubbleService : Service() {
 
             private fun resetToGodMode() {
         root.post {
-            if (this::btnPing.isInitialized) {
-                btnPing.visibility = android.view.View.VISIBLE
-                val g = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(COLOR_BLACK)
-                    setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
-                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
-                }
-                btnPing.background = g
-                btnPing.setTextColor(COLOR_GREEN)
-            }
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
+            if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.VISIBLE
             updateDebug("")
         }
     }
@@ -689,87 +684,6 @@ class BubbleService : Service() {
         if (onFinish != null) {
             Thread.sleep(300)
             root.post { onFinish() }
-        }
-    }
-
-    private fun pingAndResetHost() {
-        if (!isHostChecked) {
-            devHandler.removeCallbacksAndMessages(null)
-            root.post { 
-                fenTitle.text = ""
-                updateDebug("PING ENVIADO...") 
-            }
-            if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
-            if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
-
-            kotlin.concurrent.thread {
-                try {
-                    val conn = java.net.URL(URL_ENGINE_PING).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = TIMEOUT_PING_CONNECT
-                    conn.readTimeout = TIMEOUT_PING_READ
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.instanceFollowRedirects = true
-                    val rc = conn.responseCode
-
-                    root.post {
-                        if (rc == 200 || rc == 503 || rc == 404) {
-                            isHostChecked = true
-                            val isOnline = (rc == 200 || rc == 404)
-                            val nColor = if (isOnline) COLOR_ORANGE_BG else COLOR_NEON_RED_BG
-                            val nStroke = if (isOnline) COLOR_ORANGE_STROKE else COLOR_NEON_RED_STROKE
-
-                            if (this::btnPing.isInitialized) {
-                                btnPing.visibility = android.view.View.VISIBLE
-                                btnPing.background = android.graphics.drawable.GradientDrawable().apply {
-                                    setColor(nColor)
-                                    setStroke(dp(BTN_STROKE_ALERT_DP), nStroke)
-                                    cornerRadius = dp(BTN_CORNER_DP).toFloat()
-                                }
-                                btnPing.setTextColor(COLOR_WHITE)
-                            }
-
-                            val msg = if (isOnline) "HOST : ONLINE\nOPTIONAL RESTART: ORANGE BTN" else "HOST : SLEEP\nWAKE UP HOST: RED BTN"
-                            updateDebug(msg)
-
-                            Thread {
-                                countdown(5) {
-                                    if (isHostChecked) {
-                                        isHostChecked = false
-                                        updateDebug("TIME OUT")
-                                        root.postDelayed({ fenTitle.text = "MODE DEBUG"; resetToGodMode() }, 1500)
-                                    }
-                                }
-                            }.start()
-                        } else {
-                            updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
-                            Thread {
-                                countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() }
-                            }.start()
-                        }
-                    }
-                } catch (e: Exception) {
-                    root.post {
-                        updateDebug("STATUS: OFFLINE\nCHECK HOST / MANUAL REBOOT")
-                        Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
-                    }
-                }
-            }
-        } else {
-            isHostChecked = false
-            root.post { updateDebug("HOST RESTARTING...\nREADY IN 1-3MIN.") }
-
-            Thread { countdown(5) { fenTitle.text = "MODE DEBUG"; resetToGodMode() } }.start()
-
-            kotlin.concurrent.thread {
-                try {
-                    val conn = java.net.URL(URL_HF_RESTART).openConnection() as java.net.HttpURLConnection
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                    conn.setRequestProperty("Authorization", "Bearer " + "hf_" + "cnQEZ" + "zRccH" + "MdJcO" + "HgQfI" + "rueGa" + "uQypd" + "khuM")
-                    val rc = conn.responseCode
-                } catch (e: Exception) {}
-            }
         }
     }
 
@@ -935,7 +849,7 @@ class BubbleService : Service() {
 
     private fun runBenchmark() {
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
-        if (this::btnPing.isInitialized) btnPing.visibility = android.view.View.GONE
+        if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.GONE
 
         Thread {
             try {
@@ -980,54 +894,20 @@ class BubbleService : Service() {
                 }
 
                 root.post { fenTitle.text = "" }
+
+                // Fase 1: Blancas (fotos 1-5)
                 for (i in 1..5) {
-                    root.post { updateDebug("TEST 1/2\nFOTO $i / 5") }
+                    root.post { updateDebug("TESTING WHITE\nFOTO $i / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctWhite++ else fallosBlancas.add(i)
                 }
                 val pctWhite = (correctWhite * 100) / 5
                 val resWhite = formatRes("WHITE", pctWhite, fallosBlancas)
-                
-                var phase2Triggered = false
-                root.post { 
-                    updateDebug("TEST 1/2\nMATCH\n$resWhite\nOPTIONAL 2 TEST")
-                    if (this::btnBench.isInitialized) {
-                        btnBench.text = "TEST 2/2"
-                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(COLOR_ORANGE_BG)
-                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
-                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
-                        }
-                        btnBench.setTextColor(COLOR_WHITE)
-                        btnBench.visibility = android.view.View.VISIBLE
-                        btnBench.setOnClickListener {
-                            phase2Triggered = true
-                            btnBench.visibility = android.view.View.GONE
-                        }
-                    }
-                }
-                
-                for (sec in 10 downTo 1) {
-                    root.post { fenTitle.text = "${sec}s" }
-                    for (ms in 0 until 10) {
-                        if (phase2Triggered) break
-                        Thread.sleep(100)
-                    }
-                    if (phase2Triggered) break
-                }
 
-                if (!phase2Triggered) {
-                    root.post { fenTitle.text = "0s" }
-                    Thread.sleep(300)
-                    root.post { fenTitle.text = "" }
-                    logFile.appendText("=== ABORTO MANUAL ===\n")
-                    throw Exception("ABORT_MANUAL")
-                }
-
-                root.post { fenTitle.text = "" }
+                // Fase 2: Negras (fotos 6-10) - ejecuta automáticamente
                 for (i in 6..10) {
                     val currentFoto = i - 5
-                    root.post { updateDebug("TEST 2/2\nFOTO $currentFoto / 5") }
+                    root.post { updateDebug("TESTING BLACK\nFOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctBlack++ else fallosNegras.add(i)
                 }
@@ -1057,6 +937,7 @@ class BubbleService : Service() {
                         }
                         btnBench.textSize = 13f
                         btnBench.setTextColor(COLOR_WHITE)
+                        btnBench.setOnClickListener { } // Sin acción
                         btnBench.visibility = android.view.View.VISIBLE
                     }
                 }
@@ -1093,7 +974,7 @@ class BubbleService : Service() {
                         btnBench.setTextColor(COLOR_GREEN)
                         btnBench.setOnClickListener { runBenchmark() }
                     }
-                    fenTitle.text = "MODE DEBUG"
+                    fenTitle.text = "DEBUG MODE"
                     resetToGodMode()
                 }
             }
