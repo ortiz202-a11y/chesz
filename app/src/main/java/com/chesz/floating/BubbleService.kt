@@ -22,6 +22,10 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.CheckBox
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.text.Spannable
+import android.content.Context
 import com.chesz.R
 import com.chesz.api.LichessApiClient
 import kotlin.math.abs
@@ -90,19 +94,12 @@ class BubbleService : Service() {
     private lateinit var btnPrueba: TextView
 
     // ===== Lichess UI refs =====
-    private lateinit var lichessStatusIndicator: TextView
     private lateinit var lichessContainer: LinearLayout
-    private lateinit var cbOpeningName: CheckBox
     private lateinit var tvOpeningName: TextView
-    private lateinit var cbNextMoves: CheckBox
     private lateinit var tvNextMoves: TextView
-    private lateinit var cbBestMove: CheckBox
     private lateinit var tvBestMove: TextView
-    private lateinit var cbCounterAttack: CheckBox
     private lateinit var tvCounterAttack: TextView
-    private lateinit var cbTablebaseResult: CheckBox
     private lateinit var tvTablebaseResult: TextView
-    private lateinit var cbMateIn: CheckBox
     private lateinit var tvMateIn: TextView
     private lateinit var rowOpeningName: LinearLayout
     private lateinit var rowNextMoves: LinearLayout
@@ -472,18 +469,6 @@ class BubbleService : Service() {
         }
         col.addView(fenTitle)
 
-        // ===== INDICADOR DE ESTADO LICHESS =====
-        lichessStatusIndicator = TextView(this).apply {
-            text = ""
-            textSize = TEXT_SIZE_DEBUG
-            typeface = customFont
-            setTextColor(COLOR_GREEN)
-            gravity = android.view.Gravity.CENTER
-            visibility = View.GONE
-            setPadding(0, dp(2), 0, 0)
-        }
-        col.addView(lichessStatusIndicator, LinearLayout.LayoutParams(-1, -2))
-
         // ===== INFORMACIÓN LICHESS =====
         lichessContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -491,26 +476,29 @@ class BubbleService : Service() {
             visibility = View.GONE
         }
 
-        // Helper para crear filas con checkbox + TextView
-        fun createLichessRow(checkbox: CheckBox, textView: TextView, label: String): LinearLayout {
+        // Helper para crear filas con dot toggle + label + TextView
+        fun createDotRow(dot: TextView, label: TextView, textView: TextView, labelText: String): LinearLayout {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
 
-                checkbox.apply {
-                    isChecked = true
-                    setTextColor(COLOR_GREEN)
-                    typeface = customFont
+                dot.apply {
+                    text = "●"
                     textSize = 9f
-                    text = label
+                    typeface = customFont
+                    setTextColor(COLOR_GREEN)
                     setPadding(0, 0, dp(3), 0)
-                    scaleX = 0.8f
-                    scaleY = 0.8f
-                    setOnCheckedChangeListener { _, isChecked ->
-                        textView.visibility = if (isChecked) View.VISIBLE else View.GONE
-                    }
                 }
-                addView(checkbox, LinearLayout.LayoutParams(-2, -2))
+                addView(dot, LinearLayout.LayoutParams(-2, -2))
+
+                label.apply {
+                    text = labelText
+                    textSize = 9f
+                    typeface = customFont
+                    setTextColor(COLOR_GREEN)
+                    setPadding(0, 0, dp(3), 0)
+                }
+                addView(label, LinearLayout.LayoutParams(-2, -2))
 
                 textView.apply {
                     text = ""
@@ -525,34 +513,86 @@ class BubbleService : Service() {
             }
         }
 
-        cbOpeningName = CheckBox(this)
+        // Crear dots y labels
+        val dotOP = TextView(this)
+        val labelOP = TextView(this)
         tvOpeningName = TextView(this)
-        rowOpeningName = createLichessRow(cbOpeningName, tvOpeningName, "")
+        rowOpeningName = createDotRow(dotOP, labelOP, tvOpeningName, "OP")
         lichessContainer.addView(rowOpeningName)
 
-        cbNextMoves = CheckBox(this)
-        tvNextMoves = TextView(this)
-        rowNextMoves = createLichessRow(cbNextMoves, tvNextMoves, "SEQ")
-        lichessContainer.addView(rowNextMoves)
-
-        cbBestMove = CheckBox(this)
+        val dotBM = TextView(this)
+        val labelBM = TextView(this)
         tvBestMove = TextView(this)
-        rowBestMove = createLichessRow(cbBestMove, tvBestMove, "BM")
+        rowBestMove = createDotRow(dotBM, labelBM, tvBestMove, "BM")
         lichessContainer.addView(rowBestMove)
 
-        cbCounterAttack = CheckBox(this)
+        val dotLN = TextView(this)
+        val labelLN = TextView(this)
+        tvNextMoves = TextView(this)
+        rowNextMoves = createDotRow(dotLN, labelLN, tvNextMoves, "LN")
+        lichessContainer.addView(rowNextMoves)
+
+        val dotWR = TextView(this)
+        val labelWR = TextView(this)
         tvCounterAttack = TextView(this)
-        rowCounterAttack = createLichessRow(cbCounterAttack, tvCounterAttack, "CA")
+        rowCounterAttack = createDotRow(dotWR, labelWR, tvCounterAttack, "WR")
         lichessContainer.addView(rowCounterAttack)
 
-        cbTablebaseResult = CheckBox(this)
+        // TB y Mate sin toggles
         tvTablebaseResult = TextView(this)
-        rowTablebaseResult = createLichessRow(cbTablebaseResult, tvTablebaseResult, "TB")
+        rowTablebaseResult = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+
+            val labelTB = TextView(context).apply {
+                text = "TB"
+                textSize = 9f
+                typeface = customFont
+                setTextColor(COLOR_GREEN)
+                setPadding(0, 0, dp(3), 0)
+            }
+            addView(labelTB, LinearLayout.LayoutParams(-2, -2))
+
+            tvTablebaseResult.apply {
+                text = ""
+                textSize = 9f
+                typeface = customFont
+                setTextColor(COLOR_GREEN)
+                includeFontPadding = false
+                maxLines = 1
+                setSingleLine(true)
+            }
+            addView(tvTablebaseResult, LinearLayout.LayoutParams(0, -2, 1f))
+        }
         lichessContainer.addView(rowTablebaseResult)
 
-        cbMateIn = CheckBox(this)
         tvMateIn = TextView(this)
-        rowMateIn = createLichessRow(cbMateIn, tvMateIn, "M#")
+        rowMateIn = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+
+            val labelMate = TextView(context).apply {
+                text = "M'S"
+                textSize = 9f
+                typeface = customFont
+                setTextColor(COLOR_GREEN)
+                setPadding(0, 0, dp(3), 0)
+            }
+            addView(labelMate, LinearLayout.LayoutParams(-2, -2))
+
+            tvMateIn.apply {
+                text = ""
+                textSize = 9f
+                typeface = customFont
+                setTextColor(COLOR_GREEN)
+                includeFontPadding = false
+                maxLines = 1
+                setSingleLine(true)
+            }
+            addView(tvMateIn, LinearLayout.LayoutParams(0, -2, 1f))
+        }
         lichessContainer.addView(rowMateIn)
 
         col.addView(lichessContainer, LinearLayout.LayoutParams(-1, -2))
@@ -637,6 +677,33 @@ class BubbleService : Service() {
             topMargin = dp(-2)
             rightMargin = dp(-2)
         })
+
+        // === LÓGICA DE TOGGLES ===
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        fun applyDot(dot: TextView, row: LinearLayout, active: Boolean) {
+            dot.text = if (active) "●" else "○"
+            dot.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
+            row.visibility = if (active) View.VISIBLE else View.GONE
+        }
+
+        applyDot(dotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
+        applyDot(dotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
+        applyDot(dotLN, rowNextMoves,     prefs.getBoolean(PREF_LN, true))
+        applyDot(dotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
+
+        fun dotClick(dot: TextView, row: LinearLayout, key: String, default: Boolean) {
+            dot.setOnClickListener {
+                val next = !prefs.getBoolean(key, default)
+                prefs.edit().putBoolean(key, next).apply()
+                applyDot(dot, row, next)
+            }
+        }
+        dotClick(dotOP, rowOpeningName,   PREF_OP, true)
+        dotClick(dotBM, rowBestMove,      PREF_BM, true)
+        dotClick(dotLN, rowNextMoves,     PREF_LN, true)
+        dotClick(dotWR, rowCounterAttack, PREF_WR, false)
+
         return panel
     }
 
@@ -814,7 +881,7 @@ class BubbleService : Service() {
 
     private fun updateDebug(msg: String) {
         root.post {
-            debugText.visibility = View.VISIBLE
+            debugText.visibility = View.GONE
             debugText.maxLines = DEBUG_MAX_LINES
 
             debugText.text = msg
@@ -948,7 +1015,6 @@ class BubbleService : Service() {
                     fenTitle.text = fenPosicion
                     if (esFenValido64(fen)) {
                         // Consultar APIs de Lichess automáticamente
-                        updateLichessStatus("🟡")
                         lichessApiClient.queryLichess(fen) { info ->
                             root.post {
                                 updateLichessInfo(info)
@@ -978,11 +1044,26 @@ class BubbleService : Service() {
         }.start()
     }
 
-    private fun updateLichessStatus(status: String) {
-        if (this::lichessStatusIndicator.isInitialized) {
-            lichessStatusIndicator.text = status
-            lichessStatusIndicator.visibility = View.VISIBLE
+    private fun formatLN(moves: String): SpannableString {
+        if (moves.isBlank()) return SpannableString("")
+        val tokens = moves.trim().split(" ")
+        val sb = StringBuilder()
+        data class Seg(val start: Int, val end: Int, val color: Int)
+        val segs = mutableListOf<Seg>()
+        tokens.forEachIndexed { i, move ->
+            val isOwn = i % 2 == 0
+            val chunk = when (i) {
+                0 -> "[★$move "
+                1 -> "$move] "
+                else -> "$move "
+            }
+            val s = sb.length
+            sb.append(chunk)
+            segs.add(Seg(s, sb.length, if (isOwn) COLOR_GREEN else 0xFF888888.toInt()))
         }
+        val span = SpannableString(sb.toString())
+        segs.forEach { span.setSpan(ForegroundColorSpan(it.color), it.start, it.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE) }
+        return span
     }
 
     private fun updateLichessInfo(info: LichessApiClient.LichessInfo) {
@@ -990,125 +1071,62 @@ class BubbleService : Service() {
 
         when (info.status) {
             LichessApiClient.Status.LOADING -> {
-                updateLichessStatus("🟡")
                 lichessContainer.visibility = View.GONE
             }
             LichessApiClient.Status.ERROR -> {
-                updateLichessStatus("🔴")
                 lichessContainer.visibility = View.GONE
             }
             LichessApiClient.Status.SUCCESS -> {
-                lichessStatusIndicator.visibility = View.GONE
                 lichessContainer.visibility = View.VISIBLE
 
-                // Actualizar campos según el número de piezas
-                if (info.pieceCount <= 7) {
-                    // Tablebase mode - ocultar campos de apertura
-                    rowOpeningName.visibility = View.GONE
-                    rowNextMoves.visibility = View.GONE
-                    rowCounterAttack.visibility = View.GONE
-
-                    // Mostrar mejor movimiento si existe
-                    if (!info.bestMove.isNullOrEmpty()) {
-                        rowBestMove.visibility = View.VISIBLE
-                        tvBestMove.text = info.bestMove
-                        if (cbBestMove.isChecked) tvBestMove.visibility = View.VISIBLE
-                    } else {
-                        rowBestMove.visibility = View.GONE
-                    }
-
-                    // Mostrar resultado tablebase si existe
-                    if (!info.tbResult.isNullOrEmpty()) {
-                        rowTablebaseResult.visibility = View.VISIBLE
-                        tvTablebaseResult.text = info.tbResult
-                        if (cbTablebaseResult.isChecked) tvTablebaseResult.visibility = View.VISIBLE
-                    } else {
-                        rowTablebaseResult.visibility = View.GONE
-                    }
-
-                    // Mostrar mate en N si existe
-                    if (info.mateIn != null) {
-                        rowMateIn.visibility = View.VISIBLE
-                        tvMateIn.text = "M${info.mateIn}"
-                        if (cbMateIn.isChecked) tvMateIn.visibility = View.VISIBLE
-                    } else {
-                        rowMateIn.visibility = View.GONE
-                    }
+                // Actualizar campos
+                // Opening Name
+                if (!info.openingName.isNullOrEmpty()) {
+                    tvOpeningName.text = info.openingName
                 } else {
-                    // Cloud Eval + Opening mode - ocultar campos de tablebase
+                    tvOpeningName.text = ""
+                }
+
+                // Best Move
+                if (!info.bestMove.isNullOrEmpty()) {
+                    tvBestMove.text = info.bestMove
+                } else {
+                    tvBestMove.text = ""
+                }
+
+                // Line (Next Moves) con formato especial
+                if (!info.nextMoves.isNullOrEmpty()) {
+                    tvNextMoves.text = formatLN(info.nextMoves ?: "")
+                } else {
+                    tvNextMoves.text = ""
+                }
+
+                // Win Rate (Counter Attack)
+                if (!info.counterAttack.isNullOrEmpty()) {
+                    tvCounterAttack.text = info.counterAttack
+                } else {
+                    tvCounterAttack.text = ""
+                }
+
+                // TB y Mate automáticos según FEN actual
+                val currentFen = lastFen ?: ""
+                val pieceCount = currentFen.split(" ").getOrNull(0)?.count { it.isLetter() } ?: 99
+
+                // Tablebase (solo si <= 7 piezas y hay dato)
+                if (pieceCount <= 7 && !info.tbResult.isNullOrEmpty()) {
+                    tvTablebaseResult.text = info.tbResult
+                    rowTablebaseResult.visibility = View.VISIBLE
+                } else {
                     rowTablebaseResult.visibility = View.GONE
+                }
+
+                // Mate (solo si hay mateIn > 0)
+                if (info.mateIn != null && info.mateIn > 0) {
+                    tvMateIn.text = "M${info.mateIn}"
+                    rowMateIn.visibility = View.VISIBLE
+                } else {
                     rowMateIn.visibility = View.GONE
-
-                    // Mostrar nombre de apertura si existe
-                    if (!info.openingName.isNullOrEmpty()) {
-                        rowOpeningName.visibility = View.VISIBLE
-                        cbOpeningName.text = info.openingName
-                        tvOpeningName.text = ""
-                    } else {
-                        rowOpeningName.visibility = View.GONE
-                    }
-
-                    // Mostrar secuencia de movimientos si existe
-                    if (!info.nextMoves.isNullOrEmpty()) {
-                        rowNextMoves.visibility = View.VISIBLE
-                        tvNextMoves.text = info.nextMoves
-                        if (cbNextMoves.isChecked) tvNextMoves.visibility = View.VISIBLE
-                    } else {
-                        rowNextMoves.visibility = View.GONE
-                    }
-
-                    // Mostrar mejor movimiento si existe
-                    if (!info.bestMove.isNullOrEmpty()) {
-                        rowBestMove.visibility = View.VISIBLE
-                        tvBestMove.text = info.bestMove
-                        if (cbBestMove.isChecked) tvBestMove.visibility = View.VISIBLE
-                    } else {
-                        rowBestMove.visibility = View.GONE
-                    }
-
-                    // Mostrar contraataque si existe
-                    if (!info.counterAttack.isNullOrEmpty()) {
-                        rowCounterAttack.visibility = View.VISIBLE
-                        tvCounterAttack.text = info.counterAttack
-                        if (cbCounterAttack.isChecked) tvCounterAttack.visibility = View.VISIBLE
-                    } else {
-                        rowCounterAttack.visibility = View.GONE
-                    }
                 }
-            }
-        }
-
-        // Actualizar debugText con campos activos de Lichess
-        if (info.status == LichessApiClient.Status.SUCCESS) {
-            val debugLines = mutableListOf<String>()
-
-            // Best Move (disponible en ambos modos)
-            if (rowBestMove.visibility == View.VISIBLE && cbBestMove.isChecked && tvBestMove.text.isNotEmpty()) {
-                debugLines.add("BM: ${tvBestMove.text}")
-            }
-
-            if (info.pieceCount <= 7) {
-                // Modo tablebase
-                if (rowTablebaseResult.visibility == View.VISIBLE && cbTablebaseResult.isChecked && tvTablebaseResult.text.isNotEmpty()) {
-                    debugLines.add("TB: ${tvTablebaseResult.text}")
-                }
-                if (rowMateIn.visibility == View.VISIBLE && cbMateIn.isChecked && tvMateIn.text.isNotEmpty()) {
-                    debugLines.add("M#: ${tvMateIn.text}")
-                }
-            } else {
-                // Modo apertura/cloud eval
-                if (rowNextMoves.visibility == View.VISIBLE && cbNextMoves.isChecked && tvNextMoves.text.isNotEmpty()) {
-                    debugLines.add("SEQ: ${tvNextMoves.text}")
-                }
-                if (rowCounterAttack.visibility == View.VISIBLE && cbCounterAttack.isChecked && tvCounterAttack.text.isNotEmpty()) {
-                    debugLines.add("CA: ${tvCounterAttack.text}")
-                }
-            }
-
-            if (debugLines.isNotEmpty()) {
-                updateDebug(debugLines.joinToString("\n"))
-            } else {
-                debugText.visibility = View.GONE
             }
         }
     }
@@ -1325,6 +1343,13 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val URL_ENGINE_PING    = "https://daxer2-chesz-engine.hf.space/"
         private const val URL_ENGINE_PREDICT = "https://daxer2-chesz-engine.hf.space/predict"
         private const val URL_HF_RESTART     = "https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart"
+
+        // --- SharedPreferences ---
+        private const val PREFS_NAME = "chesz_overlay_prefs"
+        private const val PREF_OP = "toggle_op"
+        private const val PREF_BM = "toggle_bm"
+        private const val PREF_LN = "toggle_ln"
+        private const val PREF_WR = "toggle_wr"
     }
 
     private fun esFenValido64(fen: String): Boolean {
