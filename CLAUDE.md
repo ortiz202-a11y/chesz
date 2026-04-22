@@ -1,10 +1,17 @@
 <!-- code-review-graph MCP tools -->
 ## 🧠 Grafo de código (MCP)
 
-**CRÍTICO: Este proyecto tiene un grafo de dependencias. SIEMPRE úsalo PRIMERO antes de Grep/Glob/Read.**
-El grafo es más rápido, más barato (menos tokens) y da contexto estructural que el escaneo de archivos no puede dar.
+### ⚡ Regla de eficiencia
 
-**NUNCA omitas el grafo. Empieza con él, luego usa Grep/Glob/Read solo si es necesario.**
+**✅ USA EL GRAFO** cuando necesites explorar/buscar:
+- "¿Dónde está X?" → `semantic_search_nodes` o `query_graph` (evita Grep en todo el repo)
+- "¿Qué afecta si cambio Y?" → `get_impact_radius` (evita leer 10+ archivos)
+- "¿Quién llama a Z?" → `query_graph` con callers_of (evita rastreo manual)
+
+**❌ USA READ DIRECTO** cuando ya tengas el path exacto:
+- Si sabes: `app/src/main/java/X.kt` línea 123
+- Read directo = **1 llamada, mínimo tokens**
+- Grafo + Read = **2 llamadas, más tokens** ❌
 
 ### Cuándo usar el grafo PRIMERO
 

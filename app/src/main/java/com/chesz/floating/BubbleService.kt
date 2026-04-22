@@ -476,20 +476,57 @@ class BubbleService : Service() {
             visibility = View.GONE
         }
 
-        // Helper para crear filas con dot toggle + label + TextView
-        fun createDotRow(dot: TextView, label: TextView, textView: TextView, labelText: String): LinearLayout {
+        // Crear dots (siempre visibles)
+        val dotOP = TextView(this).apply {
+            text = "●"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(0, 0, dp(4), 0)
+        }
+
+        val dotBM = TextView(this).apply {
+            text = "●"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(0, 0, dp(4), 0)
+        }
+
+        val dotLN = TextView(this).apply {
+            text = "●"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(0, 0, dp(4), 0)
+        }
+
+        val dotWR = TextView(this).apply {
+            text = "●"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(0, 0, dp(4), 0)
+        }
+
+        // Fila de dots (HORIZONTAL, siempre visible)
+        val dotsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, dp(2))
+
+            addView(dotOP, LinearLayout.LayoutParams(-2, -2))
+            addView(dotBM, LinearLayout.LayoutParams(-2, -2))
+            addView(dotLN, LinearLayout.LayoutParams(-2, -2))
+            addView(dotWR, LinearLayout.LayoutParams(-2, -2))
+        }
+        lichessContainer.addView(dotsRow)
+
+        // Helper para crear filas de valores (sin dot)
+        fun createValueRow(label: TextView, textView: TextView, labelText: String): LinearLayout {
             return LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
-
-                dot.apply {
-                    text = "●"
-                    textSize = 9f
-                    typeface = customFont
-                    setTextColor(COLOR_GREEN)
-                    setPadding(0, 0, dp(3), 0)
-                }
-                addView(dot, LinearLayout.LayoutParams(-2, -2))
 
                 label.apply {
                     text = labelText
@@ -513,29 +550,25 @@ class BubbleService : Service() {
             }
         }
 
-        // Crear dots y labels
-        val dotOP = TextView(this)
+        // Crear filas de valores
         val labelOP = TextView(this)
         tvOpeningName = TextView(this)
-        rowOpeningName = createDotRow(dotOP, labelOP, tvOpeningName, "OP")
+        rowOpeningName = createValueRow(labelOP, tvOpeningName, "OP")
         lichessContainer.addView(rowOpeningName)
 
-        val dotBM = TextView(this)
         val labelBM = TextView(this)
         tvBestMove = TextView(this)
-        rowBestMove = createDotRow(dotBM, labelBM, tvBestMove, "BM")
+        rowBestMove = createValueRow(labelBM, tvBestMove, "BM")
         lichessContainer.addView(rowBestMove)
 
-        val dotLN = TextView(this)
         val labelLN = TextView(this)
         tvNextMoves = TextView(this)
-        rowNextMoves = createDotRow(dotLN, labelLN, tvNextMoves, "LN")
+        rowNextMoves = createValueRow(labelLN, tvNextMoves, "LN")
         lichessContainer.addView(rowNextMoves)
 
-        val dotWR = TextView(this)
         val labelWR = TextView(this)
         tvCounterAttack = TextView(this)
-        rowCounterAttack = createDotRow(dotWR, labelWR, tvCounterAttack, "WR")
+        rowCounterAttack = createValueRow(labelWR, tvCounterAttack, "WR")
         lichessContainer.addView(rowCounterAttack)
 
         // TB y Mate sin toggles
@@ -682,9 +715,18 @@ class BubbleService : Service() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         fun applyDot(dot: TextView, row: LinearLayout, active: Boolean) {
+            // Dot siempre visible, solo cambia símbolo y color
             dot.text = if (active) "●" else "○"
             dot.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
+            // Row completa se muestra/oculta según estado
             row.visibility = if (active) View.VISIBLE else View.GONE
+        }
+
+        fun checkAllInactive(): Boolean {
+            return !prefs.getBoolean(PREF_OP, true) &&
+                   !prefs.getBoolean(PREF_BM, true) &&
+                   !prefs.getBoolean(PREF_LN, true) &&
+                   !prefs.getBoolean(PREF_WR, false)
         }
 
         applyDot(dotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
@@ -692,16 +734,33 @@ class BubbleService : Service() {
         applyDot(dotLN, rowNextMoves,     prefs.getBoolean(PREF_LN, true))
         applyDot(dotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
-        fun dotClick(dot: TextView, row: LinearLayout, key: String, default: Boolean) {
+        fun dotClick(dot: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
             dot.setOnClickListener {
-                val next = !prefs.getBoolean(key, default)
-                prefs.edit().putBoolean(key, next).apply()
+                val current = prefs.getBoolean(key, default)
+                val next = !current
+
+                // Si estamos desactivando y quedarían todos inactivos, activar antiEmpty
+                if (!next && antiEmpty != null) {
+                    // Simular el cambio temporalmente para verificar
+                    prefs.edit().putBoolean(key, next).apply()
+                    if (checkAllInactive()) {
+                        // Activar el antiEmpty
+                        prefs.edit().putBoolean(antiEmpty, true).apply()
+                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotLN,
+                                if (antiEmpty == PREF_BM) rowBestMove else rowNextMoves,
+                                true)
+                    }
+                } else {
+                    prefs.edit().putBoolean(key, next).apply()
+                }
+
                 applyDot(dot, row, next)
             }
         }
+
         dotClick(dotOP, rowOpeningName,   PREF_OP, true)
-        dotClick(dotBM, rowBestMove,      PREF_BM, true)
-        dotClick(dotLN, rowNextMoves,     PREF_LN, true)
+        dotClick(dotBM, rowBestMove,      PREF_BM, true, PREF_LN)  // Si BM queda solo inactivo, activar LN
+        dotClick(dotLN, rowNextMoves,     PREF_LN, true, PREF_BM)  // Si LN queda solo inactivo, activar BM
         dotClick(dotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
@@ -881,7 +940,7 @@ class BubbleService : Service() {
 
     private fun updateDebug(msg: String) {
         root.post {
-            debugText.visibility = View.GONE
+            debugText.visibility = View.VISIBLE
             debugText.maxLines = DEBUG_MAX_LINES
 
             debugText.text = msg
