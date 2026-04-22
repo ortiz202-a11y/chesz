@@ -509,16 +509,59 @@ class BubbleService : Service() {
             setPadding(0, 0, dp(4), 0)
         }
 
-        // Fila de dots (HORIZONTAL, siempre visible)
+        // Labels para los dots
+        val labelDotOP = TextView(this).apply {
+            text = "OP"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(dp(2), 0, 0, 0)
+        }
+
+        val labelDotBM = TextView(this).apply {
+            text = "BM"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(dp(2), 0, 0, 0)
+        }
+
+        val labelDotLN = TextView(this).apply {
+            text = "LN"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(dp(2), 0, 0, 0)
+        }
+
+        val labelDotWR = TextView(this).apply {
+            text = "WR"
+            textSize = 9f
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            setPadding(dp(2), 0, 0, 0)
+        }
+
+        // Fila de dots (HORIZONTAL, siempre visible) - cada dot junto a su label
         val dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(0, 0, 0, dp(2))
 
             addView(dotOP, LinearLayout.LayoutParams(-2, -2))
+            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2))
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
+
             addView(dotBM, LinearLayout.LayoutParams(-2, -2))
+            addView(labelDotBM, LinearLayout.LayoutParams(-2, -2))
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
+
             addView(dotLN, LinearLayout.LayoutParams(-2, -2))
+            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2))
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
+
             addView(dotWR, LinearLayout.LayoutParams(-2, -2))
+            addView(labelDotWR, LinearLayout.LayoutParams(-2, -2))
         }
         lichessContainer.addView(dotsRow)
 
@@ -714,10 +757,12 @@ class BubbleService : Service() {
         // === LÓGICA DE TOGGLES ===
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        fun applyDot(dot: TextView, row: LinearLayout, active: Boolean) {
+        fun applyDot(dot: TextView, label: TextView, row: LinearLayout, active: Boolean) {
             // Dot siempre visible, solo cambia símbolo y color
             dot.text = if (active) "●" else "○"
             dot.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
+            // Label también cambia de color
+            label.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
             // Row completa se muestra/oculta según estado
             row.visibility = if (active) View.VISIBLE else View.GONE
         }
@@ -729,12 +774,12 @@ class BubbleService : Service() {
                    !prefs.getBoolean(PREF_WR, false)
         }
 
-        applyDot(dotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
-        applyDot(dotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
-        applyDot(dotLN, rowNextMoves,     prefs.getBoolean(PREF_LN, true))
-        applyDot(dotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
+        applyDot(dotOP, labelDotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
+        applyDot(dotBM, labelDotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
+        applyDot(dotLN, labelDotLN, rowNextMoves,     prefs.getBoolean(PREF_LN, true))
+        applyDot(dotWR, labelDotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
-        fun dotClick(dot: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
+        fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
             dot.setOnClickListener {
                 val current = prefs.getBoolean(key, default)
                 val next = !current
@@ -747,6 +792,7 @@ class BubbleService : Service() {
                         // Activar el antiEmpty
                         prefs.edit().putBoolean(antiEmpty, true).apply()
                         applyDot(if (antiEmpty == PREF_BM) dotBM else dotLN,
+                                if (antiEmpty == PREF_BM) labelDotBM else labelDotLN,
                                 if (antiEmpty == PREF_BM) rowBestMove else rowNextMoves,
                                 true)
                     }
@@ -754,14 +800,14 @@ class BubbleService : Service() {
                     prefs.edit().putBoolean(key, next).apply()
                 }
 
-                applyDot(dot, row, next)
+                applyDot(dot, label, row, next)
             }
         }
 
-        dotClick(dotOP, rowOpeningName,   PREF_OP, true)
-        dotClick(dotBM, rowBestMove,      PREF_BM, true, PREF_LN)  // Si BM queda solo inactivo, activar LN
-        dotClick(dotLN, rowNextMoves,     PREF_LN, true, PREF_BM)  // Si LN queda solo inactivo, activar BM
-        dotClick(dotWR, rowCounterAttack, PREF_WR, false)
+        dotClick(dotOP, labelDotOP, rowOpeningName,   PREF_OP, true)
+        dotClick(dotBM, labelDotBM, rowBestMove,      PREF_BM, true, PREF_LN)  // Si BM queda solo inactivo, activar LN
+        dotClick(dotLN, labelDotLN, rowNextMoves,     PREF_LN, true, PREF_BM)  // Si LN queda solo inactivo, activar BM
+        dotClick(dotWR, labelDotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
     }
@@ -1386,7 +1432,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val TIMEOUT_BENCH_READ     = 8500
 
         // --- Delays (ms) ---
-        private const val DELAY_DEV_MODE_MS       = 2300L
+        private const val DELAY_DEV_MODE_MS       = 2000L
         private const val DELAY_GOD_TOUCH_IGNORE_MS = 1000L  // ms que se ignora el touch al activar modo dios
         private const val DELAY_SCREENSHOT_MS     = 400L
         private const val DELAY_FLASH_MS          = 220L
