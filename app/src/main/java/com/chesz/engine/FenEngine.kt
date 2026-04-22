@@ -271,6 +271,13 @@ class FenEngine(private val context: Context) {
     private fun detectPiece(boardGray: IntArray, row: Int, col: Int, applyBias: Boolean = false, isFirstPass: Boolean = false): Char {
         val square = extractSquare(boardGray, row, col)
         val silueta = cannyDilate(square)
+
+        // Validar densidad de silueta: si hay muy pocos píxeles activos → casilla vacía
+        val totalPixels = (SQUARE_SIZE * SQUARE_SIZE).toFloat()
+        val activePixels = silueta.count { it > 0 }
+        val density = activePixels / totalPixels
+        if (density < MIN_SILHOUETTE_DENSITY) return EMPTY
+
         val isWhiteZone = isPieceWhite(square, applyBias, row, col, isFirstPass = isFirstPass)
 
         // Calcular el mejor score por símbolo (no por plantilla individual)
@@ -797,7 +804,8 @@ class FenEngine(private val context: Context) {
         private const val MATCH_THRESHOLD    = 0.45f
         private const val KING_MATCH_THRESHOLD  = 0.40f // score mínimo de template matching para aceptar un rey
         private const val KING_COLOR_FRACTION   = 0.60f // fracción del rango dinámico para determinar color del rey
-        private const val BISHOP_THRESHOLD      = 0.55f // umbral más alto para alfil (evita confusión con peón)
+        private const val BISHOP_THRESHOLD      = 0.48f // umbral más alto para alfil (evita confusión con peón)
+        private const val MIN_SILHOUETTE_DENSITY = 0.03f // densidad mínima de píxeles activos en silueta para considerar que hay pieza
         private const val BISHOP_GAP_RATIO      = 1.4f  // densTop debe ser al menos 1.4× densMid para ser alfil
         private const val BISHOP_TOP_MIN_DENSITY = 0.10f // densTop mínima absoluta para activar la regla de alfil
         private const val STRIP_FG_THRESHOLD    = 30    // píxel debe superar el fondo de la casilla en ≥30 para contar en stripDensities
