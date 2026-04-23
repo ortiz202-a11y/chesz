@@ -127,6 +127,7 @@ class BubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        LichessApiClient.context = this
         startForegroundForMediaProjection()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         updateScreenCache()
@@ -1132,8 +1133,8 @@ class BubbleService : Service() {
                                 val ts = java.text.SimpleDateFormat(
                                     "MM/dd HH:mm", java.util.Locale.getDefault()
                                 ).format(java.util.Date())
-                                // fen_last.txt: último FEN detectado (archivo separado, no interfiere con chesz_log.txt)
-                                java.io.File(logDir, "fen_last.txt")
+                                // logfen_last.txt: último FEN detectado (archivo separado, no interfiere con chesz_log.txt)
+                                java.io.File(logDir, "logfen_last.txt")
                                     .writeText("[$ts]\n$fen\n")
                             }
                         }

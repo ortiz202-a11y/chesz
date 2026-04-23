@@ -11,6 +11,10 @@ import java.net.URLEncoder
  */
 class LichessApiClient {
 
+    companion object {
+        var context: android.content.Context? = null
+    }
+
     data class LichessInfo(
         val status: Status,
         val pieceCount: Int,
@@ -88,8 +92,25 @@ class LichessApiClient {
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
 
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().readText()
+            val responseCode = connection.responseCode
+            val response = if (responseCode == 200) {
+                connection.inputStream.bufferedReader().readText()
+            } else {
+                ""
+            }
+
+            // Log FEN y respuesta HTTP
+            context?.getExternalFilesDir(null)?.let { logDir ->
+                try {
+                    val logFile = java.io.File(logDir, "logfen_last.txt")
+                    val logEntry = "\n=== CLOUD EVAL ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
+                    logFile.appendText(logEntry)
+                } catch (e: Exception) {
+                    // Ignorar errores de log
+                }
+            }
+
+            if (responseCode == 200) {
                 val json = JSONObject(response)
 
                 val bestMove = if (json.has("pvs") && json.getJSONArray("pvs").length() > 0) {
@@ -133,8 +154,25 @@ class LichessApiClient {
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
 
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().readText()
+            val responseCode = connection.responseCode
+            val response = if (responseCode == 200) {
+                connection.inputStream.bufferedReader().readText()
+            } else {
+                ""
+            }
+
+            // Log FEN y respuesta HTTP
+            context?.getExternalFilesDir(null)?.let { logDir ->
+                try {
+                    val logFile = java.io.File(logDir, "logfen_last.txt")
+                    val logEntry = "\n=== OPENING EXPLORER ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
+                    logFile.appendText(logEntry)
+                } catch (e: Exception) {
+                    // Ignorar errores de log
+                }
+            }
+
+            if (responseCode == 200) {
                 val json = JSONObject(response)
 
                 val openingName = if (json.has("opening")) {
@@ -180,8 +218,25 @@ class LichessApiClient {
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
 
-            if (connection.responseCode == 200) {
-                val response = connection.inputStream.bufferedReader().readText()
+            val responseCode = connection.responseCode
+            val response = if (responseCode == 200) {
+                connection.inputStream.bufferedReader().readText()
+            } else {
+                ""
+            }
+
+            // Log FEN y respuesta HTTP
+            context?.getExternalFilesDir(null)?.let { logDir ->
+                try {
+                    val logFile = java.io.File(logDir, "logfen_last.txt")
+                    val logEntry = "\n=== TABLEBASE ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
+                    logFile.appendText(logEntry)
+                } catch (e: Exception) {
+                    // Ignorar errores de log
+                }
+            }
+
+            if (responseCode == 200) {
                 val json = JSONObject(response)
 
                 val category = json.optString("category", null)
