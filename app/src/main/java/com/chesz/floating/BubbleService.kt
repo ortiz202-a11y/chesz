@@ -1133,7 +1133,7 @@ class BubbleService : Service() {
                                 val ts = java.text.SimpleDateFormat(
                                     "MM/dd HH:mm", java.util.Locale.getDefault()
                                 ).format(java.util.Date())
-                                // logfen_last.txt: último FEN detectado (archivo separado, no interfiere con chesz_log.txt)
+                                // logfen_last.txt: último FEN detectado (archivo separado)
                                 java.io.File(logDir, "logfen_last.txt")
                                     .writeText("[$ts]\n$fen\n")
                             }
@@ -1248,11 +1248,10 @@ class BubbleService : Service() {
                 val truthLines = assets.open("benchmark/truth.txt").bufferedReader().readLines()
                 val dirLog = getExternalFilesDir(null)
                 if (dirLog != null && !dirLog.exists()) dirLog.mkdirs()
-                val logFile = java.io.File(dirLog, "FEN.TXT")
-                // Limpiar ambos logs al iniciar — cada ejecución parte de cero
+                val logFile = java.io.File(dirLog, "Testfenlog.txt")
+                // Limpiar log al iniciar — cada ejecución parte de cero
                 val tsB = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
                 logFile.writeText("=== BENCHMARK [$tsB] ===\n")
-                java.io.File(dirLog, "chesz_log.txt").writeText("")
 
                 var correctWhite = 0
                 var correctBlack = 0
@@ -1273,10 +1272,12 @@ class BubbleService : Service() {
                         fenEngine.debugPhotoNum = i
                         fenEngine.debugExpectedFen = expectedFen  // FenEngine sabrá qué esperar
                         val predictedFen = fenEngine.processBoard(bmp).substringBefore(" ")
+                        val detailedLog = fenEngine.getLastLog()
                         fenEngine.debugExpectedFen = null
                         bmp.recycle()
 
                         logFile.appendText("FOTO $i | LOCAL | P: [$predictedFen] | E: [$expectedFen]\n")
+                        logFile.appendText(detailedLog)
                         return predictedFen == expectedFen && expectedFen.isNotEmpty()
 
                     } catch (e: Exception) {
@@ -1338,19 +1339,6 @@ class BubbleService : Service() {
                     }
                 }
                 countdown(10)
-
-                // Fusionar FEN.TXT + errores → chesz_log.txt
-                runCatching {
-                    val benchContent = logFile.readText()
-                    val errContent = java.io.File(dirLog, "chesz_log.txt").readText()
-                    java.io.File(dirLog, "chesz_log.txt").writeText(buildString {
-                        append(benchContent)
-                        if (errContent.isNotBlank()) {
-                            append("\n=== ERRORES DETALLADOS ===\n")
-                            append(errContent)
-                        }
-                    })
-                }
 
             } catch (e: Exception) {
                 if (e.message != "ABORT_MANUAL") {
