@@ -536,3 +536,7 @@ merwnteeminsr ls app emn2 dias
 
 ## 🚨 Archivos que desaparecen
 Si falta `.mcp.json`, `CLAUDE.md` u otro archivo: `git stash list`. Si hay algo, `git stash pop`.
+
+
+
+agregamos stockfish para no deoender de la web
