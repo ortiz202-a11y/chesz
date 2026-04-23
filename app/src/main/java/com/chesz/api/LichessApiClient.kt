@@ -1,5 +1,6 @@
 package com.chesz.api
 
+import com.chesz.engine.StockfishEngine
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -7,12 +8,15 @@ import java.net.URLEncoder
 
 /**
  * Cliente para las APIs de Lichess.
- * Maneja Cloud Eval, Tablebase y Opening Explorer de manera automática según el número de piezas.
+ * - Eval: Stockfish local (dentro del APK) — sin red.
+ * - Opening name: Lichess Opening Explorer.
+ * - Endgame ≤7 piezas: Lichess Tablebase.
  */
 class LichessApiClient {
 
     companion object {
         var context: android.content.Context? = null
+        var stockfishEngine: StockfishEngine? = null
     }
 
     data class LichessInfo(
@@ -23,120 +27,78 @@ class LichessApiClient {
         val bestMove: String? = null,
         val counterAttack: String? = null,
         val tbResult: String? = null,
-        val mateIn: Int? = null
+        val mateIn: Int? = null,
     )
 
     enum class Status {
         LOADING,
         ERROR,
-        SUCCESS
+        SUCCESS,
     }
 
-    /**
-     * Consulta automática según el número de piezas.
-     * Si ≤7 → Tablebase, si >7 → Cloud Eval + Opening Explorer
-     */
     fun queryLichess(fen: String, callback: (LichessInfo) -> Unit) {
         Thread {
             try {
                 val pieceCount = countPieces(fen)
 
                 if (pieceCount <= 7) {
-                    // Usar Tablebase
                     val tbInfo = queryTablebase(fen)
                     callback(tbInfo.copy(pieceCount = pieceCount))
                 } else {
-                    // Usar Cloud Eval + Opening Explorer
-                    val cloudInfo = queryCloudEval(fen)
+                    val options = stockfishEngine?.analyze(fen) ?: emptyList()
+                    val top = options.firstOrNull()
                     val openingInfo = queryOpening(fen)
 
-                    callback(LichessInfo(
-                        status = Status.SUCCESS,
-                        pieceCount = pieceCount,
-                        openingName = openingInfo.first,
-                        nextMoves = openingInfo.second,
-                        bestMove = cloudInfo.first,
-                        counterAttack = cloudInfo.second,
-                        tbResult = null,
-                        mateIn = null
-                    ))
+                    logStockfish(fen, options)
+
+                    callback(
+                        LichessInfo(
+                            status = Status.SUCCESS,
+                            pieceCount = pieceCount,
+                            openingName = openingInfo.first,
+                            nextMoves = openingInfo.second,
+                            bestMove = top?.pv?.getOrNull(0),
+                            counterAttack = top?.pv?.getOrNull(1),
+                            tbResult = null,
+                            mateIn = top?.mate?.takeIf { it > 0 },
+                        ),
+                    )
                 }
             } catch (e: Exception) {
-                callback(LichessInfo(
-                    status = Status.ERROR,
-                    pieceCount = countPieces(fen)
-                ))
+                callback(
+                    LichessInfo(
+                        status = Status.ERROR,
+                        pieceCount = countPieces(fen),
+                    ),
+                )
             }
         }.start()
     }
 
-    /**
-     * Cuenta el número de piezas en el FEN (excluyendo el turno y metadatos).
-     */
     private fun countPieces(fen: String): Int {
         val position = fen.substringBefore(" ")
         return position.count { it.isLetter() }
     }
 
-    /**
-     * Consulta Cloud Eval de Lichess.
-     * Retorna: (bestMove, counterAttack)
-     */
-    private fun queryCloudEval(fen: String): Pair<String?, String?> {
-        val encodedFen = URLEncoder.encode(fen, "UTF-8")
-        val url = URL("https://lichess.org/api/cloud-eval?fen=$encodedFen&multiPv=1")
-
-        return try {
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-
-            val responseCode = connection.responseCode
-            val response = if (responseCode == 200) {
-                connection.inputStream.bufferedReader().readText()
-            } else {
-                ""
-            }
-
-            // Log FEN y respuesta HTTP
-            context?.getExternalFilesDir(null)?.let { logDir ->
-                try {
-                    val logFile = java.io.File(logDir, "logfen_last.txt")
-                    val logEntry = "\n=== CLOUD EVAL ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
-                    logFile.appendText(logEntry)
-                } catch (e: Exception) {
-                    // Ignorar errores de log
+    private fun logStockfish(fen: String, options: List<StockfishEngine.Option>) {
+        context?.getExternalFilesDir(null)?.let { logDir ->
+            try {
+                val logFile = java.io.File(logDir, "logfen_last.txt")
+                val sb = StringBuilder()
+                sb.append("\n=== STOCKFISH ===\nFEN: ").append(fen).append('\n')
+                options.forEachIndexed { idx, opt ->
+                    sb.append("#").append(idx + 1)
+                        .append(" d=").append(opt.depth)
+                    if (opt.mate != null) sb.append(" mate=").append(opt.mate)
+                    if (opt.cp != null) sb.append(" cp=").append(opt.cp)
+                    sb.append(" pv=").append(opt.pv.joinToString(" "))
+                    sb.append('\n')
                 }
+                if (options.isEmpty()) sb.append("(no options)\n")
+                logFile.appendText(sb.toString())
+            } catch (_: Exception) {
+                // ignorar errores de log
             }
-
-            if (responseCode == 200) {
-                val json = JSONObject(response)
-
-                val bestMove = if (json.has("pvs") && json.getJSONArray("pvs").length() > 0) {
-                    val pv = json.getJSONArray("pvs").getJSONObject(0)
-                    if (pv.has("moves")) {
-                        val moves = pv.getString("moves").split(" ")
-                        if (moves.size >= 2) {
-                            Pair(moves[0], moves[1])
-                        } else if (moves.isNotEmpty()) {
-                            Pair(moves[0], null)
-                        } else {
-                            Pair(null, null)
-                        }
-                    } else {
-                        Pair(null, null)
-                    }
-                } else {
-                    Pair(null, null)
-                }
-
-                bestMove
-            } else {
-                Pair(null, null)
-            }
-        } catch (e: Exception) {
-            Pair(null, null)
         }
     }
 
@@ -161,7 +123,6 @@ class LichessApiClient {
                 ""
             }
 
-            // Log FEN y respuesta HTTP
             context?.getExternalFilesDir(null)?.let { logDir ->
                 try {
                     val logFile = java.io.File(logDir, "logfen_last.txt")
@@ -225,7 +186,6 @@ class LichessApiClient {
                 ""
             }
 
-            // Log FEN y respuesta HTTP
             context?.getExternalFilesDir(null)?.let { logDir ->
                 try {
                     val logFile = java.io.File(logDir, "logfen_last.txt")
@@ -258,13 +218,13 @@ class LichessApiClient {
 
                 LichessInfo(
                     status = Status.SUCCESS,
-                    pieceCount = 0, // se actualizará en queryLichess
+                    pieceCount = 0,
                     openingName = null,
                     nextMoves = null,
                     bestMove = bestMove,
                     counterAttack = null,
                     tbResult = tbResult,
-                    mateIn = mateIn
+                    mateIn = mateIn,
                 )
             } else {
                 LichessInfo(status = Status.ERROR, pieceCount = 0)

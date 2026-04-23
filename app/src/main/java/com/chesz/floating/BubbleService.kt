@@ -28,6 +28,7 @@ import android.text.Spannable
 import android.content.Context
 import com.chesz.R
 import com.chesz.api.LichessApiClient
+import com.chesz.engine.StockfishEngine
 import kotlin.math.abs
 
 class BubbleService : Service() {
@@ -85,6 +86,9 @@ class BubbleService : Service() {
     // ===== Lichess API =====
     private val lichessApiClient by lazy { LichessApiClient() }
 
+    // ===== Stockfish local =====
+    private lateinit var stockfishEngine: StockfishEngine
+
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
@@ -128,6 +132,12 @@ class BubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         LichessApiClient.context = this
+        stockfishEngine = StockfishEngine(this)
+        LichessApiClient.stockfishEngine = stockfishEngine
+        Thread {
+            runCatching { stockfishEngine.start() }
+                .onFailure { android.util.Log.e("Stockfish", "init failed", it) }
+        }.start()
         startForegroundForMediaProjection()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         updateScreenCache()
@@ -165,6 +175,8 @@ class BubbleService : Service() {
         Thread {
             runCatching { activeMediaProjection?.stop() }
             activeMediaProjection = null
+            runCatching { stockfishEngine.shutdown() }
+            LichessApiClient.stockfishEngine = null
         }.start()
         mpData = null
         mpResultCode = null
