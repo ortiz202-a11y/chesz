@@ -21,7 +21,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.CheckBox
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.text.Spannable
@@ -70,6 +69,7 @@ class BubbleService : Service() {
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
     private lateinit var devBar: LinearLayout
+    private lateinit var dotsRow: LinearLayout
     private var benchmarkThread: Thread? = null
     private var abortBenchmark = false
 
@@ -324,7 +324,11 @@ class BubbleService : Service() {
     }
 
     private fun togglePanel() {
-        if (isCapturing) return
+        if (isCapturing) {
+            // Cambiar botón a rojo si se toca durante el período de captura
+            bubbleIcon.setColorFilter(COLOR_FLASH_RED)
+            return
+        }
         val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
         if (!panelShown) {
             showPanelIfFits()
@@ -555,11 +559,12 @@ class BubbleService : Service() {
             setPadding(dp(2), 0, 0, 0)
         }
 
-        // Fila de dots (HORIZONTAL, siempre visible) - cada dot junto a su label
-        val dotsRow = LinearLayout(this).apply {
+        // Fila de dots (HORIZONTAL) - aparece con el FEN
+        dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, 0, 0, dp(2))
+            setPadding(dp(5), dp(2), dp(5), dp(2))
+            visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOP, LinearLayout.LayoutParams(-2, -2))
             addView(labelDotOP, LinearLayout.LayoutParams(-2, -2))
@@ -576,7 +581,7 @@ class BubbleService : Service() {
             addView(dotWR, LinearLayout.LayoutParams(-2, -2))
             addView(labelDotWR, LinearLayout.LayoutParams(-2, -2))
         }
-        lichessContainer.addView(dotsRow)
+        col.addView(dotsRow)  // Agregar directamente a col, después de fenTitle
 
         // Helper para crear filas de valores (sin dot)
         fun createValueRow(label: TextView, textView: TextView, labelText: String): LinearLayout {
@@ -1006,13 +1011,58 @@ class BubbleService : Service() {
         }
     }
 
+    private fun clearPanel() {
+        root.post {
+            // Limpiar FEN
+            fenTitle.text = ""
+
+            // Ocultar fila de dots
+            if (this::dotsRow.isInitialized) {
+                dotsRow.visibility = View.GONE
+            }
+
+            // Ocultar contenedor de Lichess y todas sus filas
+            if (this::lichessContainer.isInitialized) {
+                lichessContainer.visibility = View.GONE
+            }
+
+            // Limpiar textos individuales por si acaso
+            if (this::tvOpeningName.isInitialized) tvOpeningName.text = ""
+            if (this::tvNextMoves.isInitialized) tvNextMoves.text = ""
+            if (this::tvBestMove.isInitialized) tvBestMove.text = ""
+            if (this::tvCounterAttack.isInitialized) tvCounterAttack.text = ""
+            if (this::tvTablebaseResult.isInitialized) tvTablebaseResult.text = ""
+            if (this::tvMateIn.isInitialized) tvMateIn.text = ""
+
+            // Ocultar todas las filas
+            if (this::rowOpeningName.isInitialized) rowOpeningName.visibility = View.GONE
+            if (this::rowNextMoves.isInitialized) rowNextMoves.visibility = View.GONE
+            if (this::rowBestMove.isInitialized) rowBestMove.visibility = View.GONE
+            if (this::rowCounterAttack.isInitialized) rowCounterAttack.visibility = View.GONE
+            if (this::rowTablebaseResult.isInitialized) rowTablebaseResult.visibility = View.GONE
+            if (this::rowMateIn.isInitialized) rowMateIn.visibility = View.GONE
+        }
+    }
+
     private fun takeScreenshotOnce() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
-        updateDebug("⚙ Iniciando captura...")
-        root.post { fenTitle.text = "" }
+
+        // 1. Limpiar TODO el panel inmediatamente
+        clearPanel()
+
+        // 2. Mostrar solo "PROCESANDO..."
+        updateDebug("PROCESANDO...")
+
+        // 3. Limpiar filtro de color del botón (volver a color normal)
+        bubbleIcon.clearColorFilter()
+
+        // 4. Bloquear botón por 3 segundos
         isCapturing = true
-        root.postDelayed({ isCapturing = false }, DELAY_CAPTURE_RESET_MS)
+        root.postDelayed({
+            isCapturing = false
+            bubbleIcon.clearColorFilter() // Asegurar que se limpie al final
+        }, DELAY_CAPTURE_RESET_MS)
 
         runCatching {
             if (activeMediaProjection == null) {
@@ -1047,9 +1097,8 @@ class BubbleService : Service() {
 
             root.postDelayed({
                 try {
-                    val image = reader.acquireLatestImage()
-                    if (image == null) {
-                        updateDebug("⏳ Esperando frame (Toca de nuevo)")
+                    val image = reader.acquireLatestImage() ?: run {
+                        updateDebug("❌ No se pudo obtener imagen")
                         return@postDelayed
                     }
 
@@ -1131,6 +1180,12 @@ class BubbleService : Service() {
                 val fenPosicion = fen.substringBefore(" ")
                 root.post {
                     fenTitle.text = fenPosicion
+
+                    // Mostrar fila de dots cuando aparece el FEN
+                    if (this::dotsRow.isInitialized) {
+                        dotsRow.visibility = View.VISIBLE
+                    }
+
                     if (esFenValido64(fen)) {
                         // Consultar APIs de Lichess automáticamente
                         lichessApiClient.queryLichess(fen) { info ->
