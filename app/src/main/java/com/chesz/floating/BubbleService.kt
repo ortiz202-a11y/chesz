@@ -1201,29 +1201,33 @@ class BubbleService : Service() {
                 // Opening Name
                 if (!info.openingName.isNullOrEmpty()) {
                     tvOpeningName.text = info.openingName
+                    rowOpeningName.visibility = View.VISIBLE
                 } else {
-                    tvOpeningName.text = ""
+                    rowOpeningName.visibility = View.GONE
                 }
 
                 // Best Move
                 if (!info.bestMove.isNullOrEmpty()) {
                     tvBestMove.text = info.bestMove
+                    rowBestMove.visibility = View.VISIBLE
                 } else {
-                    tvBestMove.text = ""
+                    rowBestMove.visibility = View.GONE
                 }
 
                 // Line (Next Moves) con formato especial
                 if (!info.nextMoves.isNullOrEmpty()) {
                     tvNextMoves.text = formatLN(info.nextMoves ?: "")
+                    rowNextMoves.visibility = View.VISIBLE
                 } else {
-                    tvNextMoves.text = ""
+                    rowNextMoves.visibility = View.GONE
                 }
 
                 // Win Rate (Counter Attack)
                 if (!info.counterAttack.isNullOrEmpty()) {
                     tvCounterAttack.text = info.counterAttack
+                    rowCounterAttack.visibility = View.VISIBLE
                 } else {
-                    tvCounterAttack.text = ""
+                    rowCounterAttack.visibility = View.GONE
                 }
 
                 // TB y Mate automáticos según FEN actual

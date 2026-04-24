@@ -24,61 +24,97 @@ class StockfishEngine(private val context: Context) {
     private var reader: BufferedReader? = null
     private val lock = Any()
     @Volatile private var lastRawOutput: String = ""
+    @Volatile private var isInitialized = false
 
+    /**
+     * Inicia el proceso de Stockfish de forma persistente.
+     * Se reutiliza entre llamadas a analyze().
+     */
     fun start() {
         synchronized(lock) {
-            if (process != null) return
-            val binary = extractBinary()
-            val p = ProcessBuilder(binary.absolutePath)
-                .redirectErrorStream(true)
-                .start()
-            process = p
-            writer = OutputStreamWriter(p.outputStream)
-            reader = BufferedReader(InputStreamReader(p.inputStream))
-            send("uci")
-            waitFor("uciok")
-            send("setoption name MultiPV value 5")
-            send("isready")
-            waitFor("readyok")
+            if (isInitialized && process != null) {
+                saveDebugLog("Process already running, reusing", "", null)
+                return
+            }
+            try {
+                startLocked()
+                isInitialized = true
+                saveDebugLog("Stockfish started successfully", "", null)
+            } catch (e: Exception) {
+                saveDebugLog("Failed to start Stockfish: ${e.message}", "", null)
+                isInitialized = false
+                throw e
+            }
         }
     }
 
     fun analyze(fen: String, depth: Int = 12): List<Option> {
         synchronized(lock) {
-            if (process == null) {
+            // Asegurar que el proceso persistente esté iniciado
+            if (!isInitialized || process == null) {
+                saveDebugLog("Process not initialized, starting...", "", null)
                 try {
                     startLocked()
+                    isInitialized = true
                 } catch (e: Exception) {
+                    saveDebugLog("Failed to start in analyze: ${e.message}", fen, null)
                     return emptyList()
                 }
             }
-            val r = reader ?: return emptyList()
+
+            val r = reader ?: run {
+                saveDebugLog("Reader is null", fen, null)
+                return emptyList()
+            }
+
             return try {
+                // Preparar nueva posición
                 send("ucinewgame")
                 send("isready")
                 waitFor("readyok")
                 send("position fen $fen")
                 send("go depth $depth")
 
+                // Leer línea por línea hasta encontrar bestmove
                 val byPv = HashMap<Int, Option>()
                 val buffer = StringBuilder()
-                while (true) {
-                    val line = r.readLine() ?: run {
+                var bestmoveFound = false
+
+                while (!bestmoveFound) {
+                    val line = r.readLine()
+                    if (line == null) {
+                        saveDebugLog("Stream closed unexpectedly", fen, null)
                         resetLocked()
+                        isInitialized = false
                         return emptyList()
                     }
+
+                    saveDebugLog("<<< RECV: $line", "", null)
                     buffer.append(line).append('\n')
-                    if (line.startsWith("bestmove")) break
-                    if (!line.startsWith("info ")) continue
-                    val parsed = parseInfo(line) ?: continue
-                    byPv[parsed.first] = parsed.second
+
+                    when {
+                        line.startsWith("bestmove") -> {
+                            bestmoveFound = true
+                            saveDebugLog("Bestmove found: $line", "", null)
+                        }
+                        line.startsWith("info ") -> {
+                            val parsed = parseInfo(line)
+                            if (parsed != null) {
+                                byPv[parsed.first] = parsed.second
+                            }
+                        }
+                    }
                 }
+
                 lastRawOutput = buffer.toString()
-                saveDebugLog(buffer.toString(), fen, null)
-                (1..5).mapNotNull { byPv[it] }
+                saveDebugLog("=== ANALYSIS COMPLETE FOR FEN ===", fen, null)
+                val results = (1..5).mapNotNull { byPv[it] }
+                saveDebugLog("Returning ${results.size} options", fen, null)
+                results
             } catch (e: Exception) {
-                saveDebugLog("Exception: ${e.message}", fen, null)
+                saveDebugLog("Exception during analysis: ${e.message}", fen, null)
                 resetLocked()
+                isInitialized = false
                 emptyList()
             }
         }
@@ -89,15 +125,42 @@ class StockfishEngine(private val context: Context) {
     fun shutdown() {
         synchronized(lock) {
             var exitCode: Int? = null
+            val pendingOutput = StringBuilder()
+
+            // Capturar cualquier salida pendiente antes del quit
+            try {
+                val r = reader
+                if (r != null && r.ready()) {
+                    while (r.ready()) {
+                        val line = r.readLine() ?: break
+                        pendingOutput.append(line).append('\n')
+                    }
+                }
+            } catch (_: Exception) {}
+
             try { send("quit") } catch (_: Exception) {}
+
+            // Esperar a que termine y capturar exit code
             try {
                 process?.destroy()
                 exitCode = runCatching { process?.waitFor() }.getOrNull()
             } catch (_: Exception) {}
-            saveDebugLog("SHUTDOWN", "", exitCode)
+
+            // Log con exit code y stderr/stdout pendiente
+            val shutdownInfo = buildString {
+                append("SHUTDOWN\n")
+                if (exitCode != null) append("Exit code: $exitCode\n")
+                if (pendingOutput.isNotEmpty()) {
+                    append("Pending output:\n")
+                    append(pendingOutput)
+                }
+            }
+            saveDebugLog(shutdownInfo, "", exitCode)
+
             process = null
             writer = null
             reader = null
+            isInitialized = false
         }
     }
 
@@ -121,6 +184,8 @@ class StockfishEngine(private val context: Context) {
         process = null
         writer = null
         reader = null
+        isInitialized = false
+        saveDebugLog("Process reset", "", null)
     }
 
     private fun send(cmd: String) {
@@ -128,12 +193,14 @@ class StockfishEngine(private val context: Context) {
         w.write(cmd)
         w.write("\n")
         w.flush()
+        saveDebugLog(">>> SEND: $cmd", "", null)
     }
 
     private fun waitFor(token: String) {
         val r = reader ?: throw IllegalStateException("reader null")
         while (true) {
             val line = r.readLine() ?: throw IllegalStateException("stream closed")
+            saveDebugLog("<<< RECV: $line", "", null)
             if (line.contains(token)) return
         }
     }
