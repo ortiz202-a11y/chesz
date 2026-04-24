@@ -166,8 +166,12 @@ class StockfishEngine(private val context: Context) {
 
     private fun startLocked() {
         val binary = extractBinary()
+        val nativeLibDir = context.applicationInfo.nativeLibraryDir
         val p = ProcessBuilder(binary.absolutePath)
             .redirectErrorStream(true)
+            .apply {
+                environment()["LD_LIBRARY_PATH"] = nativeLibDir
+            }
             .start()
         process = p
         writer = OutputStreamWriter(p.outputStream)
@@ -248,7 +252,7 @@ class StockfishEngine(private val context: Context) {
     }
 
     private fun extractBinary(): File {
-        val outFile = File(context.filesDir, "stockfish")
+        val outFile = File(context.codeCacheDir, "stockfish")
         val assetSize = runCatching {
             context.assets.openFd("stockfish").use { it.length }
         }.getOrNull()
@@ -268,7 +272,7 @@ class StockfishEngine(private val context: Context) {
 
     private fun saveDebugLog(output: String, fen: String, exitCode: Int?) {
         try {
-            val debugFile = File("/storage/emulated/0/Android/data/com.chesz/files/logfen_last.txt")
+            val debugFile = File(context.getExternalFilesDir(null), "logfen_last.txt")
             debugFile.parentFile?.mkdirs()
 
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
