@@ -165,9 +165,9 @@ class StockfishEngine(private val context: Context) {
     }
 
     private fun startLocked() {
-        val binary = extractBinary()
         val nativeLibDir = context.applicationInfo.nativeLibraryDir
-        val p = ProcessBuilder(binary.absolutePath)
+        val binaryPath = "$nativeLibDir/libstockfish.so"
+        val p = ProcessBuilder(binaryPath)
             .redirectErrorStream(true)
             .apply {
                 environment()["LD_LIBRARY_PATH"] = nativeLibDir
@@ -249,25 +249,6 @@ class StockfishEngine(private val context: Context) {
         }
         if (pv.isEmpty()) return null
         return multipv to Option(pv[0], pv, cp, mate, depth)
-    }
-
-    private fun extractBinary(): File {
-        val outFile = File(context.codeCacheDir, "stockfish")
-        val assetSize = runCatching {
-            context.assets.openFd("stockfish").use { it.length }
-        }.getOrNull()
-        val needsCopy = !outFile.exists() ||
-            outFile.length() == 0L ||
-            (assetSize != null && outFile.length() != assetSize)
-        if (needsCopy) {
-            context.assets.open("stockfish").use { input ->
-                outFile.outputStream().use { output -> input.copyTo(output) }
-            }
-            outFile.setExecutable(true, false)
-        } else {
-            if (!outFile.canExecute()) outFile.setExecutable(true, false)
-        }
-        return outFile
     }
 
     private fun saveDebugLog(output: String, fen: String, exitCode: Int?) {
