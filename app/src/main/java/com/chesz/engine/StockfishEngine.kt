@@ -259,8 +259,10 @@ class StockfishEngine(private val context: Context) {
             context.assets.open("stockfish").use { input ->
                 outFile.outputStream().use { output -> input.copyTo(output) }
             }
+            outFile.setExecutable(true, false)
+        } else {
+            if (!outFile.canExecute()) outFile.setExecutable(true, false)
         }
-        if (!outFile.canExecute()) outFile.setExecutable(true, false)
         return outFile
     }
 
