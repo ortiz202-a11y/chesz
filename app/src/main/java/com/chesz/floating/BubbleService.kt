@@ -496,7 +496,7 @@ class BubbleService : Service() {
         // Crear dots (siempre visibles)
         val dotOP = TextView(this).apply {
             text = "●"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -504,7 +504,7 @@ class BubbleService : Service() {
 
         val dotBM = TextView(this).apply {
             text = "●"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -512,7 +512,7 @@ class BubbleService : Service() {
 
         val dotLN = TextView(this).apply {
             text = "●"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -520,7 +520,7 @@ class BubbleService : Service() {
 
         val dotWR = TextView(this).apply {
             text = "●"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -529,7 +529,7 @@ class BubbleService : Service() {
         // Labels para los dots
         val labelDotOP = TextView(this).apply {
             text = "OP"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -537,7 +537,7 @@ class BubbleService : Service() {
 
         val labelDotBM = TextView(this).apply {
             text = "BM"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -545,7 +545,7 @@ class BubbleService : Service() {
 
         val labelDotLN = TextView(this).apply {
             text = "LN"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -553,7 +553,7 @@ class BubbleService : Service() {
 
         val labelDotWR = TextView(this).apply {
             text = "WR"
-            textSize = 9f
+            textSize = 12f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -591,7 +591,7 @@ class BubbleService : Service() {
 
                 label.apply {
                     text = labelText
-                    textSize = 9f
+                    textSize = 12f
                     typeface = customFont
                     setTextColor(COLOR_GREEN)
                     setPadding(0, 0, dp(3), 0)
@@ -600,7 +600,7 @@ class BubbleService : Service() {
 
                 textView.apply {
                     text = ""
-                    textSize = 9f
+                    textSize = 12f
                     typeface = customFont
                     setTextColor(COLOR_GREEN)
                     includeFontPadding = false
@@ -641,7 +641,7 @@ class BubbleService : Service() {
 
             val labelTB = TextView(context).apply {
                 text = "TB"
-                textSize = 9f
+                textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 setPadding(0, 0, dp(3), 0)
@@ -650,7 +650,7 @@ class BubbleService : Service() {
 
             tvTablebaseResult.apply {
                 text = ""
-                textSize = 9f
+                textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 includeFontPadding = false
@@ -669,7 +669,7 @@ class BubbleService : Service() {
 
             val labelMate = TextView(context).apply {
                 text = "M'S"
-                textSize = 9f
+                textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 setPadding(0, 0, dp(3), 0)
@@ -678,7 +678,7 @@ class BubbleService : Service() {
 
             tvMateIn.apply {
                 text = ""
-                textSize = 9f
+                textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 includeFontPadding = false
@@ -1147,6 +1147,24 @@ class BubbleService : Service() {
                             }
                             updateDebug("PROCESANDO...")
                             procesarConFenEngine(recortado) // recycle dentro del hilo
+
+                            // 🆕 LIMPIEZA POST-CAPTURA (durante cooldown de 3s)
+                            Thread.sleep(150)  // Dar tiempo a que procesarConFenEngine inicie
+
+                            root.post {
+                                activeImageReader?.let { reader ->
+                                    var cleared = 0
+                                    while (true) {
+                                        val old = reader.acquireLatestImage()
+                                        if (old == null) break
+                                        old.close()
+                                        cleared++
+                                    }
+                                    if (cleared > 0) {
+                                        android.util.Log.d("Chesz", "✓ Buffer limpiado: $cleared frames")
+                                    }
+                                }
+                            }
                         } catch (e: Exception) {
                             updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
@@ -1247,9 +1265,13 @@ class BubbleService : Service() {
                 lichessContainer.visibility = View.GONE
             }
             LichessApiClient.Status.ERROR -> {
+                // Ocultar mensaje "PROCESANDO..." cuando hay error
+                debugText.visibility = View.GONE
                 lichessContainer.visibility = View.GONE
             }
             LichessApiClient.Status.SUCCESS -> {
+                // Ocultar mensaje "PROCESANDO..." cuando se completa el análisis
+                debugText.visibility = View.GONE
                 lichessContainer.visibility = View.VISIBLE
 
                 // Actualizar campos
@@ -1494,7 +1516,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         // --- Delays (ms) ---
         private const val DELAY_DEV_MODE_MS       = 2000L
         private const val DELAY_GOD_TOUCH_IGNORE_MS = 1000L  // ms que se ignora el touch al activar modo dios
-        private const val DELAY_SCREENSHOT_MS     = 400L
+        private const val DELAY_SCREENSHOT_MS     = 1500L
         private const val DELAY_FLASH_MS          = 220L
         private const val DELAY_KILL_ANIM_MS      = 60L
         private const val DELAY_CAPTURE_RESET_MS  = 3000L
