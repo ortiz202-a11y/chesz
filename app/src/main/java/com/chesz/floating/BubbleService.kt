@@ -674,7 +674,7 @@ class BubbleService : Service() {
             visibility = View.GONE
 
             val labelMate = TextView(context).apply {
-                text = "M'S"
+                text = "M#"
                 textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
@@ -1402,9 +1402,19 @@ class BubbleService : Service() {
                     rowTablebaseResult.visibility = View.GONE
                 }
 
-                // Mate (solo si hay mateIn > 0)
-                if (info.mateIn != null && info.mateIn > 0) {
-                    tvMateIn.text = "M${info.mateIn}"
+                // FIX3 y FIX5: Mate con texto "M# TÚ" o "M# RIVAL" + alerta JAQUE
+                val mateDisplayText = if (info.mateText != null) {
+                    // Si hay mate, mostrar texto de mate
+                    if (info.inCheck) "${info.mateText} JAQUE" else info.mateText
+                } else if (info.inCheck) {
+                    // Si solo hay jaque (sin mate), mostrar JAQUE
+                    "JAQUE"
+                } else {
+                    null
+                }
+
+                if (mateDisplayText != null) {
+                    tvMateIn.text = mateDisplayText
                     rowMateIn.visibility = View.VISIBLE
                 } else {
                     rowMateIn.visibility = View.GONE
@@ -1637,8 +1647,11 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
 
     /**
      * Detecta el turno automáticamente basado en la posición de los reyes
-     * @return "w" si rey blanco está en rangos 1-3, "b" si rey negro está en rangos 1-3,
-     *         null si ambos reyes están en rangos 4-5 sin peones (caso ambiguo)
+     * Parsea el FEN y determina player comparando posición de reyes.
+     * Cuenta rangos desde el último segmento separado por '/' (último=fila1=parte baja pantalla).
+     * Compara rango(K) vs rango(k): si rango(K) < rango(k) → player=w. Si rango(k) < rango(K) → player=b.
+     * Si rango(K)==rango(k) → usar peones como tiebreaker: P en rangos 6-8 → player=w, p en rangos 1-3 → player=b.
+     * Si peones ambiguos o ausentes → retorna null (mostrar botones W y B).
      */
     private fun detectarTurnoAutomatico(fen: String): String? {
         val posicion = fen.split(" ").getOrNull(0) ?: return null
@@ -1655,27 +1668,24 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
             if ('k' in rango) rangok = rangoNumero
         }
 
-        // Verificar si hay peones en el tablero
-        val hayPeones = posicion.contains('P') || posicion.contains('p')
+        if (rangoK == null || rangok == null) return null
 
-        // Aplicar lógica de detección
-        val kEnRangoBajo = rangoK != null && rangoK!! in 1..3
-        val kEnRangoMedio = rangoK != null && rangoK!! in 4..5
-        val kEnRangoAlto = rangoK != null && rangoK!! in 6..8
-
-        val pequenaKEnRangoBajo = rangok != null && rangok!! in 1..3
-        val pequenaKEnRangoMedio = rangok != null && rangok!! in 4..5
-        val pequenaKEnRangoAlto = rangok != null && rangok!! in 6..8
-
+        // Comparar rangos según especificación
         return when {
-            // Rey blanco en rangos 1-3 → turno blanco
-            kEnRangoBajo -> "w"
-            // Rey negro en rangos 1-3 → turno negro
-            pequenaKEnRangoBajo -> "b"
-            // Ambos reyes en rangos 4-5 y sin peones → ambiguo
-            kEnRangoMedio && pequenaKEnRangoMedio && !hayPeones -> null
-            // Por defecto, usar turno blanco si no hay claridad
-            else -> "w"
+            rangoK!! < rangok!! -> "w"  // Rey blanco más abajo → turno blanco
+            rangok!! < rangoK!! -> "b"  // Rey negro más abajo → turno negro
+            rangoK == rangok -> {
+                // Empate: usar peones como tiebreaker
+                val hayPeonBlancoAlto = rangos.take(3).any { 'P' in it }  // Rangos 6-8
+                val hayPeonNegroAlto = rangos.takeLast(3).any { 'p' in it }  // Rangos 1-3
+
+                when {
+                    hayPeonBlancoAlto && !hayPeonNegroAlto -> "w"
+                    hayPeonNegroAlto && !hayPeonBlancoAlto -> "b"
+                    else -> null  // Ambiguo: mostrar botones
+                }
+            }
+            else -> null
         }
     }
 

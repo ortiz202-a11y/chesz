@@ -28,6 +28,8 @@ class LichessApiClient {
         val counterAttack: String? = null,
         val tbResult: String? = null,
         val mateIn: Int? = null,
+        val mateText: String? = null,  // FIX3: Texto de mate ("M# TÚ" o "M# RIVAL")
+        val inCheck: Boolean = false,  // FIX5: Indica si el jugador está en jaque
     )
 
     enum class Status {
@@ -51,6 +53,15 @@ class LichessApiClient {
 
                     logStockfish(fen, options)
 
+                    // FIX3: Calcular texto de mate
+                    val mateText = if (top?.mate != null && top.mate != 0) {
+                        val absMateMoves = kotlin.math.abs(top.mate)
+                        if (top.mate > 0) "M#$absMateMoves TÚ" else "M#$absMateMoves RIVAL"
+                    } else null
+
+                    // FIX5: Detectar si el rey está en jaque
+                    val inCheck = stockfishEngine?.isInCheck(fen) ?: false
+
                     callback(
                         LichessInfo(
                             status = Status.SUCCESS,
@@ -58,9 +69,11 @@ class LichessApiClient {
                             openingName = openingInfo.first,
                             nextMoves = openingInfo.second,
                             bestMove = top?.pv?.getOrNull(0),
-                            counterAttack = calculateWinRate(top?.cp),
+                            counterAttack = calculateWinRate(top?.cp, top?.mate, fen),
                             tbResult = null,
                             mateIn = top?.mate?.takeIf { it > 0 },
+                            mateText = mateText,
+                            inCheck = inCheck,
                         ),
                     )
                 }
@@ -69,6 +82,7 @@ class LichessApiClient {
                     LichessInfo(
                         status = Status.ERROR,
                         pieceCount = countPieces(fen),
+                        mateText = null,
                     ),
                 )
             }
@@ -83,8 +97,22 @@ class LichessApiClient {
     /**
      * Calcula el Win Rate desde el centipawn score de Stockfish.
      * Fórmula: winRate = 50 + 50 * (2 / (1 + exp(-0.00368208 * cp)) - 1)
+     * Si hay mate: compara turno del FEN con evaluación. Si turno coincide con mate positivo → 100%, si no → 0%
      */
-    private fun calculateWinRate(cp: Int?): String? {
+    private fun calculateWinRate(cp: Int?, mate: Int?, fen: String): String? {
+        // FIX4: Manejar mate correctamente
+        if (mate != null && mate != 0) {
+            // Obtener turno del FEN (segundo campo)
+            val turno = fen.split(" ").getOrNull(1) ?: "w"
+            // Si mate > 0, el turno actual tiene mate
+            // Si mate < 0, el oponente tiene mate
+            return if (mate > 0) {
+                "100%"  // El jugador en turno tiene mate
+            } else {
+                "0%"    // El oponente tiene mate
+            }
+        }
+
         if (cp == null) return null
         val winRate = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1)
         return "${winRate.toInt()}%"
@@ -235,12 +263,13 @@ class LichessApiClient {
                     counterAttack = null,
                     tbResult = tbResult,
                     mateIn = mateIn,
+                    mateText = null,
                 )
             } else {
-                LichessInfo(status = Status.ERROR, pieceCount = 0)
+                LichessInfo(status = Status.ERROR, pieceCount = 0, mateText = null)
             }
         } catch (e: Exception) {
-            LichessInfo(status = Status.ERROR, pieceCount = 0)
+            LichessInfo(status = Status.ERROR, pieceCount = 0, mateText = null)
         }
     }
 }

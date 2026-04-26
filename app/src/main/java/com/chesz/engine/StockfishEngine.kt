@@ -122,6 +122,58 @@ class StockfishEngine(private val context: Context) {
 
     fun lastOutput(): String = lastRawOutput
 
+    /**
+     * FIX5: Detecta si el rey del jugador en turno está en jaque.
+     * Usa el comando 'd' de Stockfish para obtener información de la posición.
+     */
+    fun isInCheck(fen: String): Boolean {
+        synchronized(lock) {
+            if (!isInitialized || process == null) {
+                try {
+                    startLocked()
+                    isInitialized = true
+                } catch (e: Exception) {
+                    return false
+                }
+            }
+
+            val r = reader ?: return false
+
+            return try {
+                send("position fen $fen")
+                send("d")
+
+                // Leer todas las líneas hasta terminar el comando 'd'
+                var inCheck = false
+                var linesRead = 0
+                val maxLines = 50 // Máximo de líneas a leer
+
+                while (linesRead < maxLines) {
+                    val line = r.readLine() ?: break
+                    linesRead++
+
+                    // Buscar línea que indica si hay jaque
+                    if (line.contains("Checkers:")) {
+                        // Si la línea no está vacía después de "Checkers:", hay jaque
+                        val checkersInfo = line.substringAfter("Checkers:").trim()
+                        inCheck = checkersInfo.isNotEmpty()
+                        // Continuar leyendo para consumir toda la salida
+                    }
+
+                    // El comando 'd' termina con una línea vacía o cuando empieza otro comando
+                    if (line.isEmpty() || line.startsWith("position") || line.startsWith("go")) {
+                        break
+                    }
+                }
+
+                inCheck
+            } catch (e: Exception) {
+                saveDebugLog("isInCheck exception: ${e.message}", fen, null)
+                false
+            }
+        }
+    }
+
     fun shutdown() {
         synchronized(lock) {
             var exitCode: Int? = null
