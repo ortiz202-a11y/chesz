@@ -43,6 +43,7 @@ class BubbleService : Service() {
     private var panelShown = false
     private var panelDyPx: Int = 0
     private var lastFen: String? = null
+    private var pendingFen: String? = null
 
     // Drag state (sobre el ROOT)
     private var downRawX = 0f
@@ -96,6 +97,9 @@ class BubbleService : Service() {
     private lateinit var fenTitle: TextView
     private lateinit var btnBench: TextView
     private lateinit var btnPrueba: TextView
+    private lateinit var turnChoiceBar: LinearLayout
+    private lateinit var btnTurnWhite: TextView
+    private lateinit var btnTurnBlack: TextView
 
     // ===== Lichess UI refs =====
     private lateinit var lichessContainer: LinearLayout
@@ -438,6 +442,8 @@ class BubbleService : Service() {
         debugText.text = ""
         debugText.visibility = View.GONE
         if (this::devBar.isInitialized) devBar.visibility = View.GONE
+        if (this::turnChoiceBar.isInitialized) turnChoiceBar.visibility = View.GONE
+        pendingFen = null
 
         if (panelShown) {
             val dm = resources.displayMetrics
@@ -749,6 +755,49 @@ class BubbleService : Service() {
         devBar.addView(btnPrueba, LinearLayout.LayoutParams(-2, -2))
         col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
+        // --- BARRA DE ELECCIÓN DE TURNO ---
+        turnChoiceBar = LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
+            orientation = LinearLayout.HORIZONTAL
+            visibility = View.GONE
+            setPadding(0, dp(5), 0, 0)
+        }
+
+        btnTurnWhite = TextView(this).apply {
+            text = "W"
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            textSize = TEXT_SIZE_BTN
+            gravity = android.view.Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_BLACK)
+                setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setOnClickListener { onTurnChosen("w") }
+        }
+
+        btnTurnBlack = TextView(this).apply {
+            text = "B"
+            typeface = customFont
+            setTextColor(COLOR_GREEN)
+            textSize = TEXT_SIZE_BTN
+            gravity = android.view.Gravity.CENTER
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_BLACK)
+                setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setOnClickListener { onTurnChosen("b") }
+        }
+
+        turnChoiceBar.addView(btnTurnWhite, LinearLayout.LayoutParams(-2, -2))
+        turnChoiceBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
+        turnChoiceBar.addView(btnTurnBlack, LinearLayout.LayoutParams(-2, -2))
+        col.addView(turnChoiceBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
+
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
             val permIcon = ImageView(context).apply {
@@ -1021,6 +1070,12 @@ class BubbleService : Service() {
                 dotsRow.visibility = View.GONE
             }
 
+            // Ocultar botones de elección de turno
+            if (this::turnChoiceBar.isInitialized) {
+                turnChoiceBar.visibility = View.GONE
+            }
+            pendingFen = null
+
             // Ocultar contenedor de Lichess y todas sus filas
             if (this::lichessContainer.isInitialized) {
                 lichessContainer.visibility = View.GONE
@@ -1193,9 +1248,33 @@ class BubbleService : Service() {
     private fun procesarConFenEngine(bitmap: android.graphics.Bitmap) {
         Thread {
             try {
-                val fen = fenEngine.processBoard(bitmap)
-                lastFen = fen
-                val fenPosicion = fen.substringBefore(" ")
+                val fenOriginal = fenEngine.processBoard(bitmap)
+                val fenPosicion = fenOriginal.substringBefore(" ")
+
+                // Detectar turno automáticamente
+                val turnoSugerido = detectarTurnoAutomatico(fenOriginal)
+
+                val fenFinal = if (turnoSugerido != null) {
+                    // Turno claro: reemplazar automáticamente
+                    val fenParts = fenOriginal.split(" ")
+                    if (fenParts.size >= 2) {
+                        "${fenParts[0]} $turnoSugerido ${fenParts.drop(2).joinToString(" ")}"
+                    } else {
+                        "${fenParts[0]} $turnoSugerido - - 0 1"
+                    }
+                } else {
+                    // Turno ambiguo: guardar FEN y mostrar botones
+                    pendingFen = fenOriginal
+                    root.post {
+                        if (this::turnChoiceBar.isInitialized) {
+                            turnChoiceBar.visibility = View.VISIBLE
+                        }
+                    }
+                    fenOriginal // Usar original temporalmente
+                }
+
+                lastFen = fenFinal
+
                 root.post {
                     fenTitle.text = fenPosicion
 
@@ -1204,11 +1283,13 @@ class BubbleService : Service() {
                         dotsRow.visibility = View.VISIBLE
                     }
 
-                    if (esFenValido64(fen)) {
-                        // Consultar APIs de Lichess automáticamente
-                        lichessApiClient.queryLichess(fen) { info ->
-                            root.post {
-                                updateLichessInfo(info)
+                    if (esFenValido64(fenFinal)) {
+                        // Solo consultar Lichess si el turno es claro
+                        if (turnoSugerido != null) {
+                            lichessApiClient.queryLichess(fenFinal) { info ->
+                                root.post {
+                                    updateLichessInfo(info)
+                                }
                             }
                         }
 
@@ -1220,7 +1301,7 @@ class BubbleService : Service() {
                                 ).format(java.util.Date())
                                 // logfen_last.txt: último FEN detectado (archivo separado)
                                 java.io.File(logDir, "logfen_last.txt")
-                                    .writeText("[$ts]\n$fen\n")
+                                    .writeText("[$ts]\n$fenFinal\n")
                             }
                         }
                     } else {
@@ -1300,7 +1381,9 @@ class BubbleService : Service() {
                 }
 
                 // Win Rate (Counter Attack)
-                if (!info.counterAttack.isNullOrEmpty()) {
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val wrEnabled = prefs.getBoolean(PREF_WR, false)
+                if (!info.counterAttack.isNullOrEmpty() && wrEnabled) {
                     tvCounterAttack.text = info.counterAttack
                     rowCounterAttack.visibility = View.VISIBLE
                 } else {
@@ -1550,6 +1633,83 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
             if (cuenta != 8) return false
         }
         return true
+    }
+
+    /**
+     * Detecta el turno automáticamente basado en la posición de los reyes
+     * @return "w" si rey blanco está en rangos 1-3, "b" si rey negro está en rangos 1-3,
+     *         null si ambos reyes están en rangos 4-5 sin peones (caso ambiguo)
+     */
+    private fun detectarTurnoAutomatico(fen: String): String? {
+        val posicion = fen.split(" ").getOrNull(0) ?: return null
+        val rangos = posicion.split("/")
+        if (rangos.size != 8) return null
+
+        // Encontrar posición de K y k (rangos 1-8, donde 1 es el último segmento)
+        var rangoK: Int? = null // Rey blanco
+        var rangok: Int? = null // Rey negro
+
+        rangos.forEachIndexed { index, rango ->
+            val rangoNumero = 8 - index // Rango 8 es el primero, rango 1 es el último
+            if ('K' in rango) rangoK = rangoNumero
+            if ('k' in rango) rangok = rangoNumero
+        }
+
+        // Verificar si hay peones en el tablero
+        val hayPeones = posicion.contains('P') || posicion.contains('p')
+
+        // Aplicar lógica de detección
+        val kEnRangoBajo = rangoK != null && rangoK!! in 1..3
+        val kEnRangoMedio = rangoK != null && rangoK!! in 4..5
+        val kEnRangoAlto = rangoK != null && rangoK!! in 6..8
+
+        val pequenaKEnRangoBajo = rangok != null && rangok!! in 1..3
+        val pequenaKEnRangoMedio = rangok != null && rangok!! in 4..5
+        val pequenaKEnRangoAlto = rangok != null && rangok!! in 6..8
+
+        return when {
+            // Rey blanco en rangos 1-3 → turno blanco
+            kEnRangoBajo -> "w"
+            // Rey negro en rangos 1-3 → turno negro
+            pequenaKEnRangoBajo -> "b"
+            // Ambos reyes en rangos 4-5 y sin peones → ambiguo
+            kEnRangoMedio && pequenaKEnRangoMedio && !hayPeones -> null
+            // Por defecto, usar turno blanco si no hay claridad
+            else -> "w"
+        }
+    }
+
+    /**
+     * Maneja la elección manual del turno por parte del usuario
+     */
+    private fun onTurnChosen(turn: String) {
+        val fen = pendingFen ?: return
+
+        // Ocultar botones de elección
+        if (this::turnChoiceBar.isInitialized) {
+            turnChoiceBar.visibility = View.GONE
+        }
+
+        // Reemplazar turno en el FEN
+        val fenParts = fen.split(" ")
+        val newFen = if (fenParts.size >= 2) {
+            "${fenParts[0]} $turn ${fenParts.drop(2).joinToString(" ")}"
+        } else {
+            "${fenParts[0]} $turn - - 0 1"
+        }
+
+        // Actualizar lastFen y continuar con el procesamiento normal
+        lastFen = newFen
+        pendingFen = null
+
+        // Consultar Lichess con el FEN actualizado
+        if (esFenValido64(newFen)) {
+            lichessApiClient.queryLichess(newFen) { info ->
+                root.post {
+                    updateLichessInfo(info)
+                }
+            }
+        }
     }
 }
 

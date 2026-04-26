@@ -58,7 +58,7 @@ class LichessApiClient {
                             openingName = openingInfo.first,
                             nextMoves = openingInfo.second,
                             bestMove = top?.pv?.getOrNull(0),
-                            counterAttack = top?.pv?.getOrNull(1),
+                            counterAttack = calculateWinRate(top?.cp),
                             tbResult = null,
                             mateIn = top?.mate?.takeIf { it > 0 },
                         ),
@@ -78,6 +78,16 @@ class LichessApiClient {
     private fun countPieces(fen: String): Int {
         val position = fen.substringBefore(" ")
         return position.count { it.isLetter() }
+    }
+
+    /**
+     * Calcula el Win Rate desde el centipawn score de Stockfish.
+     * Fórmula: winRate = 50 + 50 * (2 / (1 + exp(-0.00368208 * cp)) - 1)
+     */
+    private fun calculateWinRate(cp: Int?): String? {
+        if (cp == null) return null
+        val winRate = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1)
+        return "${winRate.toInt()}%"
     }
 
     private fun logStockfish(fen: String, options: List<StockfishEngine.Option>) {
