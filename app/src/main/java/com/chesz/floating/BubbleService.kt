@@ -502,7 +502,7 @@ class BubbleService : Service() {
         // Crear dots (siempre visibles)
         val dotOP = TextView(this).apply {
             text = "●"
-            textSize = 18f
+            textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -510,7 +510,7 @@ class BubbleService : Service() {
 
         val dotBM = TextView(this).apply {
             text = "●"
-            textSize = 18f
+            textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -518,7 +518,7 @@ class BubbleService : Service() {
 
         val dotLN = TextView(this).apply {
             text = "●"
-            textSize = 18f
+            textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -526,7 +526,7 @@ class BubbleService : Service() {
 
         val dotWR = TextView(this).apply {
             text = "●"
-            textSize = 18f
+            textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -535,7 +535,7 @@ class BubbleService : Service() {
         // Labels para los dots
         val labelDotOP = TextView(this).apply {
             text = "OP"
-            textSize = 18f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -543,7 +543,7 @@ class BubbleService : Service() {
 
         val labelDotBM = TextView(this).apply {
             text = "BM"
-            textSize = 18f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -551,7 +551,7 @@ class BubbleService : Service() {
 
         val labelDotLN = TextView(this).apply {
             text = "LN"
-            textSize = 18f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -559,7 +559,7 @@ class BubbleService : Service() {
 
         val labelDotWR = TextView(this).apply {
             text = "WR"
-            textSize = 18f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -835,8 +835,8 @@ class BubbleService : Service() {
         }
 
         fun checkAllInactive(): Boolean {
+            // BM siempre activo, solo verificar los demás
             return !prefs.getBoolean(PREF_OP, true) &&
-                   !prefs.getBoolean(PREF_BM, true) &&
                    !prefs.getBoolean(PREF_LN, true) &&
                    !prefs.getBoolean(PREF_WR, false)
         }
@@ -872,8 +872,9 @@ class BubbleService : Service() {
         }
 
         dotClick(dotOP, labelDotOP, rowOpeningName,   PREF_OP, true)
-        dotClick(dotBM, labelDotBM, rowBestMove,      PREF_BM, true, PREF_LN)  // Si BM queda solo inactivo, activar LN
-        dotClick(dotLN, labelDotLN, rowNextMoves,     PREF_LN, true, PREF_BM)  // Si LN queda solo inactivo, activar BM
+        // BM siempre activo - no clickeable
+        prefs.edit().putBoolean(PREF_BM, true).apply()
+        dotClick(dotLN, labelDotLN, rowNextMoves,     PREF_LN, true)
         dotClick(dotWR, labelDotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
@@ -1673,7 +1674,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         // Comparar rangos según especificación
         return when {
             rangoK!! > rangok!! -> "w"  // Rey blanco más abajo → turno blanco
-            rangok!! < rangoK!! -> "b"  // Rey negro más abajo → turno negro
+            rangok!! > rangoK!! -> "b"  // Rey negro más abajo → turno negro
             rangoK == rangok -> {
                 // Empate: usar peones como tiebreaker
                 val hayPeonBlancoAlto = rangos.take(3).any { 'P' in it }  // Rangos 6-8
