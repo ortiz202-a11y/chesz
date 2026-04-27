@@ -502,7 +502,7 @@ class BubbleService : Service() {
         // Crear dots (siempre visibles)
         val dotOP = TextView(this).apply {
             text = "●"
-            textSize = 12f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -510,7 +510,7 @@ class BubbleService : Service() {
 
         val dotBM = TextView(this).apply {
             text = "●"
-            textSize = 12f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -518,7 +518,7 @@ class BubbleService : Service() {
 
         val dotLN = TextView(this).apply {
             text = "●"
-            textSize = 12f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -526,7 +526,7 @@ class BubbleService : Service() {
 
         val dotWR = TextView(this).apply {
             text = "●"
-            textSize = 12f
+            textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
