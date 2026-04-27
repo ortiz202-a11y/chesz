@@ -43,7 +43,7 @@ class BubbleService : Service() {
     private var panelShown = false
     private var panelDyPx: Int = 0
     private var lastFen: String? = null
-    private var pendingFen: String? = null
+    private var fenAwaitingUserColor: String? = null
 
     // Drag state (sobre el ROOT)
     private var downRawX = 0f
@@ -97,9 +97,9 @@ class BubbleService : Service() {
     private lateinit var fenTitle: TextView
     private lateinit var btnBench: TextView
     private lateinit var btnPrueba: TextView
-    private lateinit var turnChoiceBar: LinearLayout
-    private lateinit var btnTurnWhite: TextView
-    private lateinit var btnTurnBlack: TextView
+    private lateinit var userColorChoiceBar: LinearLayout
+    private lateinit var btnUserWhite: TextView
+    private lateinit var btnUserBlack: TextView
 
     // ===== Lichess UI refs =====
     private lateinit var lichessContainer: LinearLayout
@@ -442,8 +442,8 @@ class BubbleService : Service() {
         debugText.text = ""
         debugText.visibility = View.GONE
         if (this::devBar.isInitialized) devBar.visibility = View.GONE
-        if (this::turnChoiceBar.isInitialized) turnChoiceBar.visibility = View.GONE
-        pendingFen = null
+        if (this::userColorChoiceBar.isInitialized) userColorChoiceBar.visibility = View.GONE
+        fenAwaitingUserColor = null
 
         if (panelShown) {
             val dm = resources.displayMetrics
@@ -505,6 +505,7 @@ class BubbleService : Service() {
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(0, 0, dp(4), 0)
         }
 
@@ -513,6 +514,7 @@ class BubbleService : Service() {
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(0, 0, dp(4), 0)
         }
 
@@ -521,6 +523,7 @@ class BubbleService : Service() {
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(0, 0, dp(4), 0)
         }
 
@@ -529,6 +532,7 @@ class BubbleService : Service() {
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(0, 0, dp(4), 0)
         }
 
@@ -538,6 +542,7 @@ class BubbleService : Service() {
             textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
         }
 
@@ -546,6 +551,7 @@ class BubbleService : Service() {
             textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
         }
 
@@ -554,6 +560,7 @@ class BubbleService : Service() {
             textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
         }
 
@@ -562,6 +569,7 @@ class BubbleService : Service() {
             textSize = 15f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
         }
 
@@ -569,7 +577,7 @@ class BubbleService : Service() {
         dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(dp(5), dp(2), dp(5), dp(2))
+            setPadding(dp(5), 1, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOP, LinearLayout.LayoutParams(-2, -2))
@@ -755,16 +763,16 @@ class BubbleService : Service() {
         devBar.addView(btnPrueba, LinearLayout.LayoutParams(-2, -2))
         col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
-        // --- BARRA DE ELECCIÓN DE TURNO ---
-        turnChoiceBar = LinearLayout(this).apply {
+        // --- BARRA DE ELECCIÓN MANUAL DEL COLOR DEL USUARIO ---
+        userColorChoiceBar = LinearLayout(this).apply {
             gravity = android.view.Gravity.CENTER
             orientation = LinearLayout.HORIZONTAL
             visibility = View.GONE
             setPadding(0, dp(5), 0, 0)
         }
 
-        btnTurnWhite = TextView(this).apply {
-            text = "W"
+        btnUserWhite = TextView(this).apply {
+            text = "♔ BLANCAS"
             typeface = customFont
             setTextColor(COLOR_GREEN)
             textSize = TEXT_SIZE_BTN
@@ -774,12 +782,12 @@ class BubbleService : Service() {
                 setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            setOnClickListener { onTurnChosen("w") }
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setOnClickListener { onUserColorChosen("w") }
         }
 
-        btnTurnBlack = TextView(this).apply {
-            text = "B"
+        btnUserBlack = TextView(this).apply {
+            text = "♚ NEGRAS"
             typeface = customFont
             setTextColor(COLOR_GREEN)
             textSize = TEXT_SIZE_BTN
@@ -789,14 +797,14 @@ class BubbleService : Service() {
                 setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            setOnClickListener { onTurnChosen("b") }
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setOnClickListener { onUserColorChosen("b") }
         }
 
-        turnChoiceBar.addView(btnTurnWhite, LinearLayout.LayoutParams(-2, -2))
-        turnChoiceBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
-        turnChoiceBar.addView(btnTurnBlack, LinearLayout.LayoutParams(-2, -2))
-        col.addView(turnChoiceBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
+        userColorChoiceBar.addView(btnUserWhite, LinearLayout.LayoutParams(-2, -2))
+        userColorChoiceBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
+        userColorChoiceBar.addView(btnUserBlack, LinearLayout.LayoutParams(-2, -2))
+        col.addView(userColorChoiceBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
             setOnClickListener { requestCapturePermission() }
@@ -1071,11 +1079,11 @@ class BubbleService : Service() {
                 dotsRow.visibility = View.GONE
             }
 
-            // Ocultar botones de elección de turno
-            if (this::turnChoiceBar.isInitialized) {
-                turnChoiceBar.visibility = View.GONE
+            // Ocultar botones de elección manual del color del usuario
+            if (this::userColorChoiceBar.isInitialized) {
+                userColorChoiceBar.visibility = View.GONE
             }
-            pendingFen = null
+            fenAwaitingUserColor = null
 
             // Ocultar contenedor de Lichess y todas sus filas
             if (this::lichessContainer.isInitialized) {
@@ -1252,26 +1260,31 @@ class BubbleService : Service() {
                 val fenOriginal = fenEngine.processBoard(bitmap)
                 val fenPosicion = fenOriginal.substringBefore(" ")
 
-                // Detectar turno automáticamente
-                val turnoSugerido = detectarTurnoAutomatico(fenOriginal)
-
-                val fenFinal = if (turnoSugerido != null) {
-                    // Turno claro: reemplazar automáticamente
-                    val fenParts = fenOriginal.split(" ")
-                    if (fenParts.size >= 2) {
-                        "${fenParts[0]} $turnoSugerido ${fenParts.drop(2).joinToString(" ")}"
-                    } else {
-                        "${fenParts[0]} $turnoSugerido - - 0 1"
-                    }
-                } else {
-                    // Turno ambiguo: guardar FEN y mostrar botones
-                    pendingFen = fenOriginal
+                // Si la detección visual no pudo decidir el color del usuario, pausar el
+                // pipeline y pedirlo manualmente antes de consultar Lichess.
+                if (fenEngine.userColorAmbiguous) {
+                    fenAwaitingUserColor = fenOriginal
                     root.post {
-                        if (this::turnChoiceBar.isInitialized) {
-                            turnChoiceBar.visibility = View.VISIBLE
+                        fenTitle.text = fenPosicion
+                        if (this::dotsRow.isInitialized) {
+                            dotsRow.visibility = View.VISIBLE
+                        }
+                        if (this::userColorChoiceBar.isInitialized) {
+                            userColorChoiceBar.visibility = View.VISIBLE
                         }
                     }
-                    fenOriginal // Usar original temporalmente
+                    return@Thread
+                }
+
+                // userColor = orientación visual del tablero (qué piezas juega el usuario abajo).
+                // Asumimos color del usuario == side-to-move FEN — válido sólo cuando es el turno del usuario.
+                val userColor = if (fenEngine.userPlaysBlack) "b" else "w"
+
+                val fenParts = fenOriginal.split(" ")
+                val fenFinal = if (fenParts.size >= 2) {
+                    "${fenParts[0]} $userColor ${fenParts.drop(2).joinToString(" ")}"
+                } else {
+                    "${fenParts[0]} $userColor - - 0 1"
                 }
 
                 lastFen = fenFinal
@@ -1285,12 +1298,9 @@ class BubbleService : Service() {
                     }
 
                     if (esFenValido64(fenFinal)) {
-                        // Solo consultar Lichess si el turno es claro
-                        if (turnoSugerido != null) {
-                            lichessApiClient.queryLichess(fenFinal) { info ->
-                                root.post {
-                                    updateLichessInfo(info)
-                                }
+                        lichessApiClient.queryLichess(fenFinal) { info ->
+                            root.post {
+                                updateLichessInfo(info)
                             }
                         }
 
@@ -1647,71 +1657,27 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
     }
 
     /**
-     * Detecta el turno automáticamente basado en la posición de los reyes
-     * Parsea el FEN y determina player comparando posición de reyes.
-     * Cuenta rangos desde el último segmento separado por '/' (último=fila1=parte baja pantalla).
-     * Compara rango(K) vs rango(k): si rango(K) < rango(k) → player=w. Si rango(k) < rango(K) → player=b.
-     * Si rango(K)==rango(k) → usar peones como tiebreaker: P en rangos 6-8 → player=w, p en rangos 1-3 → player=b.
-     * Si peones ambiguos o ausentes → retorna null (mostrar botones W y B).
+     * Maneja la elección manual del color del usuario.
      */
-    private fun detectarTurnoAutomatico(fen: String): String? {
-        val posicion = fen.split(" ").getOrNull(0) ?: return null
-        val rangos = posicion.split("/")
-        if (rangos.size != 8) return null
-
-        // Encontrar posición de K y k (rangos 1-8, donde 1 es el último segmento)
-        var rangoK: Int? = null // Rey blanco
-        var rangok: Int? = null // Rey negro
-
-        rangos.forEachIndexed { index, rango ->
-            val rangoNumero = index + 1
-            if ('K' in rango) rangoK = rangoNumero
-            if ('k' in rango) rangok = rangoNumero
-        }
-
-        if (rangoK == null || rangok == null) return null
-
-        // Comparar rangos según especificación
-        return when {
-            rangoK!! > rangok!! -> "w"  // Rey blanco más abajo → turno blanco
-            rangok!! > rangoK!! -> "b"  // Rey negro más abajo → turno negro
-            rangoK == rangok -> {
-                // Empate: usar peones como tiebreaker
-                val hayPeonBlancoAlto = rangos.take(3).any { 'P' in it }  // Rangos 6-8
-                val hayPeonNegroAlto = rangos.takeLast(3).any { 'p' in it }  // Rangos 1-3
-
-                when {
-                    hayPeonBlancoAlto && !hayPeonNegroAlto -> "w"
-                    hayPeonNegroAlto && !hayPeonBlancoAlto -> "b"
-                    else -> null  // Ambiguo: mostrar botones
-                }
-            }
-            else -> null
-        }
-    }
-
-    /**
-     * Maneja la elección manual del turno por parte del usuario
-     */
-    private fun onTurnChosen(turn: String) {
-        val fen = pendingFen ?: return
+    private fun onUserColorChosen(color: String) {
+        val fen = fenAwaitingUserColor ?: return
 
         // Ocultar botones de elección
-        if (this::turnChoiceBar.isInitialized) {
-            turnChoiceBar.visibility = View.GONE
+        if (this::userColorChoiceBar.isInitialized) {
+            userColorChoiceBar.visibility = View.GONE
         }
 
-        // Reemplazar turno en el FEN
+        // Inyectar el color del usuario como side-to-move en el FEN
         val fenParts = fen.split(" ")
         val newFen = if (fenParts.size >= 2) {
-            "${fenParts[0]} $turn ${fenParts.drop(2).joinToString(" ")}"
+            "${fenParts[0]} $color ${fenParts.drop(2).joinToString(" ")}"
         } else {
-            "${fenParts[0]} $turn - - 0 1"
+            "${fenParts[0]} $color - - 0 1"
         }
 
         // Actualizar lastFen y continuar con el procesamiento normal
         lastFen = newFen
-        pendingFen = null
+        fenAwaitingUserColor = null
 
         // Consultar Lichess con el FEN actualizado
         if (esFenValido64(newFen)) {

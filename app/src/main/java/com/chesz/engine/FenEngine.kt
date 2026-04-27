@@ -48,7 +48,16 @@ class FenEngine(private val context: Context) {
      */
     var debugExpectedFen: String? = null
     private var debugExpectedGrid: Array<CharArray>? = null
-    private var debugFlipped = false
+    var userPlaysBlack: Boolean = false
+        private set
+
+    /**
+     * true cuando ni la lectura de la esquina ni la posición de los reyes pudieron
+     * decidir la orientación → userPlaysBlack quedó por defecto en false y el caller
+     * debería pedir confirmación manual al usuario.
+     */
+    var userColorAmbiguous: Boolean = false
+        private set
 
     // Buffer de log por foto: solo se vuelca a disco si hubo al menos un error o resolveByHeight
     private val logBuffer = StringBuilder()
@@ -113,10 +122,14 @@ class FenEngine(private val context: Context) {
         debugLog("=== GRID ANTES DEL FLIP ===")
         debugLog(gridToString(grid))
 
-        // Orientación: esquina → reyes (fallback) → peones → densidad
-        val flipped = isBoardFlipped(gray) ?: isBoardFlippedByKings(grid) ?: false
-        debugFlipped = flipped
-        debugLog("isBoardFlipped = $flipped")
+        // Orientación: esquina → reyes (fallback). Si ambas devuelven null,
+        // el color del usuario es ambiguo y el caller debe pedirlo manualmente.
+        val byCoord = isBoardFlipped(gray)
+        val byKings = if (byCoord == null) isBoardFlippedByKings(grid) else null
+        val flipped = byCoord ?: byKings ?: false
+        userPlaysBlack = flipped
+        userColorAmbiguous = (byCoord == null && byKings == null)
+        debugLog("isBoardFlipped = $flipped (ambiguous=$userColorAmbiguous)")
 
         val finalGrid = if (flipped) flipGrid(grid) else grid
 
@@ -460,8 +473,8 @@ class FenEngine(private val context: Context) {
         val grid = debugExpectedGrid
         if (grid != null && row >= 0 && col >= 0 && !isFirstPass) {
             // Con FEN de referencia: solo loguear si el resultado no coincide con lo esperado
-            val finalRow = if (debugFlipped) BOARD_SQUARES - 1 - row else row
-            val finalCol = if (debugFlipped) BOARD_SQUARES - 1 - col else col
+            val finalRow = if (userPlaysBlack) BOARD_SQUARES - 1 - row else row
+            val finalCol = if (userPlaysBlack) BOARD_SQUARES - 1 - col else col
             val expected = grid[finalRow][finalCol]
             if (expected != '.' && !expected.isDigit()) {
                 val expectedIsWhite = expected.isUpperCase()
