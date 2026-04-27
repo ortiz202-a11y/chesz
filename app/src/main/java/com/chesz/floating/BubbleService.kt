@@ -502,7 +502,7 @@ class BubbleService : Service() {
         // Crear dots (siempre visibles)
         val dotOP = TextView(this).apply {
             text = "●"
-            textSize = 15f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -510,7 +510,7 @@ class BubbleService : Service() {
 
         val dotBM = TextView(this).apply {
             text = "●"
-            textSize = 15f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -518,7 +518,7 @@ class BubbleService : Service() {
 
         val dotLN = TextView(this).apply {
             text = "●"
-            textSize = 15f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -526,7 +526,7 @@ class BubbleService : Service() {
 
         val dotWR = TextView(this).apply {
             text = "●"
-            textSize = 15f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(0, 0, dp(4), 0)
@@ -535,7 +535,7 @@ class BubbleService : Service() {
         // Labels para los dots
         val labelDotOP = TextView(this).apply {
             text = "OP"
-            textSize = 12f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -543,7 +543,7 @@ class BubbleService : Service() {
 
         val labelDotBM = TextView(this).apply {
             text = "BM"
-            textSize = 12f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -551,7 +551,7 @@ class BubbleService : Service() {
 
         val labelDotLN = TextView(this).apply {
             text = "LN"
-            textSize = 12f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -559,7 +559,7 @@ class BubbleService : Service() {
 
         val labelDotWR = TextView(this).apply {
             text = "WR"
-            textSize = 12f
+            textSize = 18f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             setPadding(dp(2), 0, 0, 0)
@@ -674,7 +674,7 @@ class BubbleService : Service() {
             visibility = View.GONE
 
             val labelMate = TextView(context).apply {
-                text = "M#"
+                text = ""
                 textSize = 12f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
@@ -1663,7 +1663,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         var rangok: Int? = null // Rey negro
 
         rangos.forEachIndexed { index, rango ->
-            val rangoNumero = 8 - index // Rango 8 es el primero, rango 1 es el último
+            val rangoNumero = index + 1
             if ('K' in rango) rangoK = rangoNumero
             if ('k' in rango) rangok = rangoNumero
         }

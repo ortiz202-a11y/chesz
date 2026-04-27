@@ -157,11 +157,11 @@ class StockfishEngine(private val context: Context) {
                         // Si la línea no está vacía después de "Checkers:", hay jaque
                         val checkersInfo = line.substringAfter("Checkers:").trim()
                         inCheck = checkersInfo.isNotEmpty()
-                        // Continuar leyendo para consumir toda la salida
+                        break
                     }
 
-                    // El comando 'd' termina con una línea vacía o cuando empieza otro comando
-                    if (line.isEmpty() || line.startsWith("position") || line.startsWith("go")) {
+                    // El comando 'd' termina cuando empieza otro comando
+                    if (line.startsWith("position") || line.startsWith("go")) {
                         break
                     }
                 }
