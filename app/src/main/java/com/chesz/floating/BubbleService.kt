@@ -1672,7 +1672,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
 
         // Comparar rangos según especificación
         return when {
-            rangoK!! < rangok!! -> "w"  // Rey blanco más abajo → turno blanco
+            rangoK!! > rangok!! -> "w"  // Rey blanco más abajo → turno blanco
             rangok!! < rangoK!! -> "b"  // Rey negro más abajo → turno negro
             rangoK == rangok -> {
                 // Empate: usar peones como tiebreaker
