@@ -772,32 +772,32 @@ class BubbleService : Service() {
         }
 
         btnUserWhite = TextView(this).apply {
-            text = "♔ BLANCAS"
+            text = "WHITE"
             typeface = customFont
             setTextColor(COLOR_GREEN)
-            textSize = TEXT_SIZE_BTN
+            textSize = 15f
             gravity = android.view.Gravity.CENTER
             background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(COLOR_BLACK)
                 setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { onUserColorChosen("w") }
         }
 
         btnUserBlack = TextView(this).apply {
-            text = "♚ NEGRAS"
+            text = "BLACK"
             typeface = customFont
             setTextColor(COLOR_GREEN)
-            textSize = TEXT_SIZE_BTN
+            textSize = 15f
             gravity = android.view.Gravity.CENTER
             background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(COLOR_BLACK)
                 setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
-            setPadding(dp(16), dp(8), dp(16), dp(8))
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { onUserColorChosen("b") }
         }
 

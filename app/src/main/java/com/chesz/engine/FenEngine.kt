@@ -238,6 +238,10 @@ class FenEngine(private val context: Context) {
         }
         debugLog("isBoardFlippedByKings: K fila=$whiteKingRow k fila=$blackKingRow")
         return when {
+            whiteKingRow >= 0 && blackKingRow >= 0 && whiteKingRow == blackKingRow -> {
+                debugLog("isBoardFlippedByKings: ambos reyes en misma fila → null (ambiguo)")
+                null
+            }
             whiteKingRow >= 0 && blackKingRow >= 0 ->
                 (whiteKingRow < blackKingRow).also {
                     debugLog("isBoardFlippedByKings: ambos reyes → flipped=$it")
