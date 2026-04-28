@@ -539,7 +539,7 @@ class BubbleService : Service() {
         // Labels para los dots
         val labelDotOP = TextView(this).apply {
             text = "OP"
-            textSize = 15f
+            textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
@@ -548,7 +548,7 @@ class BubbleService : Service() {
 
         val labelDotBM = TextView(this).apply {
             text = "BM"
-            textSize = 15f
+            textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
@@ -557,7 +557,7 @@ class BubbleService : Service() {
 
         val labelDotLN = TextView(this).apply {
             text = "LN"
-            textSize = 15f
+            textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
@@ -566,7 +566,7 @@ class BubbleService : Service() {
 
         val labelDotWR = TextView(this).apply {
             text = "WR"
-            textSize = 15f
+            textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
@@ -577,7 +577,7 @@ class BubbleService : Service() {
         dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(dp(5), 1, dp(5), dp(2))
+            setPadding(dp(5), 0, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOP, LinearLayout.LayoutParams(-2, -2))
@@ -595,7 +595,9 @@ class BubbleService : Service() {
             addView(dotWR, LinearLayout.LayoutParams(-2, -2))
             addView(labelDotWR, LinearLayout.LayoutParams(-2, -2))
         }
-        col.addView(dotsRow)  // Agregar directamente a col, después de fenTitle
+        // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
+        // para pegar la fila de dots al fenTitle.
+        col.addView(dotsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-10) })
 
         // Helper para crear filas de valores (sin dot)
         fun createValueRow(label: TextView, textView: TextView, labelText: String): LinearLayout {

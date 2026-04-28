@@ -276,8 +276,9 @@ class FenEngine(private val context: Context) {
     /**
      * Detecta la pieza en la casilla [row, col].
      *
-     * [applyBias] activa el ROW1_WHITE_BIAS solo cuando la orientación ya es conocida
-     * (2ª pasada sobre filas 1 y 6 del grid final).
+     * [applyBias] queda como parámetro inerte tras la migración a Otsu (ver isPieceWhite);
+     * la 2ª pasada sobre filas 1 y 6 del grid final ya no aporta corrección y podría
+     * eliminarse de processBoard cuando se haga limpieza.
      *
      * Desambiguación alfil/peón (reglas 7-9):
      *  - El alfil requiere BISHOP_THRESHOLD (0.55) en lugar del MATCH_THRESHOLD genérico.
@@ -431,21 +432,28 @@ class FenEngine(private val context: Context) {
     }
 
     /**
-     * Determina el bando de la pieza usando contraste relativo:
-     *   1. Media de la región central 30×30 px (más robusta que un solo píxel).
-     *   2. Umbral dinámico = (min + max) / 2 de toda la casilla.
-     *   → blanca si el centro es más luminoso que el punto medio del rango.
+     * Determina el bando de la pieza por bipartición automática del histograma:
+     *   1. Umbral de Otsu sobre los 256 niveles de gris de la casilla 90×90.
+     *   2. Conteo de píxeles oscuros vs claros en la región central 30×30 usando ese umbral.
+     *   → blanca si predominan los píxeles claros en el centro.
      *
-     * [applyBias] solo debe ser true en la 2ª pasada (filas 1 y 6 del grid final),
-     * cuando la orientación ya está resuelta. Aplicarlo antes provocaba bias en filas
-     * equivocadas si el tablero estaba girado.
+     * Robusto frente a "pieza oscura sobre casilla clara" porque la decisión es por
+     * moda (mayoría de píxeles), no por media. La media se contaminaba con el fondo
+     * que se colaba por el cuello fino de los peones y devolvía el lado equivocado.
+     *
+     * Reyes (forKing=true) mantienen la lógica con KING_COLOR_FRACTION sobre la
+     * media central; sirve de re-verificación para distinguir K/k en finales.
+     *
+     * Fallback: si el rango dinámico es < MIN_CONTRAST, se decide por brillo
+     * absoluto (centerMean > 128).
      */
+    @Suppress("UNUSED_PARAMETER")
     private fun isPieceWhite(square: IntArray, applyBias: Boolean = false, row: Int = -1, col: Int = -1, forKing: Boolean = false, isFirstPass: Boolean = false): Boolean {
         val s = SQUARE_SIZE
         val c0 = CENTER_CROP_START
         val c1 = CENTER_CROP_END
 
-        // Media de la región central
+        // Media de la región central (necesaria para fallback de bajo contraste y rama forKing)
         var sumCenter = 0L
         for (y in c0 until c1) {
             for (x in c0 until c1) {
@@ -454,45 +462,100 @@ class FenEngine(private val context: Context) {
         }
         val centerMean = sumCenter.toFloat() / ((c1 - c0) * (c1 - c0))
 
-        // Min y max de toda la casilla
+        // Histograma de toda la casilla 90×90 + min/max en un solo pase
+        val histogram = IntArray(256)
         var minV = 255
         var maxV = 0
         for (v in square) {
+            histogram[v]++
             if (v < minV) minV = v
             if (v > maxV) maxV = v
         }
 
-        // Sin contraste suficiente → usar brillo absoluto en lugar de asumir blanca
+        // Sin contraste suficiente → brillo absoluto en lugar de asumir blanca
         if (maxV - minV < MIN_CONTRAST) return centerMean > 128f
 
-        // Para reyes: umbral basado en KING_COLOR_FRACTION (fracción del rango, independiente del bias)
-        // Para el resto: umbral dinámico con bias de fila si aplica
-        val bias = if (!forKing && applyBias) ROW1_WHITE_BIAS else 0f
-        val threshold = if (forKing)
-            minV + (maxV - minV) * KING_COLOR_FRACTION
-        else
-            (minV + maxV) / 2.0f + bias
-        val result = centerMean > threshold
-
         val grid = debugExpectedGrid
+
+        // Rama de rey: KING_COLOR_FRACTION intacto (re-verificación posterior en detectPiece)
+        if (forKing) {
+            val threshold = minV + (maxV - minV) * KING_COLOR_FRACTION
+            val result = centerMean > threshold
+            if (grid != null && row >= 0 && col >= 0 && !isFirstPass) {
+                val finalRow = if (userPlaysBlack) BOARD_SQUARES - 1 - row else row
+                val finalCol = if (userPlaysBlack) BOARD_SQUARES - 1 - col else col
+                val expected = grid[finalRow][finalCol]
+                if (expected != '.' && !expected.isDigit()) {
+                    val expectedIsWhite = expected.isUpperCase()
+                    if (result != expectedIsWhite) {
+                        errorLog("ERROR isPieceWhite [KING_COLOR_FRACTION] [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)}")
+                    }
+                }
+            } else if (grid == null) {
+                debugLog("isPieceWhite [KING] [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} → $result")
+            }
+            return result
+        }
+
+        // Rama no-rey: umbral Otsu + conteo en crop central
+        val otsuThreshold = computeOtsuThreshold(histogram, square.size)
+        var darkCount = 0
+        var lightCount = 0
+        for (y in c0 until c1) {
+            for (x in c0 until c1) {
+                if (square[y * s + x] <= otsuThreshold) darkCount++ else lightCount++
+            }
+        }
+        val result = lightCount > darkCount
+
         if (grid != null && row >= 0 && col >= 0 && !isFirstPass) {
-            // Con FEN de referencia: solo loguear si el resultado no coincide con lo esperado
             val finalRow = if (userPlaysBlack) BOARD_SQUARES - 1 - row else row
             val finalCol = if (userPlaysBlack) BOARD_SQUARES - 1 - col else col
             val expected = grid[finalRow][finalCol]
             if (expected != '.' && !expected.isDigit()) {
                 val expectedIsWhite = expected.isUpperCase()
                 if (result != expectedIsWhite) {
-                    val kingTag = if (forKing) " [KING_COLOR_FRACTION]" else ""
-                    errorLog("ERROR isPieceWhite$kingTag [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias")
+                    errorLog("ERROR isPieceWhite [OTSU] [foto=$debugPhotoNum row=$row col=$col] esperado=${if (expectedIsWhite) "white($expected)" else "black($expected)"} obtenido=${if (result) "white" else "black"} otsu=$otsuThreshold dark=$darkCount light=$lightCount centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV")
                 }
             }
         } else if (grid == null) {
-            // Sin FEN de referencia: log normal
-            debugLog("isPieceWhite [foto=$debugPhotoNum row=$row col=$col] centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV threshold=${"%.1f".format(threshold)} bias=$bias → $result")
+            debugLog("isPieceWhite [OTSU] [foto=$debugPhotoNum row=$row col=$col] otsu=$otsuThreshold dark=$darkCount light=$lightCount centerMean=${"%.1f".format(centerMean)} min=$minV max=$maxV → $result")
         }
 
         return result
+    }
+
+    /**
+     * Umbral óptimo de Otsu sobre un histograma de 256 niveles.
+     * Maximiza la varianza entre clases (oscura/clara) → bipartición automática
+     * sin parámetros. Robusto frente a desbalances pieza/fondo.
+     */
+    private fun computeOtsuThreshold(histogram: IntArray, totalPixels: Int): Int {
+        var sum = 0L
+        for (t in 0 until 256) sum += t.toLong() * histogram[t]
+
+        var sumB = 0L
+        var wB = 0
+        var maxVariance = -1.0
+        var threshold = 0
+
+        for (t in 0 until 256) {
+            wB += histogram[t]
+            if (wB == 0) continue
+            val wF = totalPixels - wB
+            if (wF == 0) break
+
+            sumB += t.toLong() * histogram[t]
+            val mB = sumB.toDouble() / wB
+            val mF = (sum - sumB).toDouble() / wF
+            val diff = mB - mF
+            val variance = wB.toDouble() * wF.toDouble() * diff * diff
+            if (variance > maxVariance) {
+                maxVariance = variance
+                threshold = t
+            }
+        }
+        return threshold
     }
 
     // ─────────────────────────────────────────────
@@ -788,7 +851,6 @@ class FenEngine(private val context: Context) {
         private const val CENTER_CROP_START  = 30   // región central 30×30 para bando
         private const val CENTER_CROP_END    = 60
         private const val MIN_CONTRAST       = 20   // contraste mínimo para clasificar bando
-        private const val ROW1_WHITE_BIAS    = 8f   // bias para filas de peones (2ª pasada, orientación conocida)
         private const val MATCH_THRESHOLD    = 0.45f
         private const val KING_MATCH_THRESHOLD  = 0.40f // score mínimo de template matching para aceptar un rey
         private const val KING_COLOR_FRACTION   = 0.60f // fracción del rango dinámico para determinar color del rey
