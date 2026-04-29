@@ -845,10 +845,8 @@ class BubbleService : Service() {
         }
 
         fun checkAllInactive(): Boolean {
-            // BM siempre activo, solo verificar los demás
-            return !prefs.getBoolean(PREF_OP, true) &&
-                   !prefs.getBoolean(PREF_LN, true) &&
-                   !prefs.getBoolean(PREF_WR, false)
+            // BM siempre activo → el panel nunca queda sin dots activos
+            return false
         }
 
         applyDot(dotOP, labelDotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
