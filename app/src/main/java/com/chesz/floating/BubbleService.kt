@@ -471,7 +471,7 @@ class BubbleService : Service() {
         val col = LinearLayout(this).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.START
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, 0)
+            setPadding(0, 0, 0, dp(65)) // Espacio para el botón (60dp) + margen (5dp)
             background = panelBorder
         }
 
@@ -576,7 +576,8 @@ class BubbleService : Service() {
         // Fila de dots (HORIZONTAL) - aparece con el FEN
         dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
+            gravity = android.view.Gravity.BOTTOM
+            baselineAligned = true
             setPadding(dp(5), 0, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
@@ -818,7 +819,12 @@ class BubbleService : Service() {
         }
         col.addView(permBar, LinearLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
-        panel.addView(col, FrameLayout.LayoutParams(-1, -1))
+        // Envolver col en ScrollView para contenido largo
+        val scrollView = android.widget.ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            addView(col)
+        }
+        panel.addView(scrollView, FrameLayout.LayoutParams(-1, -1))
 
         val close = ImageView(this).apply {
             setImageResource(R.drawable.close)
@@ -1162,7 +1168,16 @@ class BubbleService : Service() {
             root.postDelayed({
                 try {
                     val image = reader.acquireLatestImage() ?: run {
-                        updateDebug("❌ No se pudo obtener imagen")
+                        // Restaurar último BM y dots cuando falla la captura
+                        root.post {
+                            if (this@BubbleService::dotsRow.isInitialized) {
+                                dotsRow.visibility = View.VISIBLE
+                            }
+                            if (this@BubbleService::lichessContainer.isInitialized) {
+                                lichessContainer.visibility = View.VISIBLE
+                            }
+                            updateDebug("") // Limpiar "PROCESANDO..."
+                        }
                         return@postDelayed
                     }
 
