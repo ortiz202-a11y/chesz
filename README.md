@@ -539,10 +539,4 @@ Si falta `.mcp.json`, `CLAUDE.md` u otro archivo: `git stash list`. Si hay algo,
 
 
 
-agregamos stockfish para no deoender de la web
-
-
-Se intenta enteder un bug que sucede al dar tab a la misma imagen  dos veces 
-aun no se enfintra solucion 
-
-Se están arreglando varios bugs
+agregamos stockfish local.
