@@ -74,6 +74,11 @@ class BubbleService : Service() {
     private var benchmarkThread: Thread? = null
     private var abortBenchmark = false
 
+    // ===== Cache del último BM (para rescatar por 10s cuando falla captura) =====
+    private var lastBestMove: String = ""
+    private var bmCacheTime: Long = 0
+    private val BM_CACHE_DURATION_MS = 10000L // 10 segundos
+
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
@@ -471,7 +476,7 @@ class BubbleService : Service() {
         val col = LinearLayout(this).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.START
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, dp(65)) // Espacio para el botón (60dp) + margen (5dp)
+            setPadding(0, 0, 0, 0)
             background = panelBorder
         }
 
@@ -495,7 +500,7 @@ class BubbleService : Service() {
         // ===== INFORMACIÓN LICHESS =====
         lichessContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(5), dp(2), dp(5), 0)
+            setPadding(dp(35), dp(2), dp(5), 0)
             visibility = View.GONE
         }
 
@@ -1167,7 +1172,6 @@ class BubbleService : Service() {
             root.postDelayed({
                 try {
                     val image = reader.acquireLatestImage() ?: run {
-                        // Restaurar último BM y dots cuando falla la captura
                         root.post {
                             if (this@BubbleService::dotsRow.isInitialized) {
                                 dotsRow.visibility = View.VISIBLE
@@ -1175,7 +1179,15 @@ class BubbleService : Service() {
                             if (this@BubbleService::lichessContainer.isInitialized) {
                                 lichessContainer.visibility = View.VISIBLE
                             }
-                            updateDebug("") // Limpiar "PROCESANDO..."
+                            val cacheValido = lastBestMove.isNotEmpty() &&
+                                (System.currentTimeMillis() - bmCacheTime) < BM_CACHE_DURATION_MS
+                            if (cacheValido) {
+                                tvBestMove.text = lastBestMove
+                                rowBestMove.visibility = View.VISIBLE
+                                updateDebug("")
+                            } else {
+                                updateDebug("Move any piece and try again")
+                            }
                         }
                         return@postDelayed
                     }
@@ -1391,6 +1403,8 @@ class BubbleService : Service() {
 
                 // Best Move
                 if (!info.bestMove.isNullOrEmpty()) {
+                    lastBestMove = info.bestMove!!
+                    bmCacheTime = System.currentTimeMillis()
                     tvBestMove.text = info.bestMove
                     rowBestMove.visibility = View.VISIBLE
                 } else {
