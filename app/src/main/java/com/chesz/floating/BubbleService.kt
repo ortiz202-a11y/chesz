@@ -461,23 +461,22 @@ class BubbleService : Service() {
 
             private fun buildPanel(): FrameLayout {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
-        val panel = FrameLayout(this).apply {
-            setBackgroundColor(COLOR_PANEL_BG)
-            clipChildren = false
-            clipToPadding = false
-        }
-
         val panelBorder = android.graphics.drawable.GradientDrawable().apply {
-            setColor(0x00000000)
+            setColor(COLOR_PANEL_BG)
             setStroke(dp(BTN_STROKE_DP).toInt(), COLOR_GREEN)
             cornerRadius = 0f
+        }
+
+        val panel = FrameLayout(this).apply {
+            background = panelBorder
+            clipChildren = false
+            clipToPadding = false
         }
 
         val col = LinearLayout(this).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.START
             orientation = LinearLayout.VERTICAL
             setPadding(0, 0, 0, 0)
-            background = panelBorder
         }
 
         fenTitle = TextView(this).apply {
@@ -821,7 +820,7 @@ class BubbleService : Service() {
             }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
-        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
+        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply { leftMargin = dp(0); rightMargin = dp(0); bottomMargin = dp(4) })
 
         // Envolver col en ScrollView para contenido largo
         val scrollView = android.widget.ScrollView(this).apply {
