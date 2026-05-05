@@ -152,12 +152,13 @@ class LichessApiClient {
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
+            connection.setRequestProperty("User-Agent", "Chesz-App/1.0")
 
             val responseCode = connection.responseCode
             val response = if (responseCode == 200) {
                 connection.inputStream.bufferedReader().readText()
             } else {
-                ""
+                connection.errorStream?.bufferedReader()?.readText() ?: ""
             }
 
             context?.getExternalFilesDir(null)?.let { logDir ->
@@ -216,12 +217,13 @@ class LichessApiClient {
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
+            connection.setRequestProperty("User-Agent", "Chesz-App/1.0")
 
             val responseCode = connection.responseCode
             val response = if (responseCode == 200) {
                 connection.inputStream.bufferedReader().readText()
             } else {
-                ""
+                connection.errorStream?.bufferedReader()?.readText() ?: ""
             }
 
             context?.getExternalFilesDir(null)?.let { logDir ->

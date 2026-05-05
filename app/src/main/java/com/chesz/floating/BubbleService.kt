@@ -551,7 +551,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 3f
+            translationY = 4f
         }
 
         val labelDotBM = TextView(this).apply {
@@ -561,7 +561,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 3f
+            translationY = 4f
         }
 
         val labelDotFM = TextView(this).apply {
@@ -571,7 +571,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 3f
+            translationY = 4f
         }
 
         val labelDotWR = TextView(this).apply {
@@ -581,7 +581,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 3f
+            translationY = 4f
         }
 
         // Fila de dots (HORIZONTAL) - aparece con el FEN
