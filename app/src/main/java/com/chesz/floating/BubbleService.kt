@@ -95,6 +95,10 @@ class BubbleService : Service() {
     // ===== Stockfish local =====
     private lateinit var stockfishEngine: StockfishEngine
 
+    // ===== Color de acento (toggle verde / ámbar IBM 5151) =====
+    private var accentColor: Int = 0xFF33FF00.toInt()
+    private lateinit var panelBorderDrawable: android.graphics.drawable.GradientDrawable
+
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
     private lateinit var permText: TextView
@@ -461,14 +465,14 @@ class BubbleService : Service() {
 
             private fun buildPanel(): FrameLayout {
         val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
-        val panelBorder = android.graphics.drawable.GradientDrawable().apply {
+        panelBorderDrawable = android.graphics.drawable.GradientDrawable().apply {
             setColor(COLOR_PANEL_BG)
-            setStroke(dp(BTN_STROKE_DP).toInt(), COLOR_GREEN)
+            setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
             cornerRadius = 0f
         }
 
         val panel = FrameLayout(this).apply {
-            background = panelBorder
+            background = panelBorderDrawable
             clipChildren = false
             clipToPadding = false
         }
@@ -761,7 +765,10 @@ class BubbleService : Service() {
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            setOnClickListener { /* Acción del botón PRUEBA */ }
+            setOnClickListener {
+                accentColor = if (accentColor == COLOR_GREEN) 0xFFFFB000.toInt() else COLOR_GREEN
+                applyAccentColor()
+            }
         }
 
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
@@ -846,9 +853,9 @@ class BubbleService : Service() {
         fun applyDot(dot: TextView, label: TextView, row: LinearLayout, active: Boolean) {
             // Dot siempre visible, solo cambia símbolo y color
             dot.text = if (active) "●" else "○"
-            dot.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
+            dot.setTextColor(if (active) accentColor else 0xFF888888.toInt())
             // Label también cambia de color
-            label.setTextColor(if (active) COLOR_GREEN else 0xFF888888.toInt())
+            label.setTextColor(if (active) accentColor else 0xFF888888.toInt())
             // Row completa se muestra/oculta según estado
             row.visibility = if (active) View.VISIBLE else View.GONE
         }
@@ -1049,7 +1056,52 @@ class BubbleService : Service() {
         root.post {
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
             if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.VISIBLE
+            if (this::dotsRow.isInitialized) dotsRow.visibility = View.GONE
+            if (this::lichessContainer.isInitialized) lichessContainer.visibility = View.GONE
+            if (this::userColorChoiceBar.isInitialized) userColorChoiceBar.visibility = View.GONE
             updateDebug("")
+        }
+    }
+
+    private fun applyAccentColor() {
+        root.post {
+            // Marco del overlay
+            if (this::panelBorderDrawable.isInitialized)
+                panelBorderDrawable.setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
+            // FEN title
+            if (this::fenTitle.isInitialized) fenTitle.setTextColor(accentColor)
+            // Debug text
+            if (this::debugText.isInitialized) debugText.setTextColor(accentColor)
+            // Labels e valores de filas (child 0 = label, child 1 = valor)
+            listOf(rowOpeningName, rowBestMove, rowNextMoves, rowCounterAttack,
+                   rowTablebaseResult, rowMateIn).forEach { row ->
+                if (this::lichessContainer.isInitialized) {
+                    (row.getChildAt(0) as? TextView)?.setTextColor(accentColor)
+                    (row.getChildAt(1) as? TextView)?.setTextColor(accentColor)
+                }
+            }
+            // Dots y sus labels (pattern: dot,label,spacer, dot,label,spacer, ...)
+            if (this::dotsRow.isInitialized) {
+                for (i in 0 until dotsRow.childCount) {
+                    val child = dotsRow.getChildAt(i) as? TextView ?: continue
+                    // dot activo "●" → accentColor, inactivo "○" → gris, label → sigue al dot anterior
+                    child.setTextColor(if (child.text == "●") accentColor else if (child.text == "○") 0xFF888888.toInt() else accentColor)
+                }
+            }
+            // btnBench
+            if (this::btnBench.isInitialized) {
+                btnBench.setTextColor(accentColor)
+                (btnBench.background as? android.graphics.drawable.GradientDrawable)?.setStroke(dp(BTN_STROKE_DP), accentColor)
+            }
+            // Botones de color del usuario
+            if (this::btnUserWhite.isInitialized) {
+                btnUserWhite.setTextColor(accentColor)
+                (btnUserWhite.background as? android.graphics.drawable.GradientDrawable)?.setStroke(dp(BTN_STROKE_DP), accentColor)
+            }
+            if (this::btnUserBlack.isInitialized) {
+                btnUserBlack.setTextColor(accentColor)
+                (btnUserBlack.background as? android.graphics.drawable.GradientDrawable)?.setStroke(dp(BTN_STROKE_DP), accentColor)
+            }
         }
     }
 
@@ -1367,7 +1419,7 @@ class BubbleService : Service() {
             }
             val s = sb.length
             sb.append(chunk)
-            segs.add(Seg(s, sb.length, if (isOwn) COLOR_GREEN else 0xFF888888.toInt()))
+            segs.add(Seg(s, sb.length, if (isOwn) accentColor else 0xFF888888.toInt()))
         }
         val span = SpannableString(sb.toString())
         segs.forEach { span.setSpan(ForegroundColorSpan(it.color), it.start, it.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE) }
