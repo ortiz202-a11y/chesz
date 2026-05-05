@@ -587,19 +587,19 @@ class BubbleService : Service() {
             setPadding(dp(5), 0, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
-            addView(dotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(dotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(dotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(dotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
         }
         // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
