@@ -748,10 +748,14 @@ class BubbleService : Service() {
         btnBench = TextView(this).apply {
             text = "TEST FEN"
             typeface = customFont
-            setTextColor(COLOR_GREEN)
+            setTextColor(COLOR_WHITE)
             textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
-            background = btnBg
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(COLOR_ORANGE_BG)
+                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                cornerRadius = dp(BTN_CORNER_DP).toFloat()
+            }
             setPadding(dp(8), dp(8), dp(8), dp(8))
             setOnClickListener { runBenchmark() }
         }
@@ -1454,8 +1458,13 @@ class BubbleService : Service() {
                 lichessContainer.visibility = View.VISIBLE
 
                 // Actualizar campos
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val opEnabled = prefs.getBoolean(PREF_OP, true)
+                val fmEnabled = prefs.getBoolean(PREF_FM, true)
+                val wrEnabled = prefs.getBoolean(PREF_WR, false)
+
                 // Opening Name
-                if (!info.openingName.isNullOrEmpty()) {
+                if (opEnabled && !info.openingName.isNullOrEmpty()) {
                     tvOpeningName.text = info.openingName
                     rowOpeningName.visibility = View.VISIBLE
                 } else {
@@ -1473,7 +1482,7 @@ class BubbleService : Service() {
                 }
 
                 // Line (Next Moves) con formato especial
-                if (!info.nextMoves.isNullOrEmpty()) {
+                if (fmEnabled && !info.nextMoves.isNullOrEmpty()) {
                     tvNextMoves.text = formatFM(info.nextMoves ?: "")
                     rowNextMoves.visibility = View.VISIBLE
                 } else {
@@ -1481,8 +1490,6 @@ class BubbleService : Service() {
                 }
 
                 // Win Rate (Counter Attack)
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val wrEnabled = prefs.getBoolean(PREF_WR, false)
                 if (!info.counterAttack.isNullOrEmpty() && wrEnabled) {
                     tvCounterAttack.text = info.counterAttack
                     rowCounterAttack.visibility = View.VISIBLE

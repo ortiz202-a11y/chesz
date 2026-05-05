@@ -145,7 +145,7 @@ class LichessApiClient {
      */
     private fun queryOpening(fen: String): Pair<String?, String?> {
         val encodedFen = fen.replace(" ", "%20")
-        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen")
+        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen&speeds=ultraBullet,bullet,blitz,rapid,classical,correspondence&ratings=1000,1200,1400,1600,1800,2000,2200,2500&topGames=0&recentGames=0")
 
         return try {
             val connection = url.openConnection() as HttpURLConnection
@@ -210,7 +210,7 @@ class LichessApiClient {
      */
     private fun queryTablebase(fen: String): LichessInfo {
         val encodedFen = fen.replace(" ", "%20")
-        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen")
+        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen&speeds=ultraBullet,bullet,blitz,rapid,classical,correspondence&ratings=1000,1200,1400,1600,1800,2000,2200,2500&topGames=0&recentGames=0")
 
         return try {
             val connection = url.openConnection() as HttpURLConnection
