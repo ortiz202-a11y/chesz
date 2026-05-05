@@ -124,6 +124,7 @@ class BubbleService : Service() {
     private lateinit var rowCounterAttack: LinearLayout
     private lateinit var rowTablebaseResult: LinearLayout
     private lateinit var rowMateIn: LinearLayout
+    private lateinit var closeBtn: ImageView
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -588,20 +589,20 @@ class BubbleService : Service() {
             setPadding(dp(5), 0, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
-            addView(dotOP, LinearLayout.LayoutParams(-2, -2))
-            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2))
+            addView(dotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotBM, LinearLayout.LayoutParams(-2, -2))
-            addView(labelDotBM, LinearLayout.LayoutParams(-2, -2))
+            addView(dotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotLN, LinearLayout.LayoutParams(-2, -2))
-            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2))
+            addView(dotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotWR, LinearLayout.LayoutParams(-2, -2))
-            addView(labelDotWR, LinearLayout.LayoutParams(-2, -2))
+            addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
         }
         // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
         // para pegar la fila de dots al fenTitle.
@@ -754,7 +755,7 @@ class BubbleService : Service() {
         }
 
         btnPrueba = TextView(this).apply {
-            text = "PRUEBA"
+            text = "COLOR"
             typeface = customFont
             setTextColor(COLOR_WHITE)
             textSize = TEXT_SIZE_BTN
@@ -774,7 +775,6 @@ class BubbleService : Service() {
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
         devBar.addView(android.view.View(this), LinearLayout.LayoutParams(dp(BTN_SPACING_DP), 0))
         devBar.addView(btnPrueba, LinearLayout.LayoutParams(-2, -2))
-        col.addView(devBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         // --- BARRA DE ELECCIÓN MANUAL DEL COLOR DEL USUARIO ---
         userColorChoiceBar = LinearLayout(this).apply {
@@ -836,12 +836,17 @@ class BubbleService : Service() {
         }
         panel.addView(scrollView, FrameLayout.LayoutParams(-1, -1))
 
-        val close = ImageView(this).apply {
+        panel.addView(devBar, FrameLayout.LayoutParams(-2, -2).apply {
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+            bottomMargin = dp(2)
+        })
+
+        closeBtn = ImageView(this).apply {
             setImageResource(R.drawable.close)
             setPadding(0, 0, 0, 0)
             setOnClickListener { hidePanel() }
         }
-        panel.addView(close, FrameLayout.LayoutParams(dp(CLOSE_BTN_SIZE_DP), dp(CLOSE_BTN_SIZE_DP)).apply {
+        panel.addView(closeBtn, FrameLayout.LayoutParams(dp(CLOSE_BTN_SIZE_DP), dp(CLOSE_BTN_SIZE_DP)).apply {
             gravity = android.view.Gravity.TOP or android.view.Gravity.END
             topMargin = dp(-2)
             rightMargin = dp(-2)
@@ -1068,6 +1073,9 @@ class BubbleService : Service() {
             // Marco del overlay
             if (this::panelBorderDrawable.isInitialized)
                 panelBorderDrawable.setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
+            // Botón cerrar — teñir el PNG con el color del tema
+            if (this::closeBtn.isInitialized)
+                closeBtn.setColorFilter(accentColor, android.graphics.PorterDuff.Mode.SRC_IN)
             // FEN title
             if (this::fenTitle.isInitialized) fenTitle.setTextColor(accentColor)
             // Debug text
@@ -1669,7 +1677,7 @@ class BubbleService : Service() {
         private const val PANEL_HEIGHT_RATIO   = 0.17f
 
         // --- Tamaños de texto (sp) ---
-        private const val TEXT_SIZE_FEN        = 11f
+        private const val TEXT_SIZE_FEN        = 9f
         private const val TEXT_SIZE_DEBUG      = 13f
         private const val TEXT_SIZE_BTN        = 12f
 
