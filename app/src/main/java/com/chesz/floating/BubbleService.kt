@@ -260,14 +260,12 @@ class BubbleService : Service() {
                     devRunnable = Runnable {
                         isDeveloperMode = true
                         ignoreTouchUntil = System.currentTimeMillis() + DELAY_GOD_TOUCH_IGNORE_MS
-                        updatePermUi() // Destruir boton de permiso instantaneamente
-                        flashBubbleRed() // Feedback visual
+                        updatePermUi()
+                        flashBubbleRed()
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
-                        root.post {
-                            fenTitle.text = "DEBUG MODE"
-                            debugText.text = "" // Consola en silencio
-                        }
+                        clearPanel()
+                        root.post { fenTitle.text = "DEBUG MODE" }
                     }
                     devHandler.postDelayed(devRunnable!!, DELAY_DEV_MODE_MS)
 
@@ -504,7 +502,7 @@ class BubbleService : Service() {
         // ===== INFORMACIÓN LICHESS =====
         lichessContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(35), dp(2), dp(5), 0)
+            setPadding(dp(35), dp(2), dp(33), 0)
             visibility = View.GONE
         }
 
@@ -590,19 +588,19 @@ class BubbleService : Service() {
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
-            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
-            addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
-            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
-            addView(labelDotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.BOTTOM })
+            addView(labelDotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
         }
         // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
         // para pegar la fila de dots al fenTitle.
@@ -827,7 +825,6 @@ class BubbleService : Service() {
             }
             addView(permIcon, FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER))
         }
-        col.addView(permBar, LinearLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply { leftMargin = dp(0); rightMargin = dp(0); bottomMargin = dp(4) })
 
         // Envolver col en ScrollView para contenido largo
         val scrollView = android.widget.ScrollView(this).apply {
@@ -835,6 +832,10 @@ class BubbleService : Service() {
             addView(col)
         }
         panel.addView(scrollView, FrameLayout.LayoutParams(-1, -1))
+
+        panel.addView(permBar, FrameLayout.LayoutParams(-1, dp(PERM_BAR_HEIGHT_DP)).apply {
+            gravity = android.view.Gravity.CENTER
+        })
 
         panel.addView(devBar, FrameLayout.LayoutParams(-2, -2).apply {
             gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
@@ -1231,6 +1232,7 @@ class BubbleService : Service() {
             root.postDelayed({
                 try {
                     val image = reader.acquireLatestImage() ?: run {
+                        if (isDeveloperMode) return@postDelayed
                         root.post {
                             if (this@BubbleService::dotsRow.isInitialized) {
                                 dotsRow.visibility = View.VISIBLE
@@ -1436,6 +1438,7 @@ class BubbleService : Service() {
 
     private fun updateLichessInfo(info: LichessApiClient.LichessInfo) {
         if (!this::lichessContainer.isInitialized) return
+        if (isDeveloperMode) return
 
         when (info.status) {
             LichessApiClient.Status.LOADING -> {
