@@ -184,7 +184,7 @@ class LichessApiClient {
                 val nextMoves = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
                     val movesArray = json.getJSONArray("moves")
                     val topMoves = mutableListOf<String>()
-                    for (i in 0 until minOf(4, movesArray.length())) {
+                    for (i in 0 until minOf(10, movesArray.length())) {
                         val move = movesArray.getJSONObject(i)
                         if (move.has("san")) {
                             topMoves.add(move.getString("san"))
@@ -242,7 +242,7 @@ class LichessApiClient {
                 val nextMoves = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
                     val movesArray = json.getJSONArray("moves")
                     val topMoves = mutableListOf<String>()
-                    for (i in 0 until minOf(5, movesArray.length())) {
+                    for (i in 0 until minOf(10, movesArray.length())) {
                         val move = movesArray.getJSONObject(i)
                         if (move.has("san")) topMoves.add(move.getString("san"))
                     }

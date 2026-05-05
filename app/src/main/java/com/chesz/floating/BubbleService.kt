@@ -551,7 +551,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 4f
+            translationY = dp(3).toFloat()
         }
 
         val labelDotBM = TextView(this).apply {
@@ -561,17 +561,17 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 4f
+            translationY = dp(3).toFloat()
         }
 
         val labelDotFM = TextView(this).apply {
-            text = "FM"
+            text = "LN"
             textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 4f
+            translationY = dp(3).toFloat()
         }
 
         val labelDotWR = TextView(this).apply {
@@ -581,7 +581,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = 4f
+            translationY = dp(3).toFloat()
         }
 
         // Fila de dots (HORIZONTAL) - aparece con el FEN
@@ -651,7 +651,7 @@ class BubbleService : Service() {
 
         val labelFM = TextView(this)
         tvNextMoves = TextView(this)
-        rowNextMoves = createValueRow(labelFM, tvNextMoves, "FM")
+        rowNextMoves = createValueRow(labelFM, tvNextMoves, "LN")
         lichessContainer.addView(rowNextMoves)
 
         val labelWR = TextView(this)
@@ -1422,21 +1422,16 @@ class BubbleService : Service() {
         if (moves.isBlank()) return SpannableString("")
         val tokens = moves.trim().split(" ")
         val sb = StringBuilder()
-        data class Seg(val start: Int, val end: Int, val color: Int)
-        val segs = mutableListOf<Seg>()
-        tokens.forEachIndexed { i, move ->
-            val isOwn = i % 2 == 0
-            val chunk = when (i) {
-                0 -> "[★$move "
-                1 -> "$move] "
-                else -> "$move "
-            }
-            val s = sb.length
-            sb.append(chunk)
-            segs.add(Seg(s, sb.length, if (isOwn) accentColor else 0xFF888888.toInt()))
+        var i = 0
+        while (i < tokens.size) {
+            val first = tokens[i]
+            val second = if (i + 1 < tokens.size) tokens[i + 1] else null
+            if (i == 0) sb.append("★$first") else sb.append(", $first")
+            if (second != null) sb.append(" $second")
+            i += 2
         }
         val span = SpannableString(sb.toString())
-        segs.forEach { span.setSpan(ForegroundColorSpan(it.color), it.start, it.end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE) }
+        span.setSpan(ForegroundColorSpan(accentColor), 0, span.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         return span
     }
 
