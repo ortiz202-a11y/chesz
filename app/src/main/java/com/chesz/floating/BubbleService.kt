@@ -525,7 +525,7 @@ class BubbleService : Service() {
             setPadding(0, 0, dp(4), 0)
         }
 
-        val dotLN = TextView(this).apply {
+        val dotFM = TextView(this).apply {
             text = "●"
             textSize = 28f
             typeface = customFont
@@ -551,7 +551,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = -3f
+            translationY = 3f
         }
 
         val labelDotBM = TextView(this).apply {
@@ -561,17 +561,17 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = -3f
+            translationY = 3f
         }
 
-        val labelDotLN = TextView(this).apply {
-            text = "LN"
+        val labelDotFM = TextView(this).apply {
+            text = "FM"
             textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = -3f
+            translationY = 3f
         }
 
         val labelDotWR = TextView(this).apply {
@@ -581,7 +581,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
             setPadding(dp(2), 0, 0, 0)
-            translationY = -3f
+            translationY = 3f
         }
 
         // Fila de dots (HORIZONTAL) - aparece con el FEN
@@ -599,8 +599,8 @@ class BubbleService : Service() {
             addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(labelDotLN, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(dotFM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(labelDotFM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
@@ -649,9 +649,9 @@ class BubbleService : Service() {
         rowBestMove = createValueRow(labelBM, tvBestMove, "BM")
         lichessContainer.addView(rowBestMove)
 
-        val labelLN = TextView(this)
+        val labelFM = TextView(this)
         tvNextMoves = TextView(this)
-        rowNextMoves = createValueRow(labelLN, tvNextMoves, "LN")
+        rowNextMoves = createValueRow(labelFM, tvNextMoves, "FM")
         lichessContainer.addView(rowNextMoves)
 
         val labelWR = TextView(this)
@@ -877,7 +877,7 @@ class BubbleService : Service() {
 
         applyDot(dotOP, labelDotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
         applyDot(dotBM, labelDotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
-        applyDot(dotLN, labelDotLN, rowNextMoves,     prefs.getBoolean(PREF_LN, true))
+        applyDot(dotFM, labelDotFM, rowNextMoves,     prefs.getBoolean(PREF_FM, true))
         applyDot(dotWR, labelDotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
         fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
@@ -892,8 +892,8 @@ class BubbleService : Service() {
                     if (checkAllInactive()) {
                         // Activar el antiEmpty
                         prefs.edit().putBoolean(antiEmpty, true).apply()
-                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotLN,
-                                if (antiEmpty == PREF_BM) labelDotBM else labelDotLN,
+                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotFM,
+                                if (antiEmpty == PREF_BM) labelDotBM else labelDotFM,
                                 if (antiEmpty == PREF_BM) rowBestMove else rowNextMoves,
                                 true)
                     }
@@ -908,7 +908,7 @@ class BubbleService : Service() {
         dotClick(dotOP, labelDotOP, rowOpeningName,   PREF_OP, true)
         // BM siempre activo - no clickeable
         prefs.edit().putBoolean(PREF_BM, true).apply()
-        dotClick(dotLN, labelDotLN, rowNextMoves,     PREF_LN, true)
+        dotClick(dotFM, labelDotFM, rowNextMoves,     PREF_FM, true)
         dotClick(dotWR, labelDotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
@@ -1418,7 +1418,7 @@ class BubbleService : Service() {
         }.start()
     }
 
-    private fun formatLN(moves: String): SpannableString {
+    private fun formatFM(moves: String): SpannableString {
         if (moves.isBlank()) return SpannableString("")
         val tokens = moves.trim().split(" ")
         val sb = StringBuilder()
@@ -1479,7 +1479,7 @@ class BubbleService : Service() {
 
                 // Line (Next Moves) con formato especial
                 if (!info.nextMoves.isNullOrEmpty()) {
-                    tvNextMoves.text = formatLN(info.nextMoves ?: "")
+                    tvNextMoves.text = formatFM(info.nextMoves ?: "")
                     rowNextMoves.visibility = View.VISIBLE
                 } else {
                     rowNextMoves.visibility = View.GONE
@@ -1733,7 +1733,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val PREFS_NAME = "chesz_overlay_prefs"
         private const val PREF_OP = "toggle_op"
         private const val PREF_BM = "toggle_bm"
-        private const val PREF_LN = "toggle_ln"
+        private const val PREF_FM = "toggle_fm"
         private const val PREF_WR = "toggle_wr"
     }
 

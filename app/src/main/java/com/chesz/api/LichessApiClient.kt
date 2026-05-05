@@ -4,7 +4,6 @@ import com.chesz.engine.StockfishEngine
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 /**
  * Cliente para las APIs de Lichess.
@@ -145,8 +144,8 @@ class LichessApiClient {
      * Retorna: (openingName, nextMoves)
      */
     private fun queryOpening(fen: String): Pair<String?, String?> {
-        val encodedFen = URLEncoder.encode(fen, "UTF-8")
-        val url = URL("https://explorer.lichess.ovh/master?fen=$encodedFen")
+        val encodedFen = fen.replace(" ", "%20")
+        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen")
 
         return try {
             val connection = url.openConnection() as HttpURLConnection
@@ -205,11 +204,12 @@ class LichessApiClient {
     }
 
     /**
-     * Consulta Tablebase de Lichess.
+     * Consulta Explorer de Lichess para el modo FM.
+     * Extrae los primeros 5 movimientos del array "moves" como pares (e.g. "e4 e5 d4 d5 Nf3").
      */
     private fun queryTablebase(fen: String): LichessInfo {
-        val encodedFen = URLEncoder.encode(fen, "UTF-8")
-        val url = URL("https://tablebase.lichess.ovh/standard?fen=$encodedFen")
+        val encodedFen = fen.replace(" ", "%20")
+        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen")
 
         return try {
             val connection = url.openConnection() as HttpURLConnection
@@ -227,7 +227,7 @@ class LichessApiClient {
             context?.getExternalFilesDir(null)?.let { logDir ->
                 try {
                     val logFile = java.io.File(logDir, "logfen_last.txt")
-                    val logEntry = "\n=== TABLEBASE ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
+                    val logEntry = "\n=== FM EXPLORER ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
                     logFile.appendText(logEntry)
                 } catch (e: Exception) {
                     // Ignorar errores de log
@@ -237,32 +237,27 @@ class LichessApiClient {
             if (responseCode == 200) {
                 val json = JSONObject(response)
 
-                val category = json.optString("category", null)
-                val dtz = json.optInt("dtz", 0)
-                val bestMove = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
-                    json.getJSONArray("moves").getJSONObject(0).optString("san", null)
+                val nextMoves = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
+                    val movesArray = json.getJSONArray("moves")
+                    val topMoves = mutableListOf<String>()
+                    for (i in 0 until minOf(5, movesArray.length())) {
+                        val move = movesArray.getJSONObject(i)
+                        if (move.has("san")) topMoves.add(move.getString("san"))
+                    }
+                    if (topMoves.isNotEmpty()) topMoves.joinToString(" ") else null
                 } else {
                     null
                 }
-
-                val tbResult = when (category) {
-                    "win" -> "Gana"
-                    "loss" -> "Pierde"
-                    "draw" -> "Tablas"
-                    else -> null
-                }
-
-                val mateIn = if (category == "win" && dtz > 0) dtz else null
 
                 LichessInfo(
                     status = Status.SUCCESS,
                     pieceCount = 0,
                     openingName = null,
-                    nextMoves = null,
-                    bestMove = bestMove,
+                    nextMoves = nextMoves,
+                    bestMove = null,
                     counterAttack = null,
-                    tbResult = tbResult,
-                    mateIn = mateIn,
+                    tbResult = null,
+                    mateIn = null,
                     mateText = null,
                 )
             } else {
