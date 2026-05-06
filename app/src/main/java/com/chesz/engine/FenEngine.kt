@@ -837,7 +837,13 @@ class FenEngine(private val context: Context) {
             if (empty > 0) sb.append(empty)
             sb.toString()
         }
-        return rows.joinToString("/") + " w - - 0 1"
+        val castlingSb = StringBuilder()
+        if (grid[7][4] == 'K' && grid[7][7] == 'R') castlingSb.append('K')
+        if (grid[7][4] == 'K' && grid[7][0] == 'R') castlingSb.append('Q')
+        if (grid[0][4] == 'k' && grid[0][7] == 'r') castlingSb.append('k')
+        if (grid[0][4] == 'k' && grid[0][0] == 'r') castlingSb.append('q')
+        val castling = if (castlingSb.isEmpty()) "-" else castlingSb.toString()
+        return rows.joinToString("/") + " w $castling - 0 1"
     }
 
     // ─────────────────────────────────────────────
