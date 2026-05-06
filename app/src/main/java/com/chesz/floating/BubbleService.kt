@@ -565,7 +565,7 @@ class BubbleService : Service() {
         }
 
         val labelDotNM = TextView(this).apply {
-            text = "LN"
+            text = "NM"
             textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
@@ -751,6 +751,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_WHITE)
             textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
+            isFocusable = false
             background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(COLOR_ORANGE_BG)
                 setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
@@ -766,6 +767,7 @@ class BubbleService : Service() {
             setTextColor(COLOR_WHITE)
             textSize = TEXT_SIZE_BTN
             gravity = android.view.Gravity.CENTER
+            isFocusable = false
             background = android.graphics.drawable.GradientDrawable().apply {
                 setColor(COLOR_ORANGE_BG)
                 setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
@@ -1615,23 +1617,14 @@ class BubbleService : Service() {
                 root.post {
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
                     if (this::btnBench.isInitialized) {
-                        if (pctTotal < 100) {
-                            btnBench.text = "ERROR -FIX ENGINE"
-                            btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                                setColor(COLOR_NEON_RED_BG)
-                                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_NEON_RED_STROKE)
-                                cornerRadius = 0f
-                            }
-                        } else {
-                            btnBench.text = "ENGINE OK 100%"
-                            btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                                setColor(COLOR_ORANGE_BG)
-                                setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
-                                cornerRadius = 0f
-                            }
-                        }
+                        btnBench.text = if (pctTotal < 100) "ERROR -FIX ENGINE" else "ENGINE OK 100%"
                         btnBench.textSize = 13f
                         btnBench.setTextColor(COLOR_WHITE)
+                        btnBench.background = android.graphics.drawable.GradientDrawable().apply {
+                            setColor(COLOR_ORANGE_BG)
+                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
+                            cornerRadius = dp(BTN_CORNER_DP).toFloat()
+                        }
                         btnBench.setOnClickListener { } // Sin acción
                         btnBench.visibility = android.view.View.VISIBLE
                     }
@@ -1650,11 +1643,11 @@ class BubbleService : Service() {
                         btnBench.text = "TEST FEN"
                         btnBench.textSize = TEXT_SIZE_BTN
                         btnBench.background = android.graphics.drawable.GradientDrawable().apply {
-                            setColor(COLOR_BLACK)
-                            setStroke(dp(BTN_STROKE_DP), COLOR_GREEN)
+                            setColor(COLOR_ORANGE_BG)
+                            setStroke(dp(BTN_STROKE_ALERT_DP), COLOR_ORANGE_STROKE)
                             cornerRadius = dp(BTN_CORNER_DP).toFloat()
                         }
-                        btnBench.setTextColor(COLOR_GREEN)
+                        btnBench.setTextColor(COLOR_WHITE)
                         btnBench.setOnClickListener { runBenchmark() }
                     }
                     if (!abortBenchmark) {
