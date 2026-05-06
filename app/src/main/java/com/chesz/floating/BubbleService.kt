@@ -525,7 +525,7 @@ class BubbleService : Service() {
             setPadding(0, 0, dp(4), 0)
         }
 
-        val dotFM = TextView(this).apply {
+        val dotNM = TextView(this).apply {
             text = "●"
             textSize = 28f
             typeface = customFont
@@ -564,7 +564,7 @@ class BubbleService : Service() {
             translationY = dp(3).toFloat()
         }
 
-        val labelDotFM = TextView(this).apply {
+        val labelDotNM = TextView(this).apply {
             text = "LN"
             textSize = 13f
             typeface = customFont
@@ -599,8 +599,8 @@ class BubbleService : Service() {
             addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotFM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(labelDotFM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(dotNM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(labelDotNM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
@@ -649,9 +649,9 @@ class BubbleService : Service() {
         rowBestMove = createValueRow(labelBM, tvBestMove, "BM")
         lichessContainer.addView(rowBestMove)
 
-        val labelFM = TextView(this)
+        val labelNM = TextView(this)
         tvNextMoves = TextView(this)
-        rowNextMoves = createValueRow(labelFM, tvNextMoves, "LN")
+        rowNextMoves = createValueRow(labelNM, tvNextMoves, "NM")
         lichessContainer.addView(rowNextMoves)
 
         val labelWR = TextView(this)
@@ -881,7 +881,7 @@ class BubbleService : Service() {
 
         applyDot(dotOP, labelDotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
         applyDot(dotBM, labelDotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
-        applyDot(dotFM, labelDotFM, rowNextMoves,     prefs.getBoolean(PREF_FM, true))
+        applyDot(dotNM, labelDotNM, rowNextMoves,     prefs.getBoolean(PREF_NM, true))
         applyDot(dotWR, labelDotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
         fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
@@ -896,8 +896,8 @@ class BubbleService : Service() {
                     if (checkAllInactive()) {
                         // Activar el antiEmpty
                         prefs.edit().putBoolean(antiEmpty, true).apply()
-                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotFM,
-                                if (antiEmpty == PREF_BM) labelDotBM else labelDotFM,
+                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotNM,
+                                if (antiEmpty == PREF_BM) labelDotBM else labelDotNM,
                                 if (antiEmpty == PREF_BM) rowBestMove else rowNextMoves,
                                 true)
                     }
@@ -912,7 +912,7 @@ class BubbleService : Service() {
         dotClick(dotOP, labelDotOP, rowOpeningName,   PREF_OP, true)
         // BM siempre activo - no clickeable
         prefs.edit().putBoolean(PREF_BM, true).apply()
-        dotClick(dotFM, labelDotFM, rowNextMoves,     PREF_FM, true)
+        dotClick(dotNM, labelDotNM, rowNextMoves,     PREF_NM, true)
         dotClick(dotWR, labelDotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
@@ -1422,8 +1422,13 @@ class BubbleService : Service() {
         }.start()
     }
 
-    private fun formatFM(moves: String): SpannableString {
+    private fun formatNM(moves: String): SpannableString {
         if (moves.isBlank()) return SpannableString("")
+        if (moves.contains('\u0028')) {
+            val span = SpannableString("★$moves")
+            span.setSpan(ForegroundColorSpan(accentColor), 0, span.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            return span
+        }
         val tokens = moves.trim().split(" ")
         val sb = StringBuilder()
         var i = 0
@@ -1460,7 +1465,7 @@ class BubbleService : Service() {
                 // Actualizar campos
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 val opEnabled = prefs.getBoolean(PREF_OP, true)
-                val fmEnabled = prefs.getBoolean(PREF_FM, true)
+                val nmEnabled = prefs.getBoolean(PREF_NM, true)
                 val wrEnabled = prefs.getBoolean(PREF_WR, false)
 
                 // Opening Name
@@ -1482,8 +1487,8 @@ class BubbleService : Service() {
                 }
 
                 // Line (Next Moves) con formato especial
-                if (fmEnabled && !info.nextMoves.isNullOrEmpty()) {
-                    tvNextMoves.text = formatFM(info.nextMoves ?: "")
+                if (nmEnabled && !info.nextMoves.isNullOrEmpty()) {
+                    tvNextMoves.text = formatNM(info.nextMoves ?: "")
                     rowNextMoves.visibility = View.VISIBLE
                 } else {
                     rowNextMoves.visibility = View.GONE
@@ -1735,7 +1740,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         private const val PREFS_NAME = "chesz_overlay_prefs"
         private const val PREF_OP = "toggle_op"
         private const val PREF_BM = "toggle_bm"
-        private const val PREF_FM = "toggle_fm"
+        private const val PREF_NM = "toggle_nm"
         private const val PREF_WR = "toggle_wr"
     }
 

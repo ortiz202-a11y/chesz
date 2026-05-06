@@ -140,68 +140,15 @@ class LichessApiClient {
     }
 
     /**
-     * Consulta Opening Explorer de Lichess.
-     * Retorna: (openingName, nextMoves)
+     * Consulta apertura desde la base local (offline).
+     * Retorna: (openingName, variantsString)
      */
     private fun queryOpening(fen: String): Pair<String?, String?> {
-        val encodedFen = fen.replace(" ", "%20")
-        val url = URL("https://explorer.lichess.ovh/lichess?fen=$encodedFen&speeds=ultraBullet,bullet,blitz,rapid,classical,correspondence&ratings=1000,1200,1400,1600,1800,2000,2200,2500&topGames=0&recentGames=0")
-
-        return try {
-            val connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.setRequestProperty("User-Agent", "Chesz-App/1.0")
-
-            val responseCode = connection.responseCode
-            val response = if (responseCode == 200) {
-                connection.inputStream.bufferedReader().readText()
-            } else {
-                connection.errorStream?.bufferedReader()?.readText() ?: ""
-            }
-
-            context?.getExternalFilesDir(null)?.let { logDir ->
-                try {
-                    val logFile = java.io.File(logDir, "logfen_last.txt")
-                    val logEntry = "\n=== OPENING EXPLORER ===\nFEN: $fen\nHTTP $responseCode\n$response\n"
-                    logFile.appendText(logEntry)
-                } catch (e: Exception) {
-                    // Ignorar errores de log
-                }
-            }
-
-            if (responseCode == 200) {
-                val json = JSONObject(response)
-
-                val openingName = if (json.has("opening")) {
-                    val opening = json.getJSONObject("opening")
-                    opening.optString("name", null)
-                } else {
-                    null
-                }
-
-                val nextMoves = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
-                    val movesArray = json.getJSONArray("moves")
-                    val topMoves = mutableListOf<String>()
-                    for (i in 0 until minOf(10, movesArray.length())) {
-                        val move = movesArray.getJSONObject(i)
-                        if (move.has("san")) {
-                            topMoves.add(move.getString("san"))
-                        }
-                    }
-                    if (topMoves.isNotEmpty()) topMoves.joinToString(" ") else null
-                } else {
-                    null
-                }
-
-                Pair(openingName, nextMoves)
-            } else {
-                Pair(null, null)
-            }
-        } catch (e: Exception) {
-            Pair(null, null)
-        }
+        val ctx = context ?: return Pair(null, null)
+        OpeningBook.ensureLoaded(ctx)
+        val openingName = OpeningBook.lookup(fen)
+        val nextMoves = OpeningBook.variants(fen, max = 5)
+        return Pair(openingName, nextMoves)
     }
 
     /**
