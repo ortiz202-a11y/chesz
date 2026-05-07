@@ -502,7 +502,7 @@ class BubbleService : Service() {
         // ===== INFORMACIÓN LICHESS =====
         lichessContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(35), dp(2), dp(33), 0)
+            setPadding(dp(1), dp(2), dp(1), 0)
             visibility = View.GONE
         }
 
@@ -642,6 +642,8 @@ class BubbleService : Service() {
         val labelOP = TextView(this)
         tvOpeningName = TextView(this)
         rowOpeningName = createValueRow(labelOP, tvOpeningName, "OP")
+        tvOpeningName.maxLines = 2
+        tvOpeningName.isSingleLine = false
         lichessContainer.addView(rowOpeningName)
 
         val labelBM = TextView(this)
@@ -652,12 +654,14 @@ class BubbleService : Service() {
         val labelNM = TextView(this)
         tvNextMoves = TextView(this)
         rowNextMoves = createValueRow(labelNM, tvNextMoves, "NM")
-        lichessContainer.addView(rowNextMoves)
+        tvNextMoves.maxLines = 3
+        tvNextMoves.isSingleLine = false
+        lichessContainer.addView(rowNextMoves, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
 
         val labelWR = TextView(this)
         tvCounterAttack = TextView(this)
         rowCounterAttack = createValueRow(labelWR, tvCounterAttack, "WR")
-        lichessContainer.addView(rowCounterAttack)
+        lichessContainer.addView(rowCounterAttack, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
 
         // TB y Mate sin toggles
         tvTablebaseResult = TextView(this)
@@ -686,7 +690,7 @@ class BubbleService : Service() {
             }
             addView(tvTablebaseResult, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        lichessContainer.addView(rowTablebaseResult)
+        lichessContainer.addView(rowTablebaseResult, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
 
         tvMateIn = TextView(this)
         rowMateIn = LinearLayout(this).apply {
@@ -714,7 +718,7 @@ class BubbleService : Service() {
             }
             addView(tvMateIn, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        lichessContainer.addView(rowMateIn)
+        lichessContainer.addView(rowMateIn, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
 
         col.addView(lichessContainer, LinearLayout.LayoutParams(-1, -2))
 
@@ -1106,11 +1110,6 @@ class BubbleService : Service() {
                     // dot activo "●" → accentColor, inactivo "○" → gris, label → sigue al dot anterior
                     child.setTextColor(if (child.text == "●") accentColor else if (child.text == "○") 0xFF888888.toInt() else accentColor)
                 }
-            }
-            // btnBench
-            if (this::btnBench.isInitialized) {
-                btnBench.setTextColor(accentColor)
-                (btnBench.background as? android.graphics.drawable.GradientDrawable)?.setStroke(dp(BTN_STROKE_DP), accentColor)
             }
             // Botones de color del usuario
             if (this::btnUserWhite.isInitialized) {
