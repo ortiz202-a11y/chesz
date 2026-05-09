@@ -21,6 +21,10 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.text.style.LeadingMarginSpan
+import android.text.Spannable
 import android.content.Context
 import com.chesz.R
 import com.chesz.api.LichessApiClient
@@ -109,24 +113,18 @@ class BubbleService : Service() {
 
     // ===== Lichess UI refs =====
     private lateinit var lichessContainer: LinearLayout
-    private lateinit var tvOM: TextView
+    private lateinit var tvOpeningName: TextView
+    private lateinit var tvNextMoves: TextView
     private lateinit var tvBestMove: TextView
     private lateinit var tvCounterAttack: TextView
     private lateinit var tvTablebaseResult: TextView
     private lateinit var tvMateIn: TextView
-    private lateinit var rowOM: LinearLayout
-    private lateinit var rowMR: LinearLayout
+    private lateinit var rowOpeningName: LinearLayout
+    private lateinit var rowNextMoves: LinearLayout
     private lateinit var rowBestMove: LinearLayout
     private lateinit var rowCounterAttack: LinearLayout
     private lateinit var rowTablebaseResult: LinearLayout
     private lateinit var rowMateIn: LinearLayout
-    private lateinit var mrFavoritesHeader: TextView
-    private lateinit var mrFavoritesList: LinearLayout
-    private lateinit var mrVariantsList: LinearLayout
-    private var mrFavoritesExpanded: Boolean = false
-    private var activeVariant: com.chesz.api.OpeningBook.VariantItem? = null
-    private var pendingDeleteRow: View? = null
-    @Volatile private var currentQueryId: Long = 0L
     private lateinit var closeBtn: ImageView
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -510,13 +508,13 @@ class BubbleService : Service() {
         }
 
         // Crear dots (siempre visibles)
-        val dotOM = TextView(this).apply {
+        val dotOP = TextView(this).apply {
             text = "●"
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(0, 0, dp(2), 0)
+            setPadding(0, 0, dp(4), 0)
         }
 
         val dotBM = TextView(this).apply {
@@ -525,16 +523,16 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(0, 0, dp(2), 0)
+            setPadding(0, 0, dp(4), 0)
         }
 
-        val dotMR = TextView(this).apply {
+        val dotNM = TextView(this).apply {
             text = "●"
             textSize = 28f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(0, 0, dp(2), 0)
+            setPadding(0, 0, dp(4), 0)
         }
 
         val dotWR = TextView(this).apply {
@@ -543,17 +541,17 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(0, 0, dp(2), 0)
+            setPadding(0, 0, dp(4), 0)
         }
 
         // Labels para los dots
-        val labelDotOM = TextView(this).apply {
-            text = "OM"
+        val labelDotOP = TextView(this).apply {
+            text = "OP"
             textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(dp(1), 0, 0, 0)
+            setPadding(dp(2), 0, 0, 0)
             translationY = dp(3).toFloat()
         }
 
@@ -563,17 +561,17 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(dp(1), 0, 0, 0)
+            setPadding(dp(2), 0, 0, 0)
             translationY = dp(3).toFloat()
         }
 
-        val labelDotMR = TextView(this).apply {
-            text = "MR"
+        val labelDotNM = TextView(this).apply {
+            text = "NM"
             textSize = 13f
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(dp(1), 0, 0, 0)
+            setPadding(dp(2), 0, 0, 0)
             translationY = dp(3).toFloat()
         }
 
@@ -583,7 +581,7 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            setPadding(dp(1), 0, 0, 0)
+            setPadding(dp(2), 0, 0, 0)
             translationY = dp(3).toFloat()
         }
 
@@ -594,32 +592,20 @@ class BubbleService : Service() {
             setPadding(dp(5), 0, dp(5), dp(2))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
-            addView(dotOM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(labelDotOM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(3), 0) })
+            addView(dotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(labelDotOP, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotBM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(3), 0) })
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
-            addView(dotMR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(labelDotMR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(3), 0) })
+            addView(dotNM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(labelDotNM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
+            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(6), 0) })
 
             addView(dotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
             addView(labelDotWR, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
-
-            // Separador 7dp + toggle de accent color (no es parte de dots/labels).
-            addView(View(context).apply { layoutParams = LinearLayout.LayoutParams(dp(7), 0) })
-            val accentToggle = TextView(context).apply {
-                text = "◐"
-                textSize = 28f
-                typeface = customFont
-                setTextColor(COLOR_GREEN)
-                includeFontPadding = false
-                setOnClickListener { toggleAccentColor() }
-            }
-            addView(accentToggle, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
         }
         // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
         // para pegar la fila de dots al fenTitle.
@@ -654,56 +640,27 @@ class BubbleService : Service() {
         }
 
         // Crear filas de valores
-        val labelOM = TextView(this)
-        tvOM = TextView(this)
-        rowOM = createValueRow(labelOM, tvOM, "OM")
-        tvOM.maxLines = 2
-        tvOM.isSingleLine = false
-        lichessContainer.addView(rowOM)
+        val labelOP = TextView(this)
+        tvOpeningName = TextView(this)
+        rowOpeningName = createValueRow(labelOP, tvOpeningName, "OP")
+        tvOpeningName.maxLines = 2
+        tvOpeningName.isSingleLine = false
+        lichessContainer.addView(rowOpeningName)
 
         val labelBM = TextView(this)
         tvBestMove = TextView(this)
         rowBestMove = createValueRow(labelBM, tvBestMove, "BM")
         lichessContainer.addView(rowBestMove)
 
-        val labelMR = TextView(this).apply {
-            text = "MR"
-            textSize = 14f
-            typeface = customFont
-            setTextColor(COLOR_GREEN)
-            setPadding(0, 0, dp(3), 0)
-        }
-        mrFavoritesHeader = TextView(this).apply {
-            text = "[★] Favorites"
-            textSize = 14f
-            typeface = customFont
-            setTextColor(COLOR_GREEN)
-            includeFontPadding = false
-            setOnClickListener {
-                mrFavoritesExpanded = !mrFavoritesExpanded
-                mrFavoritesList.visibility = if (mrFavoritesExpanded) View.VISIBLE else View.GONE
-            }
-        }
-        mrFavoritesList = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = View.GONE
-        }
-        mrVariantsList = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        val mrContentBlock = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(mrFavoritesHeader, LinearLayout.LayoutParams(-1, -2))
-            addView(mrFavoritesList, LinearLayout.LayoutParams(-1, -2))
-            addView(mrVariantsList, LinearLayout.LayoutParams(-1, -2))
-        }
-        rowMR = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.TOP
-            addView(labelMR, LinearLayout.LayoutParams(-2, -2))
-            addView(mrContentBlock, LinearLayout.LayoutParams(0, -2, 1f))
-        }
-        lichessContainer.addView(rowMR, LinearLayout.LayoutParams(-1, -2))
+        val labelNM = TextView(this)
+        tvNextMoves = TextView(this)
+        rowNextMoves = createValueRow(labelNM, tvNextMoves, "NM")
+        // NM label goes inline in the text; hide the separate label widget
+        labelNM.text = ""
+        labelNM.setPadding(0, 0, 0, 0)
+        tvNextMoves.maxLines = 5
+        tvNextMoves.isSingleLine = false
+        lichessContainer.addView(rowNextMoves, LinearLayout.LayoutParams(-1, -2))
 
         val labelWR = TextView(this)
         tvCounterAttack = TextView(this)
@@ -825,7 +782,10 @@ class BubbleService : Service() {
                 cornerRadius = dp(BTN_CORNER_DP).toFloat()
             }
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            setOnClickListener { toggleAccentColor() }
+            setOnClickListener {
+                accentColor = if (accentColor == COLOR_GREEN) 0xFFFFB000.toInt() else COLOR_GREEN
+                applyAccentColor()
+            }
         }
 
         devBar.addView(btnBench, LinearLayout.LayoutParams(-2, -2))
@@ -929,9 +889,9 @@ class BubbleService : Service() {
             return false
         }
 
-        applyDot(dotOM, labelDotOM, rowOM,   prefs.getBoolean(PREF_OM, true))
+        applyDot(dotOP, labelDotOP, rowOpeningName,   prefs.getBoolean(PREF_OP, true))
         applyDot(dotBM, labelDotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
-        applyDot(dotMR, labelDotMR, rowMR,     prefs.getBoolean(PREF_MR, true))
+        applyDot(dotNM, labelDotNM, rowNextMoves,     prefs.getBoolean(PREF_NM, true))
         applyDot(dotWR, labelDotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
         fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
@@ -946,9 +906,9 @@ class BubbleService : Service() {
                     if (checkAllInactive()) {
                         // Activar el antiEmpty
                         prefs.edit().putBoolean(antiEmpty, true).apply()
-                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotMR,
-                                if (antiEmpty == PREF_BM) labelDotBM else labelDotMR,
-                                if (antiEmpty == PREF_BM) rowBestMove else rowMR,
+                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotNM,
+                                if (antiEmpty == PREF_BM) labelDotBM else labelDotNM,
+                                if (antiEmpty == PREF_BM) rowBestMove else rowNextMoves,
                                 true)
                     }
                 } else {
@@ -959,10 +919,10 @@ class BubbleService : Service() {
             }
         }
 
-        dotClick(dotOM, labelDotOM, rowOM,   PREF_OM, true)
+        dotClick(dotOP, labelDotOP, rowOpeningName,   PREF_OP, true)
         // BM siempre activo - no clickeable
         prefs.edit().putBoolean(PREF_BM, true).apply()
-        dotClick(dotMR, labelDotMR, rowMR,     PREF_MR, true)
+        dotClick(dotNM, labelDotNM, rowNextMoves,     PREF_NM, true)
         dotClick(dotWR, labelDotWR, rowCounterAttack, PREF_WR, false)
 
         return panel
@@ -1127,11 +1087,6 @@ class BubbleService : Service() {
         }
     }
 
-    private fun toggleAccentColor() {
-        accentColor = if (accentColor == COLOR_GREEN) 0xFFFFB000.toInt() else COLOR_GREEN
-        applyAccentColor()
-    }
-
     private fun applyAccentColor() {
         root.post {
             // Marco del overlay
@@ -1145,24 +1100,11 @@ class BubbleService : Service() {
             // Debug text
             if (this::debugText.isInitialized) debugText.setTextColor(accentColor)
             // Labels e valores de filas (child 0 = label, child 1 = valor)
-            listOf(rowOM, rowBestMove, rowMR, rowCounterAttack,
+            listOf(rowOpeningName, rowBestMove, rowNextMoves, rowCounterAttack,
                    rowTablebaseResult, rowMateIn).forEach { row ->
                 if (this::lichessContainer.isInitialized) {
                     (row.getChildAt(0) as? TextView)?.setTextColor(accentColor)
                     (row.getChildAt(1) as? TextView)?.setTextColor(accentColor)
-                }
-            }
-            // MR sub-vistas (header + items): el child 1 del rowMR es un
-            // contenedor vertical, no un TextView, así que recoloreamos aparte.
-            if (this::mrFavoritesHeader.isInitialized) mrFavoritesHeader.setTextColor(accentColor)
-            if (this::mrFavoritesList.isInitialized) {
-                for (i in 0 until mrFavoritesList.childCount) {
-                    (mrFavoritesList.getChildAt(i) as? TextView)?.setTextColor(accentColor)
-                }
-            }
-            if (this::mrVariantsList.isInitialized) {
-                for (i in 0 until mrVariantsList.childCount) {
-                    (mrVariantsList.getChildAt(i) as? TextView)?.setTextColor(accentColor)
                 }
             }
             // Dots y sus labels (pattern: dot,label,spacer, dot,label,spacer, ...)
@@ -1232,18 +1174,16 @@ class BubbleService : Service() {
             }
 
             // Limpiar textos individuales por si acaso
-            if (this::tvOM.isInitialized) tvOM.text = ""
-            if (this::mrVariantsList.isInitialized) mrVariantsList.removeAllViews()
-            if (this::mrFavoritesList.isInitialized) mrFavoritesList.removeAllViews()
-            if (this::mrFavoritesHeader.isInitialized) mrFavoritesHeader.text = "[★] Favorites"
+            if (this::tvOpeningName.isInitialized) tvOpeningName.text = ""
+            if (this::tvNextMoves.isInitialized) tvNextMoves.text = ""
             if (this::tvBestMove.isInitialized) tvBestMove.text = ""
             if (this::tvCounterAttack.isInitialized) tvCounterAttack.text = ""
             if (this::tvTablebaseResult.isInitialized) tvTablebaseResult.text = ""
             if (this::tvMateIn.isInitialized) tvMateIn.text = ""
 
             // Ocultar todas las filas
-            if (this::rowOM.isInitialized) rowOM.visibility = View.GONE
-            if (this::rowMR.isInitialized) rowMR.visibility = View.GONE
+            if (this::rowOpeningName.isInitialized) rowOpeningName.visibility = View.GONE
+            if (this::rowNextMoves.isInitialized) rowNextMoves.visibility = View.GONE
             if (this::rowBestMove.isInitialized) rowBestMove.visibility = View.GONE
             if (this::rowCounterAttack.isInitialized) rowCounterAttack.visibility = View.GONE
             if (this::rowTablebaseResult.isInitialized) rowTablebaseResult.visibility = View.GONE
@@ -1316,7 +1256,7 @@ class BubbleService : Service() {
                             val cacheValido = lastBestMove.isNotEmpty() &&
                                 (System.currentTimeMillis() - bmCacheTime) < BM_CACHE_DURATION_MS
                             if (cacheValido) {
-                                tvBestMove.text = renderBmText(lastBestMove)
+                                tvBestMove.text = lastBestMove
                                 rowBestMove.visibility = View.VISIBLE
                                 updateDebug("")
                             } else {
@@ -1458,11 +1398,8 @@ class BubbleService : Service() {
                     }
 
                     if (esFenValido64(fenFinal)) {
-                        val myId = ++currentQueryId
                         lichessApiClient.queryLichess(fenFinal) { info ->
-                            if (myId != currentQueryId) return@queryLichess
                             root.post {
-                                if (myId != currentQueryId) return@post
                                 updateLichessInfo(info)
                             }
                         }
@@ -1490,6 +1427,60 @@ class BubbleService : Service() {
         }.start()
     }
 
+    private fun formatNM(moves: String): SpannableString {
+        if (moves.isBlank()) return SpannableString("")
+
+        val lines: List<String> = if (moves.contains('(')) {
+            // OpeningBook format: "Queens Gambit (b4), Sicilian (e5)"
+            moves.split(", ").map { item ->
+                item.replace(Regex("\\s*\\(([^)]*)\\)"), "  $1").trim()
+            }
+        } else {
+            // Lichess format: space-separated moves, pair as (move  response)
+            val tokens = moves.trim().split(" ").filter { it.isNotEmpty() }
+            val list = mutableListOf<String>()
+            var i = 0
+            while (i < tokens.size) {
+                val name = tokens[i]
+                val move = if (i + 1 < tokens.size) tokens[i + 1] else null
+                list.add(if (move != null) "$name  $move" else name)
+                i += 2
+            }
+            list
+        }
+
+        if (lines.isEmpty()) return SpannableString("")
+
+        val sb = StringBuilder()
+        sb.append("NM  ${lines[0]}")
+        for (j in 1 until lines.size) sb.append("\n${lines[j]}")
+
+        val text = sb.toString()
+        val span = SpannableString(text)
+        span.setSpan(ForegroundColorSpan(accentColor), 0, span.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        // Lines 3+ (3rd variant onward) get 34dp left margin
+        if (lines.size > 2) {
+            var newlineCount = 0
+            var lineStart = -1
+            for (k in text.indices) {
+                if (text[k] == '\n') {
+                    newlineCount++
+                    if (newlineCount == 2) { lineStart = k + 1; break }
+                }
+            }
+            if (lineStart >= 0) {
+                span.setSpan(
+                    LeadingMarginSpan.Standard(dp(34)),
+                    lineStart, span.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
+        return span
+    }
+
     private fun updateLichessInfo(info: LichessApiClient.LichessInfo) {
         if (!this::lichessContainer.isInitialized) return
         if (isDeveloperMode) return
@@ -1510,42 +1501,34 @@ class BubbleService : Service() {
 
                 // Actualizar campos
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val omEnabled = prefs.getBoolean(PREF_OM, true)
-                val mrEnabled = prefs.getBoolean(PREF_MR, true)
+                val opEnabled = prefs.getBoolean(PREF_OP, true)
+                val nmEnabled = prefs.getBoolean(PREF_NM, true)
                 val wrEnabled = prefs.getBoolean(PREF_WR, false)
 
-                // OM (Opponent Move) — [∆] cuando FEN fuera del libro,
-                // oculto en posición inicial (turno 0 dormido).
-                if (omEnabled) {
-                    val curFen = lastFen
-                    if (curFen != null && isInitialPosition(curFen)) {
-                        rowOM.visibility = View.GONE
-                    } else {
-                        tvOM.text = info.openingName ?: "[∆]"
-                        rowOM.visibility = View.VISIBLE
-                    }
+                // Opening Name
+                if (opEnabled && !info.openingName.isNullOrEmpty()) {
+                    tvOpeningName.text = info.openingName
+                    rowOpeningName.visibility = View.VISIBLE
                 } else {
-                    rowOM.visibility = View.GONE
+                    rowOpeningName.visibility = View.GONE
                 }
 
                 // Best Move
                 if (!info.bestMove.isNullOrEmpty()) {
                     lastBestMove = info.bestMove!!
                     bmCacheTime = System.currentTimeMillis()
-                    tvBestMove.text = renderBmText(info.bestMove!!)
+                    tvBestMove.text = info.bestMove
                     rowBestMove.visibility = View.VISIBLE
                 } else {
                     rowBestMove.visibility = View.GONE
                 }
 
-                // MR (Random Variants + Favorites sub-section).
-                // El contenido (lista, [∆] o dormido) lo decide renderMrBlock.
-                if (mrEnabled) {
-                    val mrFen = lastFen
-                    if (mrFen != null) renderMrBlock(mrFen)
-                    rowMR.visibility = View.VISIBLE
+                // Line (Next Moves) con formato especial
+                if (nmEnabled && !info.nextMoves.isNullOrEmpty()) {
+                    tvNextMoves.text = formatNM(info.nextMoves ?: "")
+                    rowNextMoves.visibility = View.VISIBLE
                 } else {
-                    rowMR.visibility = View.GONE
+                    rowNextMoves.visibility = View.GONE
                 }
 
                 // Win Rate (Counter Attack)
@@ -1585,178 +1568,6 @@ class BubbleService : Service() {
                 } else {
                     rowMateIn.visibility = View.GONE
                 }
-            }
-        }
-    }
-
-    private fun shortName(name: String): String =
-        if (name.contains(":")) name.substringAfterLast(":").trim() else name
-
-    private fun renderBmText(motorMove: String): String {
-        val active = activeVariant ?: return motorMove
-        return if (motorMove == active.move) motorMove
-               else "${motorMove}  ★${active.move}"
-    }
-
-    private fun renderMrBlock(fen: String) {
-        if (!this::mrVariantsList.isInitialized) return
-        com.chesz.api.OpeningBook.ensureLoaded(this)
-        FavoritesStore.ensureLoaded(this)
-
-        // Re-render purga cualquier confirmación de delete abierta.
-        pendingDeleteRow = null
-
-        val isInitial = isInitialPosition(fen)
-        val inBook = !isInitial && com.chesz.api.OpeningBook.lookup(fen) != null
-        // Posición inicial o fuera de libro → la ★ se cae sola.
-        if (isInitial || !inBook) activeVariant = null
-
-        val favs = FavoritesStore.forFen(fen)
-        mrFavoritesHeader.text = if (favs.isNotEmpty()) "★ Favorites" else "[★] Favorites"
-        mrFavoritesList.removeAllViews()
-        favs.take(10).forEach { fav ->
-            mrFavoritesList.addView(makeFavoriteItemView(fav))
-        }
-        mrFavoritesList.visibility =
-            if (mrFavoritesExpanded && favs.isNotEmpty()) View.VISIBLE else View.GONE
-
-        mrVariantsList.removeAllViews()
-        when {
-            isInitial -> {
-                // dormido — sin items ni [∆]
-            }
-            !inBook -> {
-                mrVariantsList.addView(makeOutOfBookView())
-            }
-            else -> {
-                // Con variante activa: subvariantes del ancestro. Si no hay match
-                // para este FEN dentro del subárbol, fallback a aleatoria pero
-                // la ★ se mantiene (sigues "en" la apertura conceptualmente).
-                val active = activeVariant
-                val variants: List<com.chesz.api.OpeningBook.VariantItem> = if (active != null) {
-                    val subs = com.chesz.api.OpeningBook.subVariantsOf(fen, active.name, 5)
-                    if (subs.isNotEmpty()) subs
-                    else com.chesz.api.OpeningBook.randomVariants(fen, 5)
-                } else {
-                    com.chesz.api.OpeningBook.randomVariants(fen, 5)
-                }
-                variants.forEach { v ->
-                    mrVariantsList.addView(makeVariantItemView(v, fen))
-                }
-            }
-        }
-    }
-
-    private fun isInitialPosition(fen: String): Boolean {
-        val placement = fen.trim().split(" ").getOrNull(0) ?: return false
-        return placement == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-    }
-
-    private fun makeOutOfBookView(): TextView {
-        return TextView(this).apply {
-            text = "[∆]"
-            textSize = 14f
-            typeface = customFont
-            setTextColor(accentColor)
-            includeFontPadding = false
-        }
-    }
-
-    private fun makeDeleteConfirmRow(fav: FavoritesStore.Favorite): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(20), 0, 0, 0)
-            val q = TextView(context).apply {
-                text = "Delete?"
-                textSize = 12f
-                typeface = customFont
-                setTextColor(accentColor)
-                includeFontPadding = false
-                setPadding(0, 0, dp(8), 0)
-            }
-            val y = TextView(context).apply {
-                text = "Y"
-                textSize = 12f
-                typeface = customFont
-                setTextColor(accentColor)
-                includeFontPadding = false
-                setPadding(0, 0, dp(8), 0)
-                setOnClickListener {
-                    FavoritesStore.remove(this@BubbleService, fav)
-                    pendingDeleteRow = null
-                    lastFen?.let { renderMrBlock(it) }
-                }
-            }
-            val n = TextView(context).apply {
-                text = "N"
-                textSize = 12f
-                typeface = customFont
-                setTextColor(accentColor)
-                includeFontPadding = false
-                setOnClickListener {
-                    pendingDeleteRow?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
-                    pendingDeleteRow = null
-                }
-            }
-            addView(q, LinearLayout.LayoutParams(-2, -2))
-            addView(y, LinearLayout.LayoutParams(-2, -2))
-            addView(n, LinearLayout.LayoutParams(-2, -2))
-        }
-    }
-
-    private fun makeVariantItemView(item: com.chesz.api.OpeningBook.VariantItem, fen: String): TextView {
-        val isFav = FavoritesStore.isFavorite(fen, item.move, item.name)
-        val isActive = activeVariant?.let { it.move == item.move && it.name == item.name } ?: false
-        val activePrefix = if (isActive) "▶ " else ""
-        val starPrefix = if (isFav) "★ " else ""
-        return TextView(this).apply {
-            text = "${activePrefix}${starPrefix}${shortName(item.name)} (${item.move})"
-            textSize = 14f
-            typeface = customFont
-            setTextColor(accentColor)
-            includeFontPadding = false
-            if (isActive) {
-                // Fondo verde tenue: accentColor con alpha 0x20 (~12.5%).
-                setBackgroundColor((accentColor and 0x00FFFFFF) or 0x20000000)
-            }
-            setOnClickListener {
-                activeVariant = item
-                renderMrBlock(fen)
-            }
-            setOnLongClickListener {
-                val fav = FavoritesStore.Favorite(fen, item.move, item.name)
-                FavoritesStore.toggle(this@BubbleService, fav)
-                renderMrBlock(fen)
-                true
-            }
-        }
-    }
-
-    private fun makeFavoriteItemView(fav: FavoritesStore.Favorite): TextView {
-        val isActive = activeVariant?.let { it.move == fav.move && it.name == fav.name } ?: false
-        val activePrefix = if (isActive) "▶ " else ""
-        return TextView(this).apply {
-            text = "${activePrefix}★ ${shortName(fav.name)} (${fav.move})"
-            textSize = 14f
-            typeface = customFont
-            setTextColor(accentColor)
-            includeFontPadding = false
-            if (isActive) {
-                setBackgroundColor((accentColor and 0x00FFFFFF) or 0x20000000)
-            }
-            setOnClickListener {
-                activeVariant = com.chesz.api.OpeningBook.VariantItem(fav.move, fav.name)
-                lastFen?.let { renderMrBlock(it) }
-            }
-            setOnLongClickListener {
-                pendingDeleteRow?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
-                val confirmRow = makeDeleteConfirmRow(fav)
-                pendingDeleteRow = confirmRow
-                val itemIndex = mrFavoritesList.indexOfChild(this)
-                if (itemIndex >= 0) {
-                    mrFavoritesList.addView(confirmRow, itemIndex + 1)
-                }
-                true
             }
         }
     }
@@ -1955,9 +1766,9 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
 
         // --- SharedPreferences ---
         private const val PREFS_NAME = "chesz_overlay_prefs"
-        private const val PREF_OM = "toggle_om"
+        private const val PREF_OP = "toggle_op"
         private const val PREF_BM = "toggle_bm"
-        private const val PREF_MR = "toggle_mr"
+        private const val PREF_NM = "toggle_nm"
         private const val PREF_WR = "toggle_wr"
     }
 

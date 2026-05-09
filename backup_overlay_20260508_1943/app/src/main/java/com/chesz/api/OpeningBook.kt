@@ -6,8 +6,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object OpeningBook {
-    data class VariantItem(val move: String, val name: String)
-
     private var loaded = false
     private val nameByEpd = HashMap<String, String>()
     private var childrenJson: JSONObject? = null
@@ -61,33 +59,5 @@ object OpeningBook {
             }
         }
         return if (items.isNotEmpty()) items.joinToString(", ") else null
-    }
-
-    private fun allChildrenOf(fen: String): List<VariantItem> {
-        if (!loaded) return emptyList()
-        val arr = childrenJson?.optJSONArray(fenToEpd(fen)) ?: return emptyList()
-        val items = ArrayList<VariantItem>(arr.length())
-        for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
-            val move = o.optString("move", "")
-            val name = o.optString("name", "")
-            if (move.isNotEmpty() && name.isNotEmpty()) {
-                items.add(VariantItem(move, name))
-            }
-        }
-        return items
-    }
-
-    fun randomVariants(fen: String, max: Int = 5): List<VariantItem> {
-        val all = allChildrenOf(fen)
-        if (all.isEmpty()) return emptyList()
-        return all.shuffled().take(max)
-    }
-
-    fun subVariantsOf(fen: String, ancestorName: String, max: Int = 5): List<VariantItem> {
-        if (ancestorName.isBlank()) return emptyList()
-        return allChildrenOf(fen)
-            .filter { it.name.startsWith(ancestorName, ignoreCase = true) }
-            .take(max)
     }
 }
