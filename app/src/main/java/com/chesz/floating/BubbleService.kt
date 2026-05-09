@@ -592,7 +592,7 @@ class BubbleService : Service() {
         dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.BOTTOM
-            setPadding(dp(5), 0, dp(5), dp(1))
+            setPadding(dp(5), 0, dp(5), 0)
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
@@ -680,6 +680,7 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
+            translationY = -dp(2).toFloat()
             setOnClickListener {
                 mrFavoritesExpanded = !mrFavoritesExpanded
                 mrFavoritesList.visibility = if (mrFavoritesExpanded) View.VISIBLE else View.GONE
@@ -1632,7 +1633,7 @@ class BubbleService : Service() {
                 // dormido — sin items ni [∆]
             }
             !inBook -> {
-                mrVariantsList.addView(makeOutOfBookView(), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
+                mrVariantsList.addView(makeOutOfBookView(), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(14) })
             }
             else -> {
                 // Con variante activa: subvariantes del ancestro. Si no hay match
@@ -1647,7 +1648,7 @@ class BubbleService : Service() {
                     com.chesz.api.OpeningBook.randomVariants(fen, 5)
                 }
                 variants.forEach { v ->
-                    mrVariantsList.addView(makeVariantItemView(v, fen), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
+                    mrVariantsList.addView(makeVariantItemView(v, fen), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(14) })
                 }
             }
         }
@@ -1674,7 +1675,7 @@ class BubbleService : Service() {
             setPadding(dp(20), 0, 0, 0)
             val q = TextView(context).apply {
                 text = "Delete?"
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(accentColor)
                 includeFontPadding = false
@@ -1682,11 +1683,11 @@ class BubbleService : Service() {
             }
             val y = TextView(context).apply {
                 text = "Y"
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(accentColor)
                 includeFontPadding = false
-                setPadding(0, 0, dp(8), 0)
+                setPadding(0, 0, dp(20), 0)
                 setOnClickListener {
                     FavoritesStore.remove(this@BubbleService, fav)
                     pendingDeleteRow = null
@@ -1695,7 +1696,7 @@ class BubbleService : Service() {
             }
             val n = TextView(context).apply {
                 text = "N"
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(accentColor)
                 includeFontPadding = false

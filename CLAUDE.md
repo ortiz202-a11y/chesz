@@ -30,9 +30,18 @@
 | `get_impact_radius` | Entender el impacto de un cambio |
 | `get_affected_flows` | Ver qué flujos de ejecución se afectan |
 | `query_graph` | Rastrear callers, callees, imports, tests, dependencias |
-| `semantic_search_nodes` | Encontrar funciones/clases por nombre o concepto |
+| `semantic_search_nodes` | Encontrar funciones/clases por **lenguaje natural** (embeddings Gemini activos) |
 | `get_architecture_overview` | Entender la estructura general del proyecto |
 | `refactor_tool` | Planear renombrados, encontrar código muerto |
+
+### 🔍 Búsqueda semántica (lenguaje natural)
+`semantic_search_nodes` usa embeddings de **Gemini** (no sentence-transformers — no compila en Termux).
+- Busca con frases en español: `"mover pieza"`, `"guardar favorito"`, `"notificación flotante"`
+- Si se reconstruye el grafo (`code-review-graph build`), re-embedear con:
+  ```
+  GOOGLE_API_KEY=<key> python3 -c "from code_review_graph.tools.docs import embed_graph; embed_graph()"
+  ```
+- Key configurada en `/data/data/com.termux/files/home/chesz/.mcp.json`
 
 ## 🤖 Agentes y Skills
 Para elegir el mejor sin gastar tokens: lee `~/.claude/INDEX.md`
