@@ -94,6 +94,7 @@ class BubbleService : Service() {
 
     // ===== Color de acento (toggle verde / ámbar IBM 5151) =====
     private var accentColor: Int = 0xFF33FF00.toInt()
+    private lateinit var customFont: android.graphics.Typeface
     private lateinit var panelBorderDrawable: android.graphics.drawable.GradientDrawable
 
     // ===== Panel UI refs =====
@@ -466,7 +467,7 @@ class BubbleService : Service() {
     }
 
             private fun buildPanel(): FrameLayout {
-        val customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
+        customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         panelBorderDrawable = android.graphics.drawable.GradientDrawable().apply {
             setColor(COLOR_PANEL_BG)
             setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
@@ -1157,7 +1158,12 @@ class BubbleService : Service() {
             if (this::mrFavoritesHeader.isInitialized) mrFavoritesHeader.setTextColor(accentColor)
             if (this::mrFavoritesList.isInitialized) {
                 for (i in 0 until mrFavoritesList.childCount) {
-                    (mrFavoritesList.getChildAt(i) as? TextView)?.setTextColor(accentColor)
+                    when (val child = mrFavoritesList.getChildAt(i)) {
+                        is TextView -> child.setTextColor(accentColor)
+                        is android.view.ViewGroup -> for (j in 0 until child.childCount) {
+                            (child.getChildAt(j) as? TextView)?.setTextColor(accentColor)
+                        }
+                    }
                 }
             }
             if (this::mrVariantsList.isInitialized) {
