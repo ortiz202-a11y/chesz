@@ -592,7 +592,7 @@ class BubbleService : Service() {
         dotsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.BOTTOM
-            setPadding(dp(5), 0, dp(5), dp(2))
+            setPadding(dp(5), 0, dp(5), dp(1))
             visibility = View.GONE  // Oculto por defecto, aparece con el FEN
 
             addView(dotOM, LinearLayout.LayoutParams(-2, -2).apply { gravity = android.view.Gravity.CENTER_VERTICAL })
@@ -624,7 +624,7 @@ class BubbleService : Service() {
         }
         // topMargin negativo: compensa el ascender del glifo "●" a 28sp (título es 11sp)
         // para pegar la fila de dots al fenTitle.
-        col.addView(dotsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-10) })
+        col.addView(dotsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-14) })
 
         // Helper para crear filas de valores (sin dot)
         fun createValueRow(label: TextView, textView: TextView, labelText: String): LinearLayout {
@@ -1632,7 +1632,7 @@ class BubbleService : Service() {
                 // dormido — sin items ni [∆]
             }
             !inBook -> {
-                mrVariantsList.addView(makeOutOfBookView())
+                mrVariantsList.addView(makeOutOfBookView(), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
             }
             else -> {
                 // Con variante activa: subvariantes del ancestro. Si no hay match
@@ -1647,7 +1647,7 @@ class BubbleService : Service() {
                     com.chesz.api.OpeningBook.randomVariants(fen, 5)
                 }
                 variants.forEach { v ->
-                    mrVariantsList.addView(makeVariantItemView(v, fen))
+                    mrVariantsList.addView(makeVariantItemView(v, fen), LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
                 }
             }
         }
