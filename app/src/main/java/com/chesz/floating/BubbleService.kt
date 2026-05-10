@@ -38,7 +38,6 @@ class BubbleService : Service() {
     private lateinit var panelRoot: FrameLayout
 
     private var panelShown = false
-    private var panelDyPx: Int = 0
     private var lastFen: String? = null
     private var fenAwaitingUserColor: String? = null
 
@@ -63,7 +62,6 @@ class BubbleService : Service() {
 
     // ===== Modo Dios =====
     private var isDeveloperMode = false
-    private var isHostChecked = false
     private val devHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var devRunnable: Runnable? = null
     private lateinit var devBar: LinearLayout
@@ -450,7 +448,6 @@ class BubbleService : Service() {
         benchmarkThread = null
 
         // Resetear estado
-        isHostChecked = false
         isDeveloperMode = false
         isCapturing = false
         fenTitle.text = ""
@@ -796,12 +793,6 @@ class BubbleService : Service() {
             setPadding(0, dp(5), 0, 0)
         }
         
-        val btnBg = android.graphics.drawable.GradientDrawable().apply {
-            setColor(COLOR_BLACK) // Fondo Negro
-            setStroke(dp(BTN_STROKE_DP), COLOR_GREEN) // Borde Verde
-            cornerRadius = dp(BTN_CORNER_DP).toFloat() // Forma Pastilla
-        }
-
         btnBench = TextView(this).apply {
             text = "TEST FEN"
             typeface = customFont
@@ -930,37 +921,15 @@ class BubbleService : Service() {
             row.visibility = if (active) View.VISIBLE else View.GONE
         }
 
-        fun checkAllInactive(): Boolean {
-            // BM siempre activo → el panel nunca queda sin dots activos
-            return false
-        }
-
         applyDot(dotOM, labelDotOM, rowOM,   prefs.getBoolean(PREF_OM, true))
         applyDot(dotBM, labelDotBM, rowBestMove,      prefs.getBoolean(PREF_BM, true))
         applyDot(dotMR, labelDotMR, rowMR,     prefs.getBoolean(PREF_MR, true))
         applyDot(dotWR, labelDotWR, rowCounterAttack, prefs.getBoolean(PREF_WR, false))
 
-        fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean, antiEmpty: String? = null) {
+        fun dotClick(dot: TextView, label: TextView, row: LinearLayout, key: String, default: Boolean) {
             dot.setOnClickListener {
-                val current = prefs.getBoolean(key, default)
-                val next = !current
-
-                // Si estamos desactivando y quedarían todos inactivos, activar antiEmpty
-                if (!next && antiEmpty != null) {
-                    // Simular el cambio temporalmente para verificar
-                    prefs.edit().putBoolean(key, next).apply()
-                    if (checkAllInactive()) {
-                        // Activar el antiEmpty
-                        prefs.edit().putBoolean(antiEmpty, true).apply()
-                        applyDot(if (antiEmpty == PREF_BM) dotBM else dotMR,
-                                if (antiEmpty == PREF_BM) labelDotBM else labelDotMR,
-                                if (antiEmpty == PREF_BM) rowBestMove else rowMR,
-                                true)
-                    }
-                } else {
-                    prefs.edit().putBoolean(key, next).apply()
-                }
-
+                val next = !prefs.getBoolean(key, default)
+                prefs.edit().putBoolean(key, next).apply()
                 applyDot(dot, label, row, next)
             }
         }
@@ -1937,8 +1906,6 @@ class BubbleService : Service() {
         val COLOR_PANEL_BG      = 0xBF000000.toInt()
         val COLOR_FLASH_RED     = 0xFFFF3333.toInt()
         val COLOR_KILL_RED      = 0xCCFF0000.toInt()
-        val COLOR_NEON_RED_BG   = 0xD9FF0033.toInt()
-        val COLOR_NEON_RED_STROKE = 0xFFFF0033.toInt()
         val COLOR_ORANGE_BG     = 0xD9FF8800.toInt()
         val COLOR_ORANGE_STROKE = 0xFFFFCC00.toInt()
 
@@ -1946,12 +1913,6 @@ class BubbleService : Service() {
         private const val BOARD_X    = 0
         private const val BOARD_Y    = 458
         private const val BOARD_SIZE = 720
-
-        // --- Timeouts de red (ms) ---
-        private const val TIMEOUT_PING_CONNECT   = 4000
-        private const val TIMEOUT_PING_READ      = 6000
-private const val TIMEOUT_BENCH_CONNECT  = 4000
-        private const val TIMEOUT_BENCH_READ     = 8500
 
         // --- Delays (ms) ---
         private const val DELAY_DEV_MODE_MS       = 2000L
@@ -1964,12 +1925,6 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         // --- Misc ---
         private const val KILL_HOVER_SCALE        = 1.40f
         private const val DEBUG_MAX_LINES         = 15
-        private const val BENCH_CONTINUATION_LIMIT = 8
-
-        // --- URLs ---
-        private const val URL_ENGINE_PING    = "https://daxer2-chesz-engine.hf.space/"
-        private const val URL_ENGINE_PREDICT = "https://daxer2-chesz-engine.hf.space/predict"
-        private const val URL_HF_RESTART     = "https://huggingface.co/api/spaces/Daxer2/chesz-engine/restart"
 
         // --- SharedPreferences ---
         private const val PREFS_NAME = "chesz_overlay_prefs"
@@ -2026,5 +1981,4 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
     }
 }
 
-val testUI = "TEXTO MS-DOS CON ESPACIOS          "
 

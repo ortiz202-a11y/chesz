@@ -59,10 +59,7 @@ class FenEngine(private val context: Context) {
     var userColorAmbiguous: Boolean = false
         private set
 
-    // Buffer de log por foto: solo se vuelca a disco si hubo al menos un error o resolveByHeight
     private val logBuffer = StringBuilder()
-    private var logHasError = false
-    private var logHasResolveByHeight = false
 
     // ─────────────────────────────────────────────
     // API pública
@@ -101,8 +98,6 @@ class FenEngine(private val context: Context) {
     fun processBoard(board: Bitmap): String {
         // Reiniciar buffer por cada foto
         logBuffer.clear()
-        logHasError = false
-        logHasResolveByHeight = false
         val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
         logBuffer.append("\n=== FOTO $debugPhotoNum [$ts] ===\n")
 
@@ -144,7 +139,6 @@ class FenEngine(private val context: Context) {
             val origC = if (flipped) BOARD_SQUARES - 1 - 3 else 3
             val (dTop, dMid, dBot) = stripDensities(extractSquare(gray, origR, origC))
             debugLog(">>> [foto=9 finalRow=2 finalCol=3 flip=$flipped origRow=$origR origCol=$origC] densTop=${"%.3f".format(dTop)} densMid=${"%.3f".format(dMid)} densBot=${"%.3f".format(dBot)}")
-            logHasResolveByHeight = true   // forzar volcado al log de disco
         }
 
         // 2ª pasada CON bias solo en filas de peones (1 y 6), ahora que la orientación es conocida
@@ -420,7 +414,6 @@ class FenEngine(private val context: Context) {
         // Tercio superior → alfil; tercio medio o inferior → peón; sin pixel activo → alfil por fallback
         val isBishop = if (topActiveRow == s) true else topActiveRow < third
 
-        logHasResolveByHeight = true
         val resolveReason = when {
             topActiveRow == s -> "CANNY CIEGO → alfil por fallback"
             isBishop          -> "alfil"
@@ -582,9 +575,7 @@ class FenEngine(private val context: Context) {
         logBuffer.append(msg).append('\n')
     }
 
-    /** Como debugLog pero además marca que esta foto tuvo un error → el buffer se volcará a disco. */
     private fun errorLog(msg: String) {
-        logHasError = true
         logBuffer.append(msg).append('\n')
     }
 
@@ -799,15 +790,6 @@ class FenEngine(private val context: Context) {
     // Paso 5: Construir cadena FEN desde la cuadrícula 8×8
     // ─────────────────────────────────────────────
 
-    /** Valida que el FEN tenga exactamente 64 casillas (8 filas × 8 columnas). */
-    private fun isFenValid(fen: String): Boolean {
-        val ranks = fen.split(" ")[0].split("/")
-        if (ranks.size != 8) return false
-        return ranks.all { rank ->
-            rank.sumOf { if (it.isDigit()) it.digitToInt() else 1 } == 8
-        }
-    }
-
     /** Convierte una cadena FEN en un grid 8×8 de caracteres ('.' = vacío). */
     private fun parseFenToGrid(fen: String): Array<CharArray> {
         val grid = Array(BOARD_SQUARES) { CharArray(BOARD_SQUARES) { '.' } }
@@ -862,10 +844,7 @@ class FenEngine(private val context: Context) {
         private const val KING_COLOR_FRACTION   = 0.60f // fracción del rango dinámico para determinar color del rey
         private const val BISHOP_THRESHOLD      = 0.48f // umbral más alto para alfil (evita confusión con peón)
         private const val MIN_SILHOUETTE_DENSITY = 0.03f // densidad mínima de píxeles activos en silueta para considerar que hay pieza
-        private const val BISHOP_GAP_RATIO      = 1.4f  // densTop debe ser al menos 1.4× densMid para ser alfil
-        private const val BISHOP_TOP_MIN_DENSITY = 0.10f // densTop mínima absoluta para activar la regla de alfil
         private const val STRIP_FG_THRESHOLD    = 30    // píxel debe superar el fondo de la casilla en ≥30 para contar en stripDensities
-        private const val AMBIGUOUS_GAP      = 0.10f // diferencia mínima para considerar match no ambiguo
         private const val COORD_CONTRAST_THRESHOLD = 20   // desviación del fondo para contar un píxel como parte del dígito
         private const val COORD_PIXEL_THRESHOLD    = 44   // activos > 44 → "8" (no girado); ≤ 44 → "1" (girado)
         private const val COORD_AMBIGUITY_MARGIN   = 8    // zona de ambigüedad alrededor del umbral → activa fallback por reyes

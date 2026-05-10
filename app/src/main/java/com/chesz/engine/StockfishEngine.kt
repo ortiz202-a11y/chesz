@@ -120,8 +120,6 @@ class StockfishEngine(private val context: Context) {
         }
     }
 
-    fun lastOutput(): String = lastRawOutput
-
     /**
      * FIX5: Detecta si el rey del jugador en turno está en jaque.
      * Usa el comando 'd' de Stockfish para obtener información de la posición.

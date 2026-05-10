@@ -22,7 +22,6 @@ class LichessApiClient {
         val status: Status,
         val pieceCount: Int,
         val openingName: String? = null,
-        val nextMoves: String? = null,
         val bestMove: String? = null,
         val counterAttack: String? = null,
         val tbResult: String? = null,
@@ -66,7 +65,6 @@ class LichessApiClient {
                             status = Status.SUCCESS,
                             pieceCount = pieceCount,
                             openingName = openingInfo.first,
-                            nextMoves = openingInfo.second,
                             bestMove = top?.pv?.getOrNull(0),
                             counterAttack = calculateWinRate(top?.cp, top?.mate, fen),
                             tbResult = null,
@@ -101,10 +99,6 @@ class LichessApiClient {
     private fun calculateWinRate(cp: Int?, mate: Int?, fen: String): String? {
         // FIX4: Manejar mate correctamente
         if (mate != null && mate != 0) {
-            // Obtener turno del FEN (segundo campo)
-            val turno = fen.split(" ").getOrNull(1) ?: "w"
-            // Si mate > 0, el turno actual tiene mate
-            // Si mate < 0, el oponente tiene mate
             return if (mate > 0) {
                 "100%"  // El jugador en turno tiene mate
             } else {
@@ -143,12 +137,11 @@ class LichessApiClient {
      * Consulta apertura desde la base local (offline).
      * Retorna: (openingName, variantsString)
      */
-    private fun queryOpening(fen: String): Pair<String?, String?> {
+    private fun queryOpening(fen: String): Pair<String?, Unit?> {
         val ctx = context ?: return Pair(null, null)
         OpeningBook.ensureLoaded(ctx)
         val openingName = OpeningBook.lookup(fen)
-        val nextMoves = OpeningBook.variants(fen, max = 5)
-        return Pair(openingName, nextMoves)
+        return Pair(openingName, null)
     }
 
     /**
@@ -186,23 +179,10 @@ class LichessApiClient {
             if (responseCode == 200) {
                 val json = JSONObject(response)
 
-                val nextMoves = if (json.has("moves") && json.getJSONArray("moves").length() > 0) {
-                    val movesArray = json.getJSONArray("moves")
-                    val topMoves = mutableListOf<String>()
-                    for (i in 0 until minOf(10, movesArray.length())) {
-                        val move = movesArray.getJSONObject(i)
-                        if (move.has("san")) topMoves.add(move.getString("san"))
-                    }
-                    if (topMoves.isNotEmpty()) topMoves.joinToString(" ") else null
-                } else {
-                    null
-                }
-
                 LichessInfo(
                     status = Status.SUCCESS,
                     pieceCount = 0,
                     openingName = null,
-                    nextMoves = nextMoves,
                     bestMove = null,
                     counterAttack = null,
                     tbResult = null,
