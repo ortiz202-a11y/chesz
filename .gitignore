@@ -22,3 +22,8 @@ ktlint_all.txt
 .claude/skills/claude-android-ninja
 tree-sitter-kotlin
 build_sf/
+
+# Secrets - nunca commitear
+.mcp.json
+*.env
+.env*

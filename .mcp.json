@@ -5,7 +5,7 @@
       "args": ["serve"],
       "cwd": "/data/data/com.termux/files/home/chesz",
       "env": {
-        "GOOGLE_API_KEY": "AIzaSyCGKx8XSJToMM_3GU3M1YoNR2iS4_S1Mks"
+        "GOOGLE_API_KEY": "AIzaSyBKDYYQoAoPUnAnAUhPd8M3vdw_O1xSk_8"
       }
     }
   }

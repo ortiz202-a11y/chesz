@@ -702,6 +702,7 @@ class BubbleService : Service() {
         rowMR = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.TOP
+            isBaselineAligned = false
             addView(labelMR, LinearLayout.LayoutParams(-2, -2))
             addView(mrContentBlock, LinearLayout.LayoutParams(0, -2, 1f))
         }
@@ -1717,7 +1718,7 @@ class BubbleService : Service() {
         val activePrefix = if (isActive) "▶ " else ""
         val starPrefix = if (isFav) "★ " else ""
         return TextView(this).apply {
-            text = "${activePrefix}${starPrefix}${shortName(item.name)} (${item.move})"
+            text = "${activePrefix}${starPrefix}${shortName(item.name)} ${item.move}"
             textSize = 14f
             typeface = customFont
             setTextColor(accentColor)
@@ -1743,7 +1744,7 @@ class BubbleService : Service() {
         val isActive = activeVariant?.let { it.move == fav.move && it.name == fav.name } ?: false
         val activePrefix = if (isActive) "▶ " else ""
         return TextView(this).apply {
-            text = "${activePrefix}★ ${shortName(fav.name)} (${fav.move})"
+            text = "${activePrefix}★ ${shortName(fav.name)} ${fav.move}"
             textSize = 14f
             typeface = customFont
             setTextColor(accentColor)
