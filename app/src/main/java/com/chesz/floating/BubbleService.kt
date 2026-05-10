@@ -324,8 +324,11 @@ class BubbleService : Service() {
                     if (isDeveloperMode) {
                         return@setOnTouchListener true // Escudo: Ignorar tap normal
                     } else {
-                        val dist = kotlin.math.hypot(e.rawX - bubbleCenterX(), e.rawY - bubbleCenterY())
-                        if (dist <= dp(TAP_RADIUS_DP).toFloat()) togglePanel()
+                        val cx = bubbleCenterX()
+                        val cy = bubbleCenterY()
+                        val half = dp(BUBBLE_SIZE_DP) / 2f
+                        if (e.rawX in (cx - half)..(cx + half) &&
+                            e.rawY in (cy - half)..(cy + half)) togglePanel()
                     }
                     
                     dragging = false
@@ -1906,7 +1909,6 @@ class BubbleService : Service() {
         private const val BUBBLE_INIT_X_DP     = 35
         private const val BUBBLE_INIT_Y_DP     = 167
         private const val DRAG_THRESHOLD_DP    = 6
-        private const val TAP_RADIUS_DP        = 30
         private const val PANEL_LEFT_MARGIN_DP = 30
         private const val KILL_CIRCLE_SIZE_DP  = 100
         private const val KILL_ICON_SIZE_DP    = 44

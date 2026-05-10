@@ -22,3 +22,4 @@
 
 - [ ] PENDIENTE: Regla absoluta Estado B: ¿rootLp.y/size puede ajustarse determinísticamente o root queda anclado al botón y panel se dibuja sin mover y?
 - [ ] ⚠️ FALLO: Detenido por Check/ADN (21:22)
+- [x] APK lista y verificada (15:01)
