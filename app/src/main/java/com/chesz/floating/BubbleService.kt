@@ -1369,16 +1369,24 @@ class BubbleService : Service() {
                             )
                             croppedLimpio.recycle() // Liberar pantalla completa
 
-                            // 2. Guardar imagen para debug
-                            val dir = getExternalFilesDir(null)
-                            if (dir != null) {
-                                if (!dir.exists()) dir.mkdirs()
-                                java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
-                                    recortado.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                                }
-                            }
                             updateDebug("PROCESANDO...")
                             procesarConFenEngine(recortado) // recycle dentro del hilo
+
+                            // Guardar imagen debug en hilo aparte, no bloquea el análisis
+                            val dir = getExternalFilesDir(null)
+                            if (dir != null) {
+                                val snapshot = recortado.copy(recortado.config ?: android.graphics.Bitmap.Config.ARGB_8888, false)
+                                Thread {
+                                    try {
+                                        if (!dir.exists()) dir.mkdirs()
+                                        java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
+                                            snapshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                                        }
+                                    } finally {
+                                        snapshot.recycle()
+                                    }
+                                }.start()
+                            }
 
                             // 🆕 LIMPIEZA POST-CAPTURA (durante cooldown de 3s)
                             Thread.sleep(150)  // Dar tiempo a que procesarConFenEngine inicie
@@ -1946,7 +1954,7 @@ private const val TIMEOUT_BENCH_CONNECT  = 4000
         // --- Delays (ms) ---
         private const val DELAY_DEV_MODE_MS       = 2000L
         private const val DELAY_GOD_TOUCH_IGNORE_MS = 1000L  // ms que se ignora el touch al activar modo dios
-        private const val DELAY_SCREENSHOT_MS     = 1500L
+        private const val DELAY_SCREENSHOT_MS     = 800L
         private const val DELAY_FLASH_MS          = 220L
         private const val DELAY_KILL_ANIM_MS      = 60L
         private const val DELAY_CAPTURE_RESET_MS  = 3000L
