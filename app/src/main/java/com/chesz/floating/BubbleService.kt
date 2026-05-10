@@ -672,6 +672,7 @@ class BubbleService : Service() {
             textSize = 14f
             typeface = customFont
             setTextColor(COLOR_GREEN)
+            includeFontPadding = false
             setPadding(0, 0, dp(3), 0)
         }
         mrFavoritesHeader = TextView(this).apply {
@@ -680,7 +681,6 @@ class BubbleService : Service() {
             typeface = customFont
             setTextColor(COLOR_GREEN)
             includeFontPadding = false
-            translationY = -dp(2).toFloat()
             setOnClickListener {
                 mrFavoritesExpanded = !mrFavoritesExpanded
                 mrFavoritesList.visibility = if (mrFavoritesExpanded) View.VISIBLE else View.GONE
@@ -769,7 +769,7 @@ class BubbleService : Service() {
         }
         lichessContainer.addView(rowMateIn, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(34) })
 
-        col.addView(lichessContainer, LinearLayout.LayoutParams(-1, -2))
+        col.addView(lichessContainer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-6) })
 
         debugText = TextView(this).apply {
             typeface = customFont
