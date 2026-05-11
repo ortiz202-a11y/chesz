@@ -272,7 +272,7 @@ class BubbleService : Service() {
                     downRawX = e.rawX
                     
                     // Iniciar temporizador Modo Dios
-                    devHandler.removeCallbacks(devRunnable)
+                    devRunnable?.let { devHandler.removeCallbacks(it) }
                     devRunnable = Runnable {
                         isDeveloperMode = true
                         ignoreTouchUntil = System.currentTimeMillis() + DELAY_GOD_TOUCH_IGNORE_MS
@@ -297,7 +297,7 @@ class BubbleService : Service() {
                     val dy = (e.rawY - downRawY).toInt()
 
                     if (!dragging && (abs(dx) + abs(dy) > dp(DRAG_THRESHOLD_DP))) {
-                        devHandler.removeCallbacks(devRunnable) // Cancelar Modo Dios por arrastre
+                        devRunnable?.let { devHandler.removeCallbacks(it) } // Cancelar Modo Dios por arrastre
                         dragging = true
                         showKill(true)
                     }
@@ -318,7 +318,7 @@ class BubbleService : Service() {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    devHandler.removeCallbacks(devRunnable) // Cancelar temporizador
+                    devRunnable?.let { devHandler.removeCallbacks(it) } // Cancelar temporizador
                     
                     // 1. Siempre procesar el arrastre y apagar el Kill Area primero
                     if (dragging) {
