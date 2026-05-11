@@ -1370,24 +1370,22 @@ class BubbleService : Service() {
                             // 🆕 LIMPIEZA POST-CAPTURA (durante cooldown de 3s)
                             Thread.sleep(150)  // Dar tiempo a que procesarConFenEngine inicie
 
-                            root.post {
-                                activeImageReader?.let { reader ->
-                                    var cleared = 0
-                                    while (true) {
-                                        val old = reader.acquireLatestImage()
-                                        if (old == null) break
-                                        old.close()
-                                        cleared++
-                                    }
-                                    if (cleared > 0) {
-                                        android.util.Log.d("Chesz", "✓ Buffer limpiado: $cleared frames")
-                                    }
+                            activeImageReader?.let { reader ->
+                                var cleared = 0
+                                while (true) {
+                                    val old = reader.acquireLatestImage()
+                                    if (old == null) break
+                                    old.close()
+                                    cleared++
+                                }
+                                if (cleared > 0) {
+                                    android.util.Log.d("Chesz", "✓ Buffer limpiado: $cleared frames")
                                 }
                             }
                         } catch (e: Exception) {
                             updateDebug("📂 Error de archivo: ${e.message}")
                         } finally {
-                            image.close()
+                            image?.close()
                         }
                     }.start()
                 } catch (e: Exception) {
