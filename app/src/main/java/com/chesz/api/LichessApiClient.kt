@@ -15,7 +15,7 @@ class LichessApiClient {
 
     companion object {
         var context: android.content.Context? = null
-        var stockfishEngine: StockfishEngine? = null
+        @Volatile var stockfishEngine: StockfishEngine? = null
     }
 
     data class LichessInfo(

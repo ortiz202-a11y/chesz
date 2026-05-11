@@ -262,6 +262,7 @@ class BubbleService : Service() {
                     downRawX = e.rawX
                     
                     // Iniciar temporizador Modo Dios
+                    devHandler.removeCallbacks(devRunnable)
                     devRunnable = Runnable {
                         isDeveloperMode = true
                         ignoreTouchUntil = System.currentTimeMillis() + DELAY_GOD_TOUCH_IGNORE_MS
@@ -286,7 +287,7 @@ class BubbleService : Service() {
                     val dy = (e.rawY - downRawY).toInt()
 
                     if (!dragging && (abs(dx) + abs(dy) > dp(DRAG_THRESHOLD_DP))) {
-                        devHandler.removeCallbacks(devRunnable!!) // Cancelar Modo Dios por arrastre
+                        devHandler.removeCallbacks(devRunnable) // Cancelar Modo Dios por arrastre
                         dragging = true
                         showKill(true)
                     }
@@ -307,7 +308,7 @@ class BubbleService : Service() {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    devHandler.removeCallbacks(devRunnable!!) // Cancelar temporizador
+                    devHandler.removeCallbacks(devRunnable) // Cancelar temporizador
                     
                     // 1. Siempre procesar el arrastre y apagar el Kill Area primero
                     if (dragging) {
@@ -325,11 +326,11 @@ class BubbleService : Service() {
                     if (isDeveloperMode) {
                         return@setOnTouchListener true // Escudo: Ignorar tap normal
                     } else {
-                        val cx = bubbleCenterX()
-                        val cy = bubbleCenterY()
-                        val half = dp(BUBBLE_SIZE_DP) / 2f
-                        if (e.rawX in (cx - half)..(cx + half) &&
-                            e.rawY in (cy - half)..(cy + half)) togglePanel()
+                        val loc = IntArray(2)
+                        bubbleIcon.getLocationOnScreen(loc)
+                        val tol = dp(5)
+                        if (e.rawX >= loc[0] - tol && e.rawX <= loc[0] + bubbleIcon.width + tol &&
+                            e.rawY >= loc[1] - tol && e.rawY <= loc[1] + bubbleIcon.height + tol) togglePanel()
                     }
                     
                     dragging = false
@@ -949,7 +950,7 @@ class BubbleService : Service() {
     private fun flashBubbleRed() {
         runCatching {
             bubbleIcon.setColorFilter(COLOR_FLASH_RED)
-            bubbleIcon.postDelayed({ runCatching { bubbleIcon.clearColorFilter() } }, DELAY_FLASH_MS)
+            bubbleIcon.postDelayed({ runCatching { if (!isCapturing) bubbleIcon.clearColorFilter() } }, DELAY_FLASH_MS)
         }
     }
 
