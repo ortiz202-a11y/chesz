@@ -725,7 +725,7 @@ class BubbleService : Service() {
 
             val labelTB = TextView(context).apply {
                 text = "TB"
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 setPadding(0, 0, dp(3), 0)
@@ -734,7 +734,7 @@ class BubbleService : Service() {
 
             tvTablebaseResult.apply {
                 text = ""
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 includeFontPadding = false
@@ -752,8 +752,8 @@ class BubbleService : Service() {
             visibility = View.GONE
 
             val labelMate = TextView(context).apply {
-                text = ""
-                textSize = 12f
+                text = "JAQUE"
+                textSize = 14f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 setPadding(0, 0, dp(3), 0)
@@ -762,7 +762,7 @@ class BubbleService : Service() {
 
             tvMateIn.apply {
                 text = ""
-                textSize = 12f
+                textSize = 14f
                 typeface = customFont
                 setTextColor(COLOR_GREEN)
                 includeFontPadding = false
@@ -1246,8 +1246,8 @@ class BubbleService : Service() {
         // 1. Limpiar TODO el panel inmediatamente
         clearPanel()
 
-        // 2. Mostrar solo "Processing..."
-        updateDebug("Processing...")
+        // 2. Mostrar solo "PROCESSING..."
+        updateDebug("PROCESSING...")
 
         // 3. Limpiar filtro de color del botón (volver a color normal)
         bubbleIcon.clearColorFilter()
@@ -1355,7 +1355,7 @@ class BubbleService : Service() {
                             )
                             croppedLimpio.recycle() // Liberar pantalla completa
 
-                            updateDebug("Processing...")
+                            updateDebug("PROCESSING...")
 
                             // Snapshot para debug ANTES de ceder ownership a procesarConFenEngine,
                             // que recicla el bitmap en su finally desde otro hilo.
@@ -1452,6 +1452,30 @@ class BubbleService : Service() {
 
                 lastFen = fenFinal
 
+                // Análisis en hilo background (blocking) — NO dentro de root.post
+                val fenValido = esFenValido64(fenFinal)
+                var bgOptions: List<StockfishEngine.Option> = emptyList()
+                var bgInCheck = false
+                var bgOpeningName: String? = null
+
+                if (fenValido) {
+                    runCatching {
+                        val logDir = getExternalFilesDir(null)
+                        if (logDir != null) {
+                            val ts = java.text.SimpleDateFormat(
+                                "MM/dd HH:mm", java.util.Locale.getDefault()
+                            ).format(java.util.Date())
+                            // logfen_last.txt: último FEN detectado (archivo separado)
+                            java.io.File(logDir, "logfen_last.txt")
+                                .writeText("[$ts]\n$fenFinal\n")
+                        }
+                    }
+                    bgOptions = runCatching { stockfishEngine.analyze(fenFinal) }.getOrDefault(emptyList())
+                    bgInCheck = runCatching { stockfishEngine.isInCheck(fenFinal) }.getOrDefault(false)
+                    com.chesz.api.OpeningBook.ensureLoaded(this)
+                    bgOpeningName = com.chesz.api.OpeningBook.lookup(fenFinal)
+                }
+
                 root.post {
                     if (destroyed) return@post
                     fenTitle.text = fenPosicion
@@ -1461,18 +1485,57 @@ class BubbleService : Service() {
                         dotsRow.visibility = View.VISIBLE
                     }
 
-                    if (esFenValido64(fenFinal)) {
-                        runCatching {
-                            val logDir = getExternalFilesDir(null)
-                            if (logDir != null) {
-                                val ts = java.text.SimpleDateFormat(
-                                    "MM/dd HH:mm", java.util.Locale.getDefault()
-                                ).format(java.util.Date())
-                                // logfen_last.txt: último FEN detectado (archivo separado)
-                                java.io.File(logDir, "logfen_last.txt")
-                                    .writeText("[$ts]\n$fenFinal\n")
-                            }
+                    if (fenValido) {
+                        if (isDeveloperMode) return@post
+                        val top = bgOptions.firstOrNull()
+                        val mateText = top?.mate?.takeIf { it != 0 }?.let { mate ->
+                            val abs = kotlin.math.abs(mate)
+                            if (mate > 0) "MATE IN $abs YOU" else "MATE IN $abs RIVAL"
                         }
+                        val winRateStr = top?.mate?.takeIf { it != 0 }?.let { mate ->
+                            if (mate > 0) "100%" else "0%"
+                        } ?: top?.cp?.let { cp ->
+                            val wr = 50 + 50 * (2.0 / (1 + Math.exp(-0.00368208 * cp)) - 1)
+                            "${wr.toInt()}%"
+                        }
+                        val bestMove = top?.pv?.getOrNull(0)
+
+                        debugText.visibility = View.GONE
+                        lichessContainer.visibility = View.VISIBLE
+
+                        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        val omEnabled = prefs.getBoolean(PREF_OM, true)
+                        val bmEnabled = prefs.getBoolean(PREF_BM, true)
+                        val mrEnabled = prefs.getBoolean(PREF_MR, true)
+                        val wrEnabled = prefs.getBoolean(PREF_WR, false)
+
+                        if (omEnabled) {
+                            if (isInitialPosition(fenFinal)) rowOM.visibility = View.GONE
+                            else { tvOM.text = bgOpeningName ?: "[∆]"; rowOM.visibility = View.VISIBLE }
+                        } else rowOM.visibility = View.GONE
+
+                        if (bmEnabled && !bestMove.isNullOrEmpty()) {
+                            lastBestMove = bestMove
+                            bmCacheTime = System.currentTimeMillis()
+                            tvBestMove.text = renderBmText(bestMove)
+                            rowBestMove.visibility = View.VISIBLE
+                        } else rowBestMove.visibility = View.GONE
+
+                        if (mrEnabled) { renderMrBlock(fenFinal); rowMR.visibility = View.VISIBLE }
+                        else rowMR.visibility = View.GONE
+
+                        if (wrEnabled && !winRateStr.isNullOrEmpty()) {
+                            tvCounterAttack.text = winRateStr
+                            rowCounterAttack.visibility = View.VISIBLE
+                        } else rowCounterAttack.visibility = View.GONE
+
+                        rowTablebaseResult.visibility = View.GONE
+
+                        val mateDisplay = mateText?.let { if (bgInCheck) "$it JAQUE" else it }
+                            ?: if (bgInCheck) "JAQUE" else null
+                        if (mateDisplay != null) {
+                            tvMateIn.text = mateDisplay; rowMateIn.visibility = View.VISIBLE
+                        } else rowMateIn.visibility = View.GONE
                     } else {
                         updateDebug("[FEN IMPERFECTO]\n$fenPosicion")
                     }
