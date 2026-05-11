@@ -37,6 +37,7 @@ class BubbleService : Service() {
 
     private lateinit var bubbleIcon: ImageView
     private lateinit var panelRoot: FrameLayout
+    private lateinit var bubbleWrap: FrameLayout
 
     private var panelShown = false
     private var lastFen: String? = null
@@ -100,7 +101,6 @@ class BubbleService : Service() {
 
     // ===== Panel UI refs =====
     private lateinit var permBar: FrameLayout
-    private lateinit var permText: TextView
     private lateinit var debugText: TextView
     private lateinit var fenTitle: TextView
     private lateinit var btnBench: TextView
@@ -240,7 +240,7 @@ class BubbleService : Service() {
                 scaleType = ImageView.ScaleType.FIT_XY
                 adjustViewBounds = false
             }
-        val bubbleWrap =
+        bubbleWrap =
             FrameLayout(this).apply {
                 addView(bubbleIcon, FrameLayout.LayoutParams(btnPx, btnPx))
                 clipChildren = false
@@ -380,7 +380,6 @@ class BubbleService : Service() {
             leftMargin = 0
             topMargin = 0
         }
-        val bubbleWrap = root.getChildAt(1)
         bubbleWrap.layoutParams =
             FrameLayout.LayoutParams(btnPx, btnPx).apply {
                 leftMargin = 0
@@ -436,7 +435,6 @@ class BubbleService : Service() {
                 topMargin = 0
             }
 
-        val bubbleWrap = root.getChildAt(1)
         bubbleWrap.layoutParams =
             FrameLayout.LayoutParams(btnW, btnH).apply {
                 leftMargin = 0
@@ -1134,12 +1132,13 @@ class BubbleService : Service() {
             if (this::fenTitle.isInitialized) fenTitle.setTextColor(accentColor)
             // Debug text
             if (this::debugText.isInitialized) debugText.setTextColor(accentColor)
-            // Labels e valores de filas (child 0 = label, child 1 = valor)
+            // Labels e valores de filas
             listOf(rowOM, rowBestMove, rowMR, rowCounterAttack,
                    rowTablebaseResult, rowMateIn).forEach { row ->
                 if (this::lichessContainer.isInitialized) {
-                    (row.getChildAt(0) as? TextView)?.setTextColor(accentColor)
-                    (row.getChildAt(1) as? TextView)?.setTextColor(accentColor)
+                    for (i in 0 until row.childCount) {
+                        (row.getChildAt(i) as? TextView)?.setTextColor(accentColor)
+                    }
                 }
             }
             // MR sub-vistas (header + items): el child 1 del rowMR es un
@@ -1396,7 +1395,7 @@ class BubbleService : Service() {
                                     old.close()
                                     cleared++
                                 }
-                                if (cleared > 0) {
+                                if (cleared > 0 && com.chesz.BuildConfig.DEBUG) {
                                     android.util.Log.d("Chesz", "✓ Buffer limpiado: $cleared frames")
                                 }
                             }

@@ -1,6 +1,7 @@
 package com.chesz.engine
 
 import android.content.Context
+import com.chesz.BuildConfig
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -321,6 +322,7 @@ class StockfishEngine(private val context: Context) {
     }
 
     private fun saveDebugLog(output: String, fen: String, exitCode: Int?) {
+        if (!BuildConfig.DEBUG) return
         logExecutor.submit {
             try {
                 val debugFile = File(context.getExternalFilesDir(null), "logfen_last.txt")

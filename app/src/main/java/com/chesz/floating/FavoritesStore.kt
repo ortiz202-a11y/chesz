@@ -2,12 +2,15 @@ package com.chesz.floating
 
 import android.content.Context
 import java.io.File
+import java.util.concurrent.Executors
 
 object FavoritesStore {
     data class Favorite(val fen: String, val move: String, val name: String)
 
     private const val FILE_NAME = "Favorites.txt"
     private const val SEP = "|"
+
+    private val persistExecutor = Executors.newSingleThreadExecutor()
 
     private var loaded = false
     private val items = mutableListOf<Favorite>()
@@ -82,10 +85,14 @@ object FavoritesStore {
     }
 
     private fun persist(ctx: Context) {
-        runCatching {
-            val f = fileFor(ctx) ?: return@runCatching
-            f.parentFile?.let { if (!it.exists()) it.mkdirs() }
-            f.writeText(items.joinToString("\n") { "${it.fen}${SEP}${it.move}${SEP}${it.name}" })
+        // Snapshot taken while holding the @Synchronized lock; executor writes off the UI thread.
+        val snapshot = items.toList()
+        persistExecutor.execute {
+            runCatching {
+                val f = fileFor(ctx) ?: return@runCatching
+                f.parentFile?.let { if (!it.exists()) it.mkdirs() }
+                f.writeText(snapshot.joinToString("\n") { "${it.fen}${SEP}${it.move}${SEP}${it.name}" })
+            }
         }
     }
 }
