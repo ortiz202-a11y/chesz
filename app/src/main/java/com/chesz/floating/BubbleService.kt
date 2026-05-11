@@ -26,6 +26,7 @@ import com.chesz.R
 import com.chesz.api.LichessApiClient
 import com.chesz.engine.StockfishEngine
 import kotlin.math.abs
+import java.util.concurrent.atomic.AtomicInteger
 
 class BubbleService : Service() {
     private lateinit var wm: WindowManager
@@ -67,7 +68,7 @@ class BubbleService : Service() {
     private lateinit var devBar: LinearLayout
     private lateinit var dotsRow: LinearLayout
     private var benchmarkThread: Thread? = null
-    private var abortBenchmark = false
+    @Volatile private var abortBenchmark = false
 
     // ===== Cache del último BM (para rescatar por 10s cuando falla captura) =====
     private var lastBestMove: String = ""
@@ -127,7 +128,7 @@ class BubbleService : Service() {
     private var mrFavoritesExpanded: Boolean = false
     private var activeVariant: com.chesz.api.OpeningBook.VariantItem? = null
     private var pendingDeleteRow: View? = null
-    @Volatile private var currentQueryId: Long = 0L
+    private val currentQueryId = AtomicInteger(0)
     private lateinit var closeBtn: ImageView
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -159,8 +160,13 @@ class BubbleService : Service() {
         startForegroundForMediaProjection()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         updateScreenCache()
-        createRootOverlay()
-        createKillArea()
+        Thread {
+            customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
+            Handler(Looper.getMainLooper()).post {
+                createRootOverlay()
+                createKillArea()
+            }
+        }.start()
         Thread { fenEngine.loadTemplates() }.start()
     }
 
@@ -259,7 +265,7 @@ class BubbleService : Service() {
 
         setStateALayout()
 
-        root.setOnTouchListener { _, e ->
+        bubbleWrap.setOnTouchListener { _, e ->
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     dragging = false
@@ -475,7 +481,6 @@ class BubbleService : Service() {
     }
 
             private fun buildPanel(): FrameLayout {
-        customFont = android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
         panelBorderDrawable = android.graphics.drawable.GradientDrawable().apply {
             setColor(COLOR_PANEL_BG)
             setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
@@ -1466,11 +1471,11 @@ class BubbleService : Service() {
                     }
 
                     if (esFenValido64(fenFinal)) {
-                        val myId = ++currentQueryId
+                        val myId = currentQueryId.incrementAndGet()
                         lichessApiClient.queryLichess(fenFinal) { info ->
-                            if (myId != currentQueryId) return@queryLichess
+                            if (myId != currentQueryId.get()) return@queryLichess
                             root.post {
-                                if (destroyed || myId != currentQueryId) return@post
+                                if (destroyed || myId != currentQueryId.get()) return@post
                                 updateLichessInfo(info)
                             }
                         }

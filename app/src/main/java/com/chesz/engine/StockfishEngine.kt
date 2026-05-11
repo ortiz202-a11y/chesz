@@ -31,6 +31,7 @@ class StockfishEngine(private val context: Context) {
 
     // I/O bloqueante fuera del lock para evitar deadlock si Stockfish muere
     private val ioExecutor = Executors.newSingleThreadExecutor()
+    private val logExecutor = Executors.newSingleThreadExecutor()
 
     private fun readLineWithTimeout(r: BufferedReader, timeoutMs: Long = 30_000L): String? {
         val future = ioExecutor.submit<String?> { r.readLine() }
@@ -228,6 +229,7 @@ class StockfishEngine(private val context: Context) {
             reader = null
             isInitialized = false
             ioExecutor.shutdownNow()
+            logExecutor.shutdown()
         }
     }
 
@@ -319,24 +321,26 @@ class StockfishEngine(private val context: Context) {
     }
 
     private fun saveDebugLog(output: String, fen: String, exitCode: Int?) {
-        try {
-            val debugFile = File(context.getExternalFilesDir(null), "logfen_last.txt")
-            debugFile.parentFile?.mkdirs()
+        logExecutor.submit {
+            try {
+                val debugFile = File(context.getExternalFilesDir(null), "logfen_last.txt")
+                debugFile.parentFile?.mkdirs()
 
-            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
-            val logEntry = buildString {
-                append("\n========================================\n")
-                append("STOCKFISH DEBUG - $timestamp\n")
-                if (fen.isNotEmpty()) append("FEN: $fen\n")
-                if (exitCode != null) append("EXIT CODE: $exitCode\n")
-                append("----------------------------------------\n")
-                append(output)
-                append("\n")
+                val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
+                val logEntry = buildString {
+                    append("\n========================================\n")
+                    append("STOCKFISH DEBUG - $timestamp\n")
+                    if (fen.isNotEmpty()) append("FEN: $fen\n")
+                    if (exitCode != null) append("EXIT CODE: $exitCode\n")
+                    append("----------------------------------------\n")
+                    append(output)
+                    append("\n")
+                }
+
+                debugFile.appendText(logEntry)
+            } catch (e: Exception) {
+                android.util.Log.e("StockfishEngine", "Failed to save debug log", e)
             }
-
-            debugFile.appendText(logEntry)
-        } catch (e: Exception) {
-            android.util.Log.e("StockfishEngine", "Failed to save debug log", e)
         }
     }
 }

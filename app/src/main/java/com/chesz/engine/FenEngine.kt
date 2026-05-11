@@ -37,6 +37,7 @@ class FenEngine(private val context: Context) {
 
     // Plantillas cargadas: símbolo FEN → lista de arrays de píxeles (SQUARE×SQUARE)
     private val templates = mutableMapOf<Char, List<IntArray>>()
+    @Volatile private var templatesLoaded = false
 
     /** Número de foto actual (benchmark). 0 = captura normal. Se fija desde fuera antes de processBoard. */
     var debugPhotoNum = 0
@@ -70,6 +71,7 @@ class FenEngine(private val context: Context) {
      * Llamar una sola vez (p.ej. en onCreate del servicio).
      */
     fun loadTemplates() {
+        templatesLoaded = false
         templates.clear()
         for ((symbol, names) in pieceTemplateNames) {
             val loaded = names.mapNotNull { name ->
@@ -83,6 +85,7 @@ class FenEngine(private val context: Context) {
             }
             if (loaded.isNotEmpty()) templates[symbol] = loaded
         }
+        templatesLoaded = true
     }
 
     /**
@@ -96,7 +99,7 @@ class FenEngine(private val context: Context) {
      * @return FEN completo, e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1"
      */
     fun processBoard(board: Bitmap): String {
-        // Reiniciar buffer por cada foto
+        if (!templatesLoaded) return "8/8/8/8/8/8/8/8 w - - 0 1"
         logBuffer.clear()
         val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
         logBuffer.append("\n=== FOTO $debugPhotoNum [$ts] ===\n")
