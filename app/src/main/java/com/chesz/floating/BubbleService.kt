@@ -24,10 +24,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.content.Context
 import com.chesz.R
-import com.chesz.api.LichessApiClient
 import com.chesz.engine.StockfishEngine
 import kotlin.math.abs
-import java.util.concurrent.atomic.AtomicInteger
 
 class BubbleService : Service() {
     private lateinit var wm: WindowManager
@@ -89,9 +87,6 @@ class BubbleService : Service() {
     // ===== FenEngine local =====
     private val fenEngine by lazy { com.chesz.engine.FenEngine(this) }
 
-    // ===== Lichess API =====
-    private val lichessApiClient by lazy { LichessApiClient() }
-
     // ===== Stockfish local =====
     private lateinit var stockfishEngine: StockfishEngine
 
@@ -129,7 +124,6 @@ class BubbleService : Service() {
     private var mrFavoritesExpanded: Boolean = false
     private var activeVariant: com.chesz.api.OpeningBook.VariantItem? = null
     private var pendingDeleteRow: View? = null
-    private val currentQueryId = AtomicInteger(0)
     private lateinit var closeBtn: ImageView
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -151,9 +145,7 @@ class BubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        LichessApiClient.context = this
         stockfishEngine = StockfishEngine(this)
-        LichessApiClient.stockfishEngine = stockfishEngine
         Thread {
             runCatching { stockfishEngine.start() }
                 .onFailure { android.util.Log.e("Stockfish", "init failed", it) }
@@ -204,7 +196,6 @@ class BubbleService : Service() {
                 activeMediaProjection = null
             }
             runCatching { stockfishEngine.shutdown() }
-            LichessApiClient.stockfishEngine = null
         }
         shutdownThread.start()
         try { shutdownThread.join(2000) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
@@ -1255,8 +1246,8 @@ class BubbleService : Service() {
         // 1. Limpiar TODO el panel inmediatamente
         clearPanel()
 
-        // 2. Mostrar solo "PROCESANDO..."
-        updateDebug("PROCESANDO...")
+        // 2. Mostrar solo "Processing..."
+        updateDebug("Processing...")
 
         // 3. Limpiar filtro de color del botón (volver a color normal)
         bubbleIcon.clearColorFilter()
@@ -1364,7 +1355,7 @@ class BubbleService : Service() {
                             )
                             croppedLimpio.recycle() // Liberar pantalla completa
 
-                            updateDebug("PROCESANDO...")
+                            updateDebug("Processing...")
 
                             // Snapshot para debug ANTES de ceder ownership a procesarConFenEngine,
                             // que recicla el bitmap en su finally desde otro hilo.
@@ -1471,15 +1462,6 @@ class BubbleService : Service() {
                     }
 
                     if (esFenValido64(fenFinal)) {
-                        val myId = currentQueryId.incrementAndGet()
-                        lichessApiClient.queryLichess(fenFinal) { info ->
-                            if (myId != currentQueryId.get()) return@queryLichess
-                            root.post {
-                                if (destroyed || myId != currentQueryId.get()) return@post
-                                updateLichessInfo(info)
-                            }
-                        }
-
                         runCatching {
                             val logDir = getExternalFilesDir(null)
                             if (logDir != null) {
@@ -1501,105 +1483,6 @@ class BubbleService : Service() {
                 bitmap.recycle()
             }
         }.start()
-    }
-
-    private fun updateLichessInfo(info: LichessApiClient.LichessInfo) {
-        if (!this::lichessContainer.isInitialized) return
-        if (isDeveloperMode) return
-
-        when (info.status) {
-            LichessApiClient.Status.LOADING -> {
-                lichessContainer.visibility = View.GONE
-            }
-            LichessApiClient.Status.ERROR -> {
-                // Ocultar mensaje "PROCESANDO..." cuando hay error
-                debugText.visibility = View.GONE
-                lichessContainer.visibility = View.GONE
-            }
-            LichessApiClient.Status.SUCCESS -> {
-                // Ocultar mensaje "PROCESANDO..." cuando se completa el análisis
-                debugText.visibility = View.GONE
-                lichessContainer.visibility = View.VISIBLE
-
-                // Actualizar campos
-                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val omEnabled = prefs.getBoolean(PREF_OM, true)
-                val mrEnabled = prefs.getBoolean(PREF_MR, true)
-                val wrEnabled = prefs.getBoolean(PREF_WR, false)
-
-                // OM (Opponent Move) — [∆] cuando FEN fuera del libro,
-                // oculto en posición inicial (turno 0 dormido).
-                if (omEnabled) {
-                    val curFen = lastFen
-                    if (curFen != null && isInitialPosition(curFen)) {
-                        rowOM.visibility = View.GONE
-                    } else {
-                        tvOM.text = info.openingName ?: "[∆]"
-                        rowOM.visibility = View.VISIBLE
-                    }
-                } else {
-                    rowOM.visibility = View.GONE
-                }
-
-                // Best Move
-                if (!info.bestMove.isNullOrEmpty()) {
-                    lastBestMove = info.bestMove!!
-                    bmCacheTime = System.currentTimeMillis()
-                    tvBestMove.text = renderBmText(info.bestMove!!)
-                    rowBestMove.visibility = View.VISIBLE
-                } else {
-                    rowBestMove.visibility = View.GONE
-                }
-
-                // MR (Random Variants + Favorites sub-section).
-                // El contenido (lista, [∆] o dormido) lo decide renderMrBlock.
-                if (mrEnabled) {
-                    val mrFen = lastFen
-                    if (mrFen != null) renderMrBlock(mrFen)
-                    rowMR.visibility = View.VISIBLE
-                } else {
-                    rowMR.visibility = View.GONE
-                }
-
-                // Win Rate (Counter Attack)
-                if (!info.counterAttack.isNullOrEmpty() && wrEnabled) {
-                    tvCounterAttack.text = info.counterAttack
-                    rowCounterAttack.visibility = View.VISIBLE
-                } else {
-                    rowCounterAttack.visibility = View.GONE
-                }
-
-                // TB y Mate automáticos según FEN actual
-                val currentFen = lastFen ?: ""
-                val pieceCount = currentFen.split(" ").getOrNull(0)?.count { it.isLetter() } ?: 99
-
-                // Tablebase (solo si <= 7 piezas y hay dato)
-                if (pieceCount <= 7 && !info.tbResult.isNullOrEmpty()) {
-                    tvTablebaseResult.text = info.tbResult
-                    rowTablebaseResult.visibility = View.VISIBLE
-                } else {
-                    rowTablebaseResult.visibility = View.GONE
-                }
-
-                // FIX3 y FIX5: Mate con texto "M# TÚ" o "M# RIVAL" + alerta JAQUE
-                val mateDisplayText = if (info.mateText != null) {
-                    // Si hay mate, mostrar texto de mate
-                    if (info.inCheck) "${info.mateText} JAQUE" else info.mateText
-                } else if (info.inCheck) {
-                    // Si solo hay jaque (sin mate), mostrar JAQUE
-                    "JAQUE"
-                } else {
-                    null
-                }
-
-                if (mateDisplayText != null) {
-                    tvMateIn.text = mateDisplayText
-                    rowMateIn.visibility = View.VISIBLE
-                } else {
-                    rowMateIn.visibility = View.GONE
-                }
-            }
-        }
     }
 
     private fun shortName(name: String): String =
@@ -1997,14 +1880,6 @@ class BubbleService : Service() {
         lastFen = newFen
         fenAwaitingUserColor = null
 
-        // Consultar Lichess con el FEN actualizado
-        if (esFenValido64(newFen)) {
-            lichessApiClient.queryLichess(newFen) { info ->
-                root.post {
-                    if (!destroyed) updateLichessInfo(info)
-                }
-            }
-        }
     }
 }
 
