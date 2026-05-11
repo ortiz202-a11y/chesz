@@ -1,4 +1,5 @@
 package com.chesz.floating
+import com.chesz.BuildConfig
 import org.json.JSONObject
 import android.os.Handler
 import android.os.Looper
