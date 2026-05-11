@@ -78,6 +78,7 @@ class BubbleService : Service() {
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
     private val projectionLock = Any()
+    @Volatile private var destroyed = false
     @Volatile private var activeMediaProjection: android.media.projection.MediaProjection? = null
     @Volatile private var activeVirtualDisplay: android.hardware.display.VirtualDisplay? = null
     @Volatile private var activeImageReader: android.media.ImageReader? = null
@@ -186,17 +187,20 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
+        destroyed = true
         super.onDestroy()
         runCatching { wm.removeViewImmediate(root) }
         runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
-        Thread {
+        val shutdownThread = Thread {
             synchronized(projectionLock) {
                 runCatching { activeMediaProjection?.stop() }
                 activeMediaProjection = null
             }
             runCatching { stockfishEngine.shutdown() }
             LichessApiClient.stockfishEngine = null
-        }.start()
+        }
+        shutdownThread.start()
+        try { shutdownThread.join(2000) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
         mpData = null
         mpResultCode = null
         killShown = false
@@ -244,7 +248,7 @@ class BubbleService : Service() {
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.WRAP_CONTENT,
                     overlayType(),
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     PixelFormat.TRANSLUCENT,
                 ).apply {
@@ -271,7 +275,7 @@ class BubbleService : Service() {
                         if (!panelShown) showPanelIfFits()
                         if (this::devBar.isInitialized) devBar.visibility = View.VISIBLE
                         clearPanel()
-                        root.post { fenTitle.text = "DEBUG MODE" }
+                        root.post { if (!destroyed) fenTitle.text = "DEBUG MODE" }
                     }
                     devHandler.postDelayed(devRunnable!!, DELAY_DEV_MODE_MS)
 
@@ -1097,6 +1101,7 @@ class BubbleService : Service() {
 
             private fun resetToGodMode() {
         root.post {
+            if (destroyed) return@post
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
             if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.VISIBLE
             if (this::dotsRow.isInitialized) dotsRow.visibility = View.GONE
@@ -1113,6 +1118,7 @@ class BubbleService : Service() {
 
     private fun applyAccentColor() {
         root.post {
+            if (destroyed) return@post
             // Marco del overlay
             if (this::panelBorderDrawable.isInitialized)
                 panelBorderDrawable.setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
@@ -1172,21 +1178,22 @@ class BubbleService : Service() {
     private fun countdown(seconds: Int, onFinish: (() -> Unit)? = null) {
         for (sec in seconds downTo 1) {
             if (abortBenchmark) return
-            root.post { fenTitle.text = "${sec}s" }
+            root.post { if (!destroyed) fenTitle.text = "${sec}s" }
             Thread.sleep(1000)
         }
         if (abortBenchmark) return
-        root.post { fenTitle.text = "0s" }
+        root.post { if (!destroyed) fenTitle.text = "0s" }
         Thread.sleep(300)
-        root.post { fenTitle.text = "" }
+        root.post { if (!destroyed) fenTitle.text = "" }
         if (onFinish != null) {
             Thread.sleep(300)
-            root.post { onFinish() }
+            root.post { if (!destroyed) onFinish() }
         }
     }
 
     private fun updateDebug(msg: String) {
         root.post {
+            if (destroyed) return@post
             debugText.visibility = View.VISIBLE
             debugText.maxLines = DEBUG_MAX_LINES
 
@@ -1196,6 +1203,7 @@ class BubbleService : Service() {
 
     private fun clearPanel() {
         root.post {
+            if (destroyed) return@post
             // Limpiar FEN
             fenTitle.text = ""
 
@@ -1251,8 +1259,10 @@ class BubbleService : Service() {
         // 4. Bloquear botón por 3 segundos
         isCapturing = true
         root.postDelayed({
-            isCapturing = false
-            bubbleIcon.clearColorFilter() // Asegurar que se limpie al final
+            if (!destroyed) {
+                isCapturing = false
+                bubbleIcon.clearColorFilter()
+            }
         }, DELAY_CAPTURE_RESET_MS)
 
         runCatching {
@@ -1289,10 +1299,12 @@ class BubbleService : Service() {
             val reader = activeImageReader ?: return@runCatching
 
             root.postDelayed({
+                if (destroyed) return@postDelayed
                 try {
                     val image = reader.acquireLatestImage() ?: run {
                         if (isDeveloperMode) return@postDelayed
                         root.post {
+                            if (destroyed) return@post
                             if (this@BubbleService::dotsRow.isInitialized) {
                                 dotsRow.visibility = View.VISIBLE
                             }
@@ -1419,6 +1431,7 @@ class BubbleService : Service() {
                 if (fenEngine.userColorAmbiguous) {
                     fenAwaitingUserColor = fenOriginal
                     root.post {
+                        if (destroyed) return@post
                         fenTitle.text = fenPosicion
                         if (this::dotsRow.isInitialized) {
                             dotsRow.visibility = View.VISIBLE
@@ -1444,6 +1457,7 @@ class BubbleService : Service() {
                 lastFen = fenFinal
 
                 root.post {
+                    if (destroyed) return@post
                     fenTitle.text = fenPosicion
 
                     // Mostrar fila de dots cuando aparece el FEN
@@ -1456,7 +1470,7 @@ class BubbleService : Service() {
                         lichessApiClient.queryLichess(fenFinal) { info ->
                             if (myId != currentQueryId) return@queryLichess
                             root.post {
-                                if (myId != currentQueryId) return@post
+                                if (destroyed || myId != currentQueryId) return@post
                                 updateLichessInfo(info)
                             }
                         }
@@ -1477,7 +1491,7 @@ class BubbleService : Service() {
                     }
                 }
             } catch (e: Exception) {
-                root.post { updateDebug("Error FenEngine: ${e.message}") }
+                root.post { if (!destroyed) updateDebug("Error FenEngine: ${e.message}") }
             } finally {
                 bitmap.recycle()
             }
@@ -1804,12 +1818,12 @@ class BubbleService : Service() {
                     }
                 }
 
-                root.post { fenTitle.text = "" }
+                root.post { if (!destroyed) fenTitle.text = "" }
 
                 // Fase 1: Blancas (fotos 1-5)
                 for (i in 1..5) {
                     if (abortBenchmark) throw Exception("ABORT_MANUAL")
-                    root.post { updateDebug("TESTING WHITE\nFOTO $i / 5") }
+                    root.post { if (!destroyed) updateDebug("TESTING WHITE\nFOTO $i / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctWhite++ else fallosBlancas.add(i)
                 }
@@ -1822,7 +1836,7 @@ class BubbleService : Service() {
                 for (i in 6..10) {
                     if (abortBenchmark) throw Exception("ABORT_MANUAL")
                     val currentFoto = i - 5
-                    root.post { updateDebug("TESTING BLACK\nFOTO $currentFoto / 5") }
+                    root.post { if (!destroyed) updateDebug("TESTING BLACK\nFOTO $currentFoto / 5") }
                     val ok = procesarFoto(i)
                     if (ok) correctBlack++ else fallosNegras.add(i)
                 }
@@ -1833,6 +1847,7 @@ class BubbleService : Service() {
                 logFile.appendText("=== CHESZ ===\n$resWhite\n$resBlack\nTOTAL $pctTotal%\n")
 
                 root.post {
+                    if (destroyed) return@post
                     updateDebug("MATCH\n$resWhite\n$resBlack\nTOTAL TEST $pctTotal%")
                     if (this::btnBench.isInitialized) {
                         btnBench.text = if (pctTotal < 100) "ERROR -FIX ENGINE" else "ENGINE OK 100%"
@@ -1851,12 +1866,13 @@ class BubbleService : Service() {
 
             } catch (e: Exception) {
                 if (e.message != "ABORT_MANUAL") {
-                    root.post { updateDebug("ERROR: ${e.message}") }
+                    root.post { if (!destroyed) updateDebug("ERROR: ${e.message}") }
                     Thread.sleep(5000)
                 }
             } finally {
                 benchmarkThread = null
                 root.post {
+                    if (destroyed) return@post
                     if (this::btnBench.isInitialized) {
                         btnBench.text = "TEST FEN"
                         btnBench.textSize = TEXT_SIZE_BTN
@@ -1980,7 +1996,7 @@ class BubbleService : Service() {
         if (esFenValido64(newFen)) {
             lichessApiClient.queryLichess(newFen) { info ->
                 root.post {
-                    updateLichessInfo(info)
+                    if (!destroyed) updateLichessInfo(info)
                 }
             }
         }
