@@ -77,9 +77,10 @@ class BubbleService : Service() {
     // ===== MediaProjection permission cache =====
     private var mpResultCode: Int? = null
     private var mpData: Intent? = null
-    private var activeMediaProjection: android.media.projection.MediaProjection? = null
-    private var activeVirtualDisplay: android.hardware.display.VirtualDisplay? = null
-    private var activeImageReader: android.media.ImageReader? = null
+    private val projectionLock = Any()
+    @Volatile private var activeMediaProjection: android.media.projection.MediaProjection? = null
+    @Volatile private var activeVirtualDisplay: android.hardware.display.VirtualDisplay? = null
+    @Volatile private var activeImageReader: android.media.ImageReader? = null
 
     // ===== FenEngine local =====
     private val fenEngine by lazy { com.chesz.engine.FenEngine(this) }
@@ -189,8 +190,10 @@ class BubbleService : Service() {
         runCatching { wm.removeViewImmediate(root) }
         runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
         Thread {
-            runCatching { activeMediaProjection?.stop() }
-            activeMediaProjection = null
+            synchronized(projectionLock) {
+                runCatching { activeMediaProjection?.stop() }
+                activeMediaProjection = null
+            }
             runCatching { stockfishEngine.shutdown() }
             LichessApiClient.stockfishEngine = null
         }.start()
@@ -1252,32 +1255,34 @@ class BubbleService : Service() {
         }, DELAY_CAPTURE_RESET_MS)
 
         runCatching {
-            if (activeMediaProjection == null) {
-                val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
-                activeMediaProjection = mgr.getMediaProjection(rc, data)
+            synchronized(projectionLock) {
+                if (activeMediaProjection == null) {
+                    val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager
+                    activeMediaProjection = mgr.getMediaProjection(rc, data)
 
-                // 🛡️ LEY DE ANDROID 14: Callback OBLIGATORIO
-                activeMediaProjection?.registerCallback(object : android.media.projection.MediaProjection.Callback() {
-                    override fun onStop() {
-                        activeVirtualDisplay?.release()
-                        activeVirtualDisplay = null
-                        activeImageReader?.close()
-                        activeImageReader = null
-                        activeMediaProjection = null
-                        mpData = null
-                        mpResultCode = null
-                        updatePermUi()
-                    }
-                }, android.os.Handler(android.os.Looper.getMainLooper()))
+                    // 🛡️ LEY DE ANDROID 14: Callback OBLIGATORIO
+                    activeMediaProjection?.registerCallback(object : android.media.projection.MediaProjection.Callback() {
+                        override fun onStop() {
+                            activeVirtualDisplay?.release()
+                            activeVirtualDisplay = null
+                            activeImageReader?.close()
+                            activeImageReader = null
+                            activeMediaProjection = null
+                            mpData = null
+                            mpResultCode = null
+                            updatePermUi()
+                        }
+                    }, android.os.Handler(android.os.Looper.getMainLooper()))
 
-                val safeW = if (sw % 2 != 0) sw - 1 else sw
-                val safeH = if (sh % 2 != 0) sh - 1 else sh
-                activeImageReader = android.media.ImageReader.newInstance(safeW, safeH, android.graphics.PixelFormat.RGBA_8888, 2)
-                activeVirtualDisplay = activeMediaProjection!!.createVirtualDisplay(
-                    "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi,
-                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    activeImageReader!!.surface, null, null
-                )
+                    val safeW = if (sw % 2 != 0) sw - 1 else sw
+                    val safeH = if (sh % 2 != 0) sh - 1 else sh
+                    activeImageReader = android.media.ImageReader.newInstance(safeW, safeH, android.graphics.PixelFormat.RGBA_8888, 2)
+                    activeVirtualDisplay = activeMediaProjection!!.createVirtualDisplay(
+                        "chesz-shot", safeW, safeH, resources.displayMetrics.densityDpi,
+                        android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        activeImageReader!!.surface, null, null
+                    )
+                }
             }
 
             val reader = activeImageReader ?: return@runCatching
@@ -1342,9 +1347,9 @@ class BubbleService : Service() {
                             croppedLimpio.recycle() // Liberar pantalla completa
 
                             updateDebug("PROCESANDO...")
-                            procesarConFenEngine(recortado) // recycle dentro del hilo
 
-                            // Guardar imagen debug en hilo aparte, no bloquea el análisis
+                            // Snapshot para debug ANTES de ceder ownership a procesarConFenEngine,
+                            // que recicla el bitmap en su finally desde otro hilo.
                             val dir = getExternalFilesDir(null)
                             if (dir != null) {
                                 val snapshot = recortado.copy(recortado.config ?: android.graphics.Bitmap.Config.ARGB_8888, false)
@@ -1359,6 +1364,8 @@ class BubbleService : Service() {
                                     }
                                 }.start()
                             }
+
+                            procesarConFenEngine(recortado) // ownership exclusivo; recycle dentro del hilo
 
                             // 🆕 LIMPIEZA POST-CAPTURA (durante cooldown de 3s)
                             Thread.sleep(150)  // Dar tiempo a que procesarConFenEngine inicie

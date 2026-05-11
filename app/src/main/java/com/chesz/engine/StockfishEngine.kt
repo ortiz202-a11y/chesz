@@ -8,6 +8,9 @@ import java.io.OutputStreamWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class StockfishEngine(private val context: Context) {
 
@@ -25,6 +28,19 @@ class StockfishEngine(private val context: Context) {
     private val lock = Any()
     @Volatile private var lastRawOutput: String = ""
     @Volatile private var isInitialized = false
+
+    // I/O bloqueante fuera del lock para evitar deadlock si Stockfish muere
+    private val ioExecutor = Executors.newSingleThreadExecutor()
+
+    private fun readLineWithTimeout(r: BufferedReader, timeoutMs: Long = 30_000L): String? {
+        val future = ioExecutor.submit<String?> { r.readLine() }
+        return try {
+            future.get(timeoutMs, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            future.cancel(true)
+            throw IllegalStateException("readLine timeout — Stockfish no responde")
+        }
+    }
 
     /**
      * Inicia el proceso de Stockfish de forma persistente.
@@ -81,7 +97,7 @@ class StockfishEngine(private val context: Context) {
                 var bestmoveFound = false
 
                 while (!bestmoveFound) {
-                    val line = r.readLine()
+                    val line = readLineWithTimeout(r)
                     if (line == null) {
                         saveDebugLog("Stream closed unexpectedly", fen, null)
                         resetLocked()
@@ -147,7 +163,7 @@ class StockfishEngine(private val context: Context) {
                 val maxLines = 50 // Máximo de líneas a leer
 
                 while (linesRead < maxLines) {
-                    val line = r.readLine() ?: break
+                    val line = try { readLineWithTimeout(r) } catch (_: Exception) { break } ?: break
                     linesRead++
 
                     // Buscar línea que indica si hay jaque
@@ -211,6 +227,7 @@ class StockfishEngine(private val context: Context) {
             writer = null
             reader = null
             isInitialized = false
+            ioExecutor.shutdownNow()
         }
     }
 
@@ -253,7 +270,7 @@ class StockfishEngine(private val context: Context) {
     private fun waitFor(token: String) {
         val r = reader ?: throw IllegalStateException("reader null")
         while (true) {
-            val line = r.readLine() ?: throw IllegalStateException("stream closed")
+            val line = readLineWithTimeout(r) ?: throw IllegalStateException("stream closed")
             saveDebugLog("<<< RECV: $line", "", null)
             if (line.contains(token)) return
         }
