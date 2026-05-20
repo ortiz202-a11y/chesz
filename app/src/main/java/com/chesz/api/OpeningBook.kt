@@ -46,23 +46,6 @@ object OpeningBook {
         return nameByEpd[fenToEpd(fen)]
     }
 
-    fun variants(fen: String, max: Int = 5): String? {
-        if (!loaded) return null
-        val arr = childrenJson?.optJSONArray(fenToEpd(fen)) ?: return null
-        if (arr.length() == 0) return null
-        val items = mutableListOf<String>()
-        for (i in 0 until minOf(max, arr.length())) {
-            val o = arr.getJSONObject(i)
-            val move = o.optString("move", "")
-            val name = o.optString("name", "")
-            if (move.isNotEmpty() && name.isNotEmpty()) {
-                val shortName = if (name.contains(":")) name.substringAfterLast(":").trim() else name
-                items.add("$shortName ($move)")
-            }
-        }
-        return if (items.isNotEmpty()) items.joinToString(", ") else null
-    }
-
     private fun allChildrenOf(fen: String): List<VariantItem> {
         if (!loaded) return emptyList()
         val arr = childrenJson?.optJSONArray(fenToEpd(fen)) ?: return emptyList()

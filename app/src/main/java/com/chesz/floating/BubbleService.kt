@@ -264,7 +264,6 @@ class BubbleService : Service() {
                 MotionEvent.ACTION_DOWN -> {
                     dragging = false
                     downRawX = e.rawX
-                    
                     // Iniciar temporizador Modo Dios
                     devRunnable?.let { devHandler.removeCallbacks(it) }
                     devRunnable = Runnable {
@@ -535,7 +534,7 @@ class BubbleService : Service() {
         setStateALayout()
     }
 
-            private fun buildPanel(): FrameLayout {
+    private fun buildPanel(): FrameLayout {
         panelBorderDrawable = android.graphics.drawable.GradientDrawable().apply {
             setColor(COLOR_PANEL_BG)
             setStroke(dp(BTN_STROKE_DP).toInt(), accentColor)
@@ -1159,7 +1158,7 @@ class BubbleService : Service() {
         bottomInsetCache = insets.bottom
     }
 
-            private fun resetToGodMode() {
+    private fun resetToGodMode() {
         root.post {
             if (destroyed) return@post
             if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.VISIBLE
@@ -1794,8 +1793,6 @@ class BubbleService : Service() {
             }
         }
     }
-
-
     private fun runBenchmark() {
         if (this::btnBench.isInitialized) btnBench.visibility = android.view.View.GONE
         if (this::btnPrueba.isInitialized) btnPrueba.visibility = android.view.View.GONE
@@ -1919,7 +1916,6 @@ class BubbleService : Service() {
         }.also { it.start() }
     }
 
-
     companion object {
         // --- Dimensiones UI (dp) ---
         private const val BUBBLE_SIZE_DP       = 60
@@ -2018,5 +2014,3 @@ class BubbleService : Service() {
         Thread { analizarYRenderizarFen(newFen) }.start()
     }
 }
-
-
