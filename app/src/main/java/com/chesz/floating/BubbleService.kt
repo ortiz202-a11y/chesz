@@ -1521,102 +1521,112 @@ class BubbleService : Service() {
                     "${fenParts[0]} $userColor - - 0 1"
                 }
 
-                lastFen = fenFinal
-
-                // Análisis en hilo background (blocking) — NO dentro de root.post
-                val fenValido = esFenValido64(fenFinal)
-                var bgOptions: List<StockfishEngine.Option> = emptyList()
-                var bgInCheck = false
-                var bgOpeningName: String? = null
-
-                if (fenValido) {
-                    runCatching {
-                        val logDir = getExternalFilesDir(null)
-                        if (logDir != null) {
-                            val ts = java.text.SimpleDateFormat(
-                                "MM/dd HH:mm", java.util.Locale.getDefault()
-                            ).format(java.util.Date())
-                            // logfen_last.txt: último FEN detectado (archivo separado)
-                            java.io.File(logDir, "logfen_last.txt")
-                                .writeText("[$ts]\n$fenFinal\n")
-                        }
-                    }
-                    bgOptions = runCatching { stockfishEngine.analyze(fenFinal) }.getOrDefault(emptyList())
-                    bgInCheck = runCatching { stockfishEngine.isInCheck(fenFinal) }.getOrDefault(false)
-                    com.chesz.api.OpeningBook.ensureLoaded(this)
-                    bgOpeningName = com.chesz.api.OpeningBook.lookup(fenFinal)
-                }
-
-                root.post {
-                    if (destroyed) return@post
-                    fenTitle.text = fenPosicion
-
-                    // Mostrar fila de dots cuando aparece el FEN
-                    if (this::dotsRow.isInitialized) {
-                        dotsRow.visibility = View.VISIBLE
-                    }
-
-                    if (fenValido) {
-                        if (isDeveloperMode) return@post
-                        val top = bgOptions.firstOrNull()
-                        val mateText = top?.mate?.takeIf { it != 0 }?.let { mate ->
-                            val abs = kotlin.math.abs(mate)
-                            if (mate > 0) "MATE IN $abs YOU" else "MATE IN $abs RIVAL"
-                        }
-                        val winRateStr = top?.mate?.takeIf { it != 0 }?.let { mate ->
-                            if (mate > 0) "100%" else "0%"
-                        } ?: top?.cp?.let { cp ->
-                            val wr = 50 + 50 * (2.0 / (1 + Math.exp(-0.00368208 * cp)) - 1)
-                            "${wr.toInt()}%"
-                        }
-                        val bestMove = top?.pv?.getOrNull(0)
-
-                        debugText.visibility = View.GONE
-                        lichessContainer.visibility = View.VISIBLE
-
-                        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                        val omEnabled = prefs.getBoolean(PREF_OM, true)
-                        val bmEnabled = prefs.getBoolean(PREF_BM, true)
-                        val mrEnabled = prefs.getBoolean(PREF_MR, true)
-                        val wrEnabled = prefs.getBoolean(PREF_WR, false)
-
-                        if (omEnabled) {
-                            if (isInitialPosition(fenFinal)) rowOM.visibility = View.GONE
-                            else { tvOM.text = bgOpeningName ?: "[∆]"; rowOM.visibility = View.VISIBLE }
-                        } else rowOM.visibility = View.GONE
-
-                        if (bmEnabled && !bestMove.isNullOrEmpty()) {
-                            lastBestMove = bestMove
-                            bmCacheTime = System.currentTimeMillis()
-                            tvBestMove.text = renderBmText(bestMove)
-                            rowBestMove.visibility = View.VISIBLE
-                        } else rowBestMove.visibility = View.GONE
-
-                        if (mrEnabled) { renderMrBlock(fenFinal); rowMR.visibility = View.VISIBLE }
-                        else rowMR.visibility = View.GONE
-
-                        if (wrEnabled && !winRateStr.isNullOrEmpty()) {
-                            tvCounterAttack.text = winRateStr
-                            rowCounterAttack.visibility = View.VISIBLE
-                        } else rowCounterAttack.visibility = View.GONE
-
-                        rowTablebaseResult.visibility = View.GONE
-
-                        val mateDisplay = mateText?.let { if (bgInCheck) "$it JAQUE" else it }
-                            ?: if (bgInCheck) "JAQUE" else null
-                        if (mateDisplay != null) {
-                            tvMateIn.text = mateDisplay; rowMateIn.visibility = View.VISIBLE
-                        } else rowMateIn.visibility = View.GONE
-                    } else {
-                        updateDebug("[FEN IMPERFECTO]\n$fenPosicion")
-                    }
-                }
+                analizarYRenderizarFen(fenFinal)
             } catch (e: Exception) {
                 root.post { if (!destroyed) updateDebug("Error FenEngine: ${e.message}") }
             } finally {
                 bitmap.recycle()
             }
         }.start()
+    }
+
+    private fun analizarYRenderizarFen(fenFinal: String) {
+        lastFen = fenFinal
+        val fenPosicion = fenFinal.substringBefore(" ")
+
+        val fenValido = esFenValido64(fenFinal)
+        var bgOptions: List<StockfishEngine.Option> = emptyList()
+        var bgInCheck = false
+        var bgOpeningName: String? = null
+
+        if (fenValido) {
+            runCatching {
+                val logDir = getExternalFilesDir(null)
+                if (logDir != null) {
+                    val ts = java.text.SimpleDateFormat(
+                        "MM/dd HH:mm", java.util.Locale.getDefault()
+                    ).format(java.util.Date())
+                    java.io.File(logDir, "logfen_last.txt")
+                        .writeText("[$ts]\n$fenFinal\n")
+                }
+            }
+            bgOptions = runCatching { stockfishEngine.analyze(fenFinal) }.getOrDefault(emptyList())
+            bgInCheck = runCatching { stockfishEngine.isInCheck(fenFinal) }.getOrDefault(false)
+            com.chesz.api.OpeningBook.ensureLoaded(this)
+            bgOpeningName = com.chesz.api.OpeningBook.lookup(fenFinal)
+        }
+
+        root.post {
+            if (destroyed) return@post
+            fenTitle.text = fenPosicion
+
+            val hasPieces = fenPosicion.any { it.isLetter() }
+            if (!hasPieces) {
+                if (this::dotsRow.isInitialized) dotsRow.visibility = View.GONE
+                lichessContainer.visibility = View.GONE
+                debugText.visibility = View.GONE
+                return@post
+            }
+
+            if (this::dotsRow.isInitialized) {
+                dotsRow.visibility = View.VISIBLE
+            }
+
+            if (fenValido) {
+                if (isDeveloperMode) return@post
+                val top = bgOptions.firstOrNull()
+                val mateText = top?.mate?.takeIf { it != 0 }?.let { mate ->
+                    val abs = kotlin.math.abs(mate)
+                    if (mate > 0) "MATE IN $abs YOU" else "MATE IN $abs RIVAL"
+                }
+                val winRateStr = top?.mate?.takeIf { it != 0 }?.let { mate ->
+                    if (mate > 0) "100%" else "0%"
+                } ?: top?.cp?.let { cp ->
+                    val wr = 50 + 50 * (2.0 / (1 + Math.exp(-0.00368208 * cp)) - 1)
+                    "${wr.toInt()}%"
+                }
+                val bestMove = top?.pv?.getOrNull(0)
+
+                debugText.visibility = View.GONE
+                lichessContainer.visibility = View.VISIBLE
+
+                val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val omEnabled = prefs.getBoolean(PREF_OM, true)
+                val bmEnabled = prefs.getBoolean(PREF_BM, true)
+                val mrEnabled = prefs.getBoolean(PREF_MR, true)
+                val wrEnabled = prefs.getBoolean(PREF_WR, false)
+
+                if (omEnabled) {
+                    if (isInitialPosition(fenFinal)) rowOM.visibility = View.GONE
+                    else { tvOM.text = bgOpeningName ?: "[∆]"; rowOM.visibility = View.VISIBLE }
+                } else rowOM.visibility = View.GONE
+
+                if (bmEnabled && !bestMove.isNullOrEmpty()) {
+                    lastBestMove = bestMove
+                    bmCacheTime = System.currentTimeMillis()
+                    tvBestMove.text = renderBmText(bestMove)
+                    rowBestMove.visibility = View.VISIBLE
+                } else rowBestMove.visibility = View.GONE
+
+                if (mrEnabled) { renderMrBlock(fenFinal); rowMR.visibility = View.VISIBLE }
+                else rowMR.visibility = View.GONE
+
+                if (wrEnabled && !winRateStr.isNullOrEmpty()) {
+                    tvCounterAttack.text = winRateStr
+                    rowCounterAttack.visibility = View.VISIBLE
+                } else rowCounterAttack.visibility = View.GONE
+
+                rowTablebaseResult.visibility = View.GONE
+
+                val mateDisplay = mateText?.let { if (bgInCheck) "$it JAQUE" else it }
+                    ?: if (bgInCheck) "JAQUE" else null
+                if (mateDisplay != null) {
+                    tvMateIn.text = mateDisplay; rowMateIn.visibility = View.VISIBLE
+                } else rowMateIn.visibility = View.GONE
+            } else {
+                updateDebug("[FEN IMPERFECTO]\n$fenPosicion")
+            }
+        }
     }
 
     private fun shortName(name: String): String =
@@ -2010,10 +2020,8 @@ class BubbleService : Service() {
             "${fenParts[0]} $color - - 0 1"
         }
 
-        // Actualizar lastFen y continuar con el procesamiento normal
-        lastFen = newFen
         fenAwaitingUserColor = null
-
+        Thread { analizarYRenderizarFen(newFen) }.start()
     }
 }
 
