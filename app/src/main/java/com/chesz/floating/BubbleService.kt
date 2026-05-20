@@ -479,19 +479,13 @@ class BubbleService : Service() {
                 rootY >= 0 &&
                 (rootX + rootW) <= sw &&
                 (rootY + rootH) <= maxY
-        if (!fits) {
-            flashBubbleRed()
-            return
-        }
+        val clampedX = rootX.coerceIn(0, (sw - rootW).coerceAtLeast(0))
+        val clampedY = rootY.coerceIn(0, (maxY - rootH).coerceAtLeast(0))
 
-        rootLp.x = rootX
-        rootLp.y = rootY
+        rootLp.x = clampedX
+        rootLp.y = clampedY
         rootLp.width = rootW
         rootLp.height = rootH
-
-        val clampedB = clampRootToScreen(rootLp.x, rootLp.y)
-        rootLp.x = clampedB.first
-        rootLp.y = clampedB.second
 
         panelRoot.visibility = View.VISIBLE
         panelRoot.layoutParams =
