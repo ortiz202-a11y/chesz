@@ -509,10 +509,8 @@ class BubbleService : Service() {
         panelShown = true
         resetToGodMode()
         updatePermUi()
-        // requestLayout primero: el botón baja su topMargin antes de que el root suba,
-        // evitando el salto visual de un frame.
+        runCatching { wm.updateViewLayout(root, rootLp) }
         root.requestLayout()
-        root.post { runCatching { wm.updateViewLayout(root, rootLp) } }
     }
 
     private fun hidePanel() {
