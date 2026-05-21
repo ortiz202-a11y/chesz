@@ -540,3 +540,6 @@ Si falta `.mcp.json`, `CLAUDE.md` u otro archivo: `git stash list`. Si hay algo,
 
 
 agregamos stockfish local.
+
+## 🗑️ PENDIENTE DE BORRAR
+- Se va a borrar la integración con Shizuku.
