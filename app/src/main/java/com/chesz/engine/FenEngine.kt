@@ -807,6 +807,20 @@ class FenEngine(private val context: Context) {
         return grid
     }
 
+    fun buildFenFromPieces(pieces: Map<String, Char>): String {
+        val grid = Array(BOARD_SQUARES) { CharArray(BOARD_SQUARES) { EMPTY } }
+        for ((square, piece) in pieces) {
+            if (square.length < 2) continue
+            val col = square[0] - 'a'
+            val rank = square[1].digitToInt()
+            val row = 8 - rank
+            if (col in 0 until BOARD_SQUARES && row in 0 until BOARD_SQUARES) {
+                grid[row][col] = piece
+            }
+        }
+        return buildFen(grid)
+    }
+
     private fun buildFen(grid: Array<CharArray>): String {
         val rows = grid.map { row ->
             val sb = StringBuilder()

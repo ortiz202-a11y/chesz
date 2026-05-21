@@ -28,6 +28,18 @@
             android:enabled="true"
             android:exported="false" />
 
+        <service
+            android:name=".floating.ChessboardA11yService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/chesz_a11y_config" />
+        </service>
+
         <activity
             android:name=".MainActivity"
             android:excludeFromRecents="true"

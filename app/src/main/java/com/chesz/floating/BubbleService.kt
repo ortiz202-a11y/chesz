@@ -87,6 +87,7 @@ class BubbleService : Service() {
     // ===== FenEngine local =====
     private val fenEngine by lazy { com.chesz.engine.FenEngine(this) }
 
+
     // ===== Stockfish local =====
     private lateinit var stockfishEngine: StockfishEngine
 
@@ -163,6 +164,7 @@ class BubbleService : Service() {
             }
         }.start()
         Thread { fenEngine.loadTemplates() }.start()
+        a11yFenCallback = { fen -> analizarYRenderizarFen(fen) }
     }
 
     private fun startForegroundForMediaProjection() {
@@ -362,75 +364,8 @@ class BubbleService : Service() {
         }
     }
 
-    private fun isShizukuAvailable(): Boolean = shizukuReady
-
     private fun showFloatingError(msg: String) {
         root.post { android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun takeScreenshotViaShizuku() {
-        clearPanel()
-        updateDebug("PROCESSING...")
-        bubbleIcon.clearColorFilter()
-        isCapturing = true
-        root.postDelayed({
-            if (!destroyed) { isCapturing = false; bubbleIcon.clearColorFilter() }
-        }, DELAY_CAPTURE_RESET_MS)
-
-        val logFile = java.io.File(getExternalFilesDir(null), "chesz_debug.txt")
-        val tmpFile = java.io.File(getExternalFilesDir(null), "shizuku_shot.png")
-        Thread {
-            try {
-                logFile.appendText("[${System.currentTimeMillis()}] takeScreenshotViaShizuku iniciado\n")
-                val shizukuClass = Class.forName("rikka.shizuku.Shizuku")
-                val methods = shizukuClass.declaredMethods.filter { it.name == "newProcess" }
-                logFile.appendText("[${System.currentTimeMillis()}] métodos newProcess: ${methods.map { it.parameterTypes.map{p->p.simpleName}.joinToString(",") }}\n")
-                methods.first().isAccessible = true
-                val process = methods.first().invoke(null, arrayOf("screencap", "-p", tmpFile.absolutePath), null, null) as Process
-                logFile.appendText("[${System.currentTimeMillis()}] proceso creado: $process\n")
-                val exitCode = process.waitFor()
-                val stderr = process.errorStream.bufferedReader().readText()
-                logFile.appendText("[${System.currentTimeMillis()}] exitCode=$exitCode stderr=$stderr\n")
-                android.util.Log.e("CheszShizuku", "exitCode=$exitCode stderr=$stderr")
-                if (exitCode != 0) {
-                    showFloatingError("Shizuku exit $exitCode: ${stderr.take(100)}")
-                    return@Thread
-                }
-                val bitmap = android.graphics.BitmapFactory.decodeFile(tmpFile.absolutePath)
-                tmpFile.delete()
-                if (bitmap == null) {
-                    showFloatingError("Shizuku: imagen vacía")
-                    return@Thread
-                }
-                val boardX = BOARD_X
-                val boardY = BOARD_Y
-                val boardSize = BOARD_SIZE
-                val safeCropW = if (boardX + boardSize > bitmap.width) bitmap.width - boardX else boardSize
-                val safeCropH = if (boardY + boardSize > bitmap.height) bitmap.height - boardY else boardSize
-                val recortado = android.graphics.Bitmap.createBitmap(bitmap, boardX, boardY, safeCropW, safeCropH)
-                bitmap.recycle()
-                val dir = getExternalFilesDir(null)
-                if (dir != null) {
-                    val snapshot = recortado.copy(recortado.config ?: android.graphics.Bitmap.Config.ARGB_8888, false)
-                    Thread {
-                        try {
-                            if (!dir.exists()) dir.mkdirs()
-                            java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
-                                snapshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                            }
-                        } finally { snapshot.recycle() }
-                    }.start()
-                }
-                procesarConFenEngine(recortado)
-            } catch (e: Throwable) {
-                logFile.appendText("[${System.currentTimeMillis()}] ERROR ${e::class.simpleName}: ${e.message}\n")
-                showFloatingError(when (e) {
-                    is SecurityException -> "Shizuku: permiso denegado"
-                    is java.io.IOException -> "Shizuku: error de captura"
-                    else -> "Shizuku no disponible"
-                })
-            }
-        }.start()
     }
 
     private fun setStateALayout() {
@@ -1976,6 +1911,8 @@ class BubbleService : Service() {
         private const val PREF_BM = "toggle_bm"
         private const val PREF_MR = "toggle_mr"
         private const val PREF_WR = "toggle_wr"
+
+        var a11yFenCallback: ((String) -> Unit)? = null
     }
 
     private fun esFenValido64(fen: String): Boolean {

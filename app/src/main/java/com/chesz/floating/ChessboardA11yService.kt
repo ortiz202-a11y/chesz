@@ -30,17 +30,28 @@ class ChessboardA11yService : AccessibilityService() {
     }
 
     private fun readBoardFromTree() {
-        val root = rootInActiveWindow ?: return
-        val pieces = mutableMapOf<String, Char>()
         try {
-            collectPieces(root, pieces)
-        } finally {
-            root.recycle()
+            val root = rootInActiveWindow ?: return
+            val pieces = mutableMapOf<String, Char>()
+            try {
+                collectPieces(root, pieces)
+            } finally {
+                root.recycle()
+            }
+            if (pieces.isEmpty()) {
+                android.util.Log.d("CheszA11y", "árbol vacío, sin piezas")
+                return
+            }
+            val fen = fenEngine.buildFenFromPieces(pieces)
+            val fenPieces = fen.substringBefore(" ")
+            if ('K' !in fenPieces || 'k' !in fenPieces) {
+                android.util.Log.w("CheszA11y", "FEN incompleto (faltan reyes): $fen")
+                return
+            }
+            BubbleService.a11yFenCallback?.invoke(fen)
+        } catch (e: Throwable) {
+            android.util.Log.e("CheszA11y", "error leyendo árbol: ${e.message}", e)
         }
-        if (pieces.isEmpty()) return
-
-        val fen = fenEngine.buildFenFromPieces(pieces)
-        BubbleService.a11yFenCallback?.invoke(fen)
     }
 
     private fun collectPieces(node: AccessibilityNodeInfo, pieces: MutableMap<String, Char>) {
