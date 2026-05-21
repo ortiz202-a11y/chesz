@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">chesz</string>
+    <string name="chesz_a11y_description">Chesz accessibility service for reading chess board state</string>
 </resources>
