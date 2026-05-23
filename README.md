@@ -543,3 +543,31 @@ agregamos stockfish local.
 
 ## 🗑️ PENDIENTE DE BORRAR
 - Se va a borrar la integración con Shizuku.
+
+---
+
+## 📷 MODO FOTO (ZOMBIE) vs MODO A11Y
+
+La detección de posición del tablero tiene dos caminos. Actualmente está activo el modo A11Y.
+
+### Flag de control
+`BubbleService.kt` → companion object:
+```kotlin
+const val CAPTURA_FOTO_ENABLED = false  // false = A11Y activo, true = screen capture activo
+```
+
+### Modo A11Y (activo)
+- `ChessboardA11yService` lee el árbol de vistas de chess.com
+- No requiere permiso de captura de pantalla
+- Botón de permiso → abre **Info de la app** (Settings → Apps → Chesz)
+- El usuario debe activar "Permitir configuración restringida" (Android 13+) y luego activar el toggle en Ajustes → Accesibilidad → Chesz
+- `permBar` se oculta cuando el servicio de accesibilidad está activo
+
+### Modo Foto (zombi, desactivado)
+- MediaProjection captura la pantalla → `FenEngine.processBoard(bitmap)` analiza la imagen
+- Botón de permiso → solicita permiso de screenshot (CapturePermissionActivity)
+- `permBar` se oculta cuando `mpData != null`
+
+### Para reactivar el modo foto
+1. Cambiar `CAPTURA_FOTO_ENABLED = true` en el companion object de BubbleService
+2. Todo el código zombi (MediaProjection, upgradeToMediaProjection, CapturePermissionActivity) vuelve a correr automáticamente

@@ -16,6 +16,11 @@
         android:label="Chesz"
         android:theme="@style/Theme.AppCompat.NoActionBar">
 
+        <!-- Requerido por Android 14+ para FOREGROUND_SERVICE_SPECIAL_USE -->
+        <property
+            android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+            android:value="chess_overlay_bubble" />
+
         <activity
             android:name=".CapturePermissionActivity"
             android:excludeFromRecents="true"

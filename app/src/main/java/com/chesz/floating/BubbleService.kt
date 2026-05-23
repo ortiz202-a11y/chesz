@@ -134,7 +134,7 @@ class BubbleService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
-        if (intent?.action == "CHESZ_CAPTURE_PERMISSION_RESULT") {
+        if (CAPTURA_FOTO_ENABLED && intent?.action == "CHESZ_CAPTURE_PERMISSION_RESULT") {
             mpResultCode = intent.getIntExtra("resultCode", Activity.RESULT_CANCELED)
             @Suppress("DEPRECATION")
             mpData = intent.getParcelableExtra("data")
@@ -151,7 +151,7 @@ class BubbleService : Service() {
             runCatching { stockfishEngine.start() }
                 .onFailure { android.util.Log.e("Stockfish", "init failed", it) }
         }.start()
-        startForegroundForMediaProjection()
+        if (CAPTURA_FOTO_ENABLED) startForegroundForMediaProjection() else startForegroundSimple()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         updateScreenCache()
         Thread {
@@ -875,7 +875,9 @@ class BubbleService : Service() {
         col.addView(userColorChoiceBar, LinearLayout.LayoutParams(-1, -2).apply { leftMargin = dp(PANEL_LEFT_MARGIN_DP); rightMargin = dp(0); bottomMargin = dp(4) })
 
         permBar = FrameLayout(this).apply {
-            setOnClickListener { requestCapturePermission() }
+            setOnClickListener {
+                if (CAPTURA_FOTO_ENABLED) requestCapturePermission() else abrirConfiguracionApp()
+            }
             val permIcon = ImageView(context).apply {
                 setImageResource(R.drawable.permit_icon)
                 adjustViewBounds = true
@@ -961,6 +963,39 @@ class BubbleService : Service() {
         startActivity(pi)
     }
 
+    private fun abrirConfiguracionApp() {
+        hidePanel()
+        // Paso 1: info de la app → usuario activa "Permitir configuración restringida" (Android 13+)
+        // Paso 2: volver y abrir accesibilidad para activar el toggle de Chesz
+        val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.parse("package:com.chesz")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+    }
+
+    private fun isA11yServiceEnabled(): Boolean {
+        val enabled = android.provider.Settings.Secure.getString(
+            contentResolver,
+            android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        return enabled.contains("com.chesz/.floating.ChessboardA11yService", ignoreCase = true)
+    }
+
+    private fun startForegroundSimple() {
+        val channelId = "chesz_channel"
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(channelId, "Chesz Service", android.app.NotificationManager.IMPORTANCE_LOW)
+            getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
+        }
+        val notif = android.app.Notification.Builder(this, channelId)
+            .setContentTitle("Chesz")
+            .setContentText("Activo")
+            .setSmallIcon(R.drawable.ic_check_green)
+            .build()
+        startForeground(1, notif)
+    }
+
     private fun upgradeToMediaProjection() {
         val channelId = "chesz_channel"
         val notif =
@@ -977,7 +1012,8 @@ class BubbleService : Service() {
 
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
-        permBar.visibility = if (isDeveloperMode) View.GONE else if (mpData != null) View.GONE else View.VISIBLE
+        val permisoOk = if (CAPTURA_FOTO_ENABLED) mpData != null else isA11yServiceEnabled()
+        permBar.visibility = if (isDeveloperMode || permisoOk) View.GONE else View.VISIBLE
     }
 
     private fun createKillArea() {
@@ -1913,6 +1949,9 @@ class BubbleService : Service() {
         private const val PREF_WR = "toggle_wr"
 
         var a11yFenCallback: ((String) -> Unit)? = null
+
+        // ZOMBIE-FOTO: false = flujo a11y activo, true = flujo screen capture activo
+        const val CAPTURA_FOTO_ENABLED = false
     }
 
     private fun esFenValido64(fen: String): Boolean {
