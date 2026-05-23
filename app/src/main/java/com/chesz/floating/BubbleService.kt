@@ -993,7 +993,11 @@ class BubbleService : Service() {
             .setContentText("Activo")
             .setSmallIcon(R.drawable.ic_check_green)
             .build()
-        startForeground(1, notif)
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            startForeground(1, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(1, notif)
+        }
     }
 
     private fun upgradeToMediaProjection() {
