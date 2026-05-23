@@ -979,7 +979,8 @@ class BubbleService : Service() {
             contentResolver,
             android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
         ) ?: return false
-        return enabled.contains("com.chesz/.floating.ChessboardA11yService", ignoreCase = true)
+        // Android guarda la forma larga: com.chesz/com.chesz.floating.ChessboardA11yService
+        return enabled.contains("ChessboardA11yService", ignoreCase = true)
     }
 
     private fun startForegroundSimple() {
