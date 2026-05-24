@@ -8,18 +8,51 @@ import androidx.appcompat.app.AppCompatActivity
 import com.chesz.floating.BubbleService
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val REQ_OVERLAY = 123
+        private const val REQ_APP_INFO = 124
+        private const val REQ_ACCESSIBILITY = 125
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (!Settings.canDrawOverlays(this)) {
-            val intent =
-                Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName"),
-                )
-            startActivityForResult(intent, 123)
+            startActivityForResult(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
+                REQ_OVERLAY,
+            )
         } else {
-            launchService()
+            checkA11yFlow()
         }
+    }
+
+    private fun checkA11yFlow() {
+        if (isA11yEnabled()) {
+            launchService()
+        } else {
+            startActivityForResult(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                },
+                REQ_APP_INFO,
+            )
+        }
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivityForResult(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            REQ_ACCESSIBILITY,
+        )
+    }
+
+    private fun isA11yEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+        ) ?: return false
+        return enabled.contains("ChessboardA11yService", ignoreCase = true)
     }
 
     private fun launchService() {
@@ -27,16 +60,18 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?,
-    ) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 123 && Settings.canDrawOverlays(this)) {
-            launchService()
-        } else {
-            finish()
+        when (requestCode) {
+            REQ_OVERLAY -> {
+                if (Settings.canDrawOverlays(this)) checkA11yFlow() else finish()
+            }
+            REQ_APP_INFO -> {
+                openAccessibilitySettings()
+            }
+            REQ_ACCESSIBILITY -> {
+                launchService()
+            }
         }
     }
 }

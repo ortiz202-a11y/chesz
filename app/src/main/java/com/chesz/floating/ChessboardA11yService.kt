@@ -20,9 +20,8 @@ class ChessboardA11yService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        com.chesz.AppLog.log("A11y", "RAW pkg=${event.packageName} tipo=${event.eventType}")
         if (event.packageName != "com.chess") return
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
         com.chesz.AppLog.log("A11y", "evento com.chess tipo=${event.eventType} debounce 300ms")
         // Debounce 300 ms para que el árbol se estabilice tras mover una pieza
