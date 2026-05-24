@@ -322,6 +322,13 @@ class StockfishEngine(private val context: Context) {
     }
 
     private fun saveDebugLog(output: String, fen: String, exitCode: Int?) {
+        // Errores críticos van a AppLog aunque no sea DEBUG
+        val isError = output.contains("not initialized", true) ||
+            output.contains("null", true) ||
+            output.contains("failed", true) ||
+            output.contains("exception", true) ||
+            output.contains("closed", true)
+        if (isError) com.chesz.AppLog.log("Stockfish", output.take(120))
         if (!BuildConfig.DEBUG) return
         logExecutor.submit {
             try {

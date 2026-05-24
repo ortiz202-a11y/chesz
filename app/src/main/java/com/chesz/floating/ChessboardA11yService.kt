@@ -15,6 +15,8 @@ class ChessboardA11yService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        com.chesz.AppLog.init(this)
+        com.chesz.AppLog.log("A11y", "onServiceConnected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -22,6 +24,7 @@ class ChessboardA11yService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
 
+        com.chesz.AppLog.log("A11y", "evento com.chess tipo=${event.eventType} debounce 300ms")
         // Debounce 300 ms para que el árbol se estabilice tras mover una pieza
         pendingRead?.let { handler.removeCallbacks(it) }
         val task = Runnable { readBoardFromTree() }
@@ -31,7 +34,10 @@ class ChessboardA11yService : AccessibilityService() {
 
     private fun readBoardFromTree() {
         try {
-            val root = rootInActiveWindow ?: return
+            val root = rootInActiveWindow ?: run {
+                com.chesz.AppLog.log("A11y", "readBoardFromTree: rootInActiveWindow=null")
+                return
+            }
             val pieces = mutableMapOf<String, Char>()
             try {
                 collectPieces(root, pieces)
@@ -40,17 +46,27 @@ class ChessboardA11yService : AccessibilityService() {
             }
             if (pieces.isEmpty()) {
                 android.util.Log.d("CheszA11y", "árbol vacío, sin piezas")
+                com.chesz.AppLog.log("A11y", "readBoardFromTree: árbol vacío, 0 piezas")
                 return
             }
             val fen = fenEngine.buildFenFromPieces(pieces)
             val fenPieces = fen.substringBefore(" ")
+            com.chesz.AppLog.log("A11y", "FEN construido piezas=${pieces.size} fen=$fen")
             if ('K' !in fenPieces || 'k' !in fenPieces) {
                 android.util.Log.w("CheszA11y", "FEN incompleto (faltan reyes): $fen")
+                com.chesz.AppLog.log("A11y", "FEN RECHAZADO faltan reyes: $fen")
                 return
             }
-            BubbleService.a11yFenCallback?.invoke(fen)
+            val cb = BubbleService.a11yFenCallback
+            if (cb == null) {
+                com.chesz.AppLog.log("A11y", "a11yFenCallback=null BubbleService no está vivo")
+            } else {
+                com.chesz.AppLog.log("A11y", "invocando a11yFenCallback con fen=$fen")
+                cb.invoke(fen)
+            }
         } catch (e: Throwable) {
             android.util.Log.e("CheszA11y", "error leyendo árbol: ${e.message}", e)
+            com.chesz.AppLog.log("A11y", "readBoardFromTree ERROR: ${e.message}")
         }
     }
 

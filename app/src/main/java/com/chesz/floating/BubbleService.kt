@@ -146,10 +146,15 @@ class BubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        com.chesz.AppLog.init(this)
+        com.chesz.AppLog.log("BubbleService", "onCreate CAPTURA_FOTO_ENABLED=$CAPTURA_FOTO_ENABLED")
         stockfishEngine = StockfishEngine(this)
         Thread {
             runCatching { stockfishEngine.start() }
-                .onFailure { android.util.Log.e("Stockfish", "init failed", it) }
+                .onFailure {
+                    android.util.Log.e("Stockfish", "init failed", it)
+                    com.chesz.AppLog.log("BubbleService", "Stockfish init FAILED: ${it.message}")
+                }
         }.start()
         if (CAPTURA_FOTO_ENABLED) startForegroundForMediaProjection() else startForegroundSimple()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -159,12 +164,17 @@ class BubbleService : Service() {
                 android.graphics.Typeface.createFromAsset(assets, "fonts/perfect_dos_vga.ttf")
             }.getOrDefault(android.graphics.Typeface.MONOSPACE)
             Handler(Looper.getMainLooper()).post {
+                com.chesz.AppLog.log("BubbleService", "createRootOverlay START")
                 createRootOverlay()
                 createKillArea()
+                com.chesz.AppLog.log("BubbleService", "createRootOverlay DONE, overlay added to WindowManager")
             }
         }.start()
         Thread { fenEngine.loadTemplates() }.start()
-        a11yFenCallback = { fen -> analizarYRenderizarFen(fen) }
+        a11yFenCallback = { fen ->
+            com.chesz.AppLog.log("BubbleService", "a11yFenCallback recibido fen=$fen")
+            analizarYRenderizarFen(fen)
+        }
     }
 
     private fun startForegroundForMediaProjection() {
@@ -351,11 +361,11 @@ class BubbleService : Service() {
 
     private fun togglePanel() {
         if (isCapturing) {
-            // Cambiar botón a rojo si se toca durante el período de captura
             bubbleIcon.setColorFilter(COLOR_FLASH_RED)
             return
         }
         val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
+        com.chesz.AppLog.log("BubbleService", "togglePanel panelShown=$panelShown hasPerm=$hasPerm CAPTURA=$CAPTURA_FOTO_ENABLED lastFen=$lastFen")
         if (!panelShown) {
             showPanelIfFits()
         }
@@ -1018,6 +1028,7 @@ class BubbleService : Service() {
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
         val permisoOk = if (CAPTURA_FOTO_ENABLED) mpData != null else isA11yServiceEnabled()
+        com.chesz.AppLog.log("BubbleService", "updatePermUi permisoOk=$permisoOk devMode=$isDeveloperMode")
         permBar.visibility = if (isDeveloperMode || permisoOk) View.GONE else View.VISIBLE
     }
 
@@ -1492,6 +1503,7 @@ class BubbleService : Service() {
 
                 analizarYRenderizarFen(fenFinal)
             } catch (e: Exception) {
+                com.chesz.AppLog.log("BubbleService", "procesarConFenEngine ERROR: ${e.message}")
                 root.post { if (!destroyed) updateDebug("Error FenEngine: ${e.message}") }
             } finally {
                 bitmap.recycle()
@@ -1504,6 +1516,7 @@ class BubbleService : Service() {
         val fenPosicion = fenFinal.substringBefore(" ")
 
         val fenValido = esFenValido64(fenFinal)
+        com.chesz.AppLog.log("BubbleService", "analizarYRenderizar fen=$fenFinal valido=$fenValido")
         var bgOptions: List<StockfishEngine.Option> = emptyList()
         var bgInCheck = false
         var bgOpeningName: String? = null
@@ -1519,14 +1532,19 @@ class BubbleService : Service() {
                         .writeText("[$ts]\n$fenFinal\n")
                 }
             }
-            bgOptions = runCatching { stockfishEngine.analyze(fenFinal) }.getOrDefault(emptyList())
+            bgOptions = runCatching { stockfishEngine.analyze(fenFinal) }
+                .onFailure { com.chesz.AppLog.log("BubbleService", "Stockfish analyze ERROR: ${it.message}") }
+                .getOrDefault(emptyList())
             bgInCheck = runCatching { stockfishEngine.isInCheck(fenFinal) }.getOrDefault(false)
+            com.chesz.AppLog.log("BubbleService", "stockfish options=${bgOptions.size} bestMove=${bgOptions.firstOrNull()?.pv?.firstOrNull()} inCheck=$bgInCheck")
             com.chesz.api.OpeningBook.ensureLoaded(this)
             bgOpeningName = com.chesz.api.OpeningBook.lookup(fenFinal)
+            com.chesz.AppLog.log("BubbleService", "opening=$bgOpeningName")
         }
 
         root.post {
             if (destroyed) return@post
+            com.chesz.AppLog.log("BubbleService", "render UI: fenValido=$fenValido hasPieces=${fenPosicion.any { it.isLetter() }} panelShown=$panelShown")
             fenTitle.text = fenPosicion
 
             val hasPieces = fenPosicion.any { it.isLetter() }
@@ -1534,6 +1552,7 @@ class BubbleService : Service() {
                 if (this::dotsRow.isInitialized) dotsRow.visibility = View.GONE
                 lichessContainer.visibility = View.GONE
                 debugText.visibility = View.GONE
+                com.chesz.AppLog.log("BubbleService", "render ABORT: fen sin piezas")
                 return@post
             }
 
@@ -1542,7 +1561,10 @@ class BubbleService : Service() {
             }
 
             if (fenValido) {
-                if (isDeveloperMode) return@post
+                if (isDeveloperMode) {
+                    com.chesz.AppLog.log("BubbleService", "render ABORT: devMode activo")
+                    return@post
+                }
                 val top = bgOptions.firstOrNull()
                 val mateText = top?.mate?.takeIf { it != 0 }?.let { mate ->
                     val abs = kotlin.math.abs(mate)
@@ -1558,6 +1580,7 @@ class BubbleService : Service() {
 
                 debugText.visibility = View.GONE
                 lichessContainer.visibility = View.VISIBLE
+                com.chesz.AppLog.log("BubbleService", "OVERLAY visible bestMove=$bestMove winRate=$winRateStr mate=$mateText")
 
                 val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 val omEnabled = prefs.getBoolean(PREF_OM, true)
