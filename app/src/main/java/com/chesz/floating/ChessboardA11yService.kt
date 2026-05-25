@@ -15,7 +15,12 @@ class ChessboardA11yService : AccessibilityService() {
         @Volatile private var instance: ChessboardA11yService? = null
 
         fun requestImmediateRead() {
-            instance?.readBoardFromTree()
+            val svc = instance
+            if (svc == null) {
+                com.chesz.AppLog.log("A11y", "requestImmediateRead: instance=null (servicio no conectado)")
+                return
+            }
+            svc.readBoardFromTree()
         }
     }
 
@@ -148,6 +153,6 @@ class ChessboardA11yService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        instance = null
+        com.chesz.AppLog.log("A11y", "onInterrupt (servicio sigue activo, instance preservada)")
     }
 }

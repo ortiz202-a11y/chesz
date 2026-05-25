@@ -1,3 +1,27 @@
+# 📋 ESTADO ACTUAL — CHESZ (mayo 2026)
+
+## 🟢 Qué funciona hoy (rama `estable-gemini`)
+
+| Componente | Estado |
+|---|---|
+| Overlay flotante (BubbleService) | ✅ Inicia, se posiciona, muestra panel |
+| Permiso A11y detectado (`hasPerm=true`) | ✅ |
+| Lectura del tablero via A11y (`ChessboardA11yService`) | ✅ Conecta — **ver fix abajo** |
+| Envío FEN → BubbleService → análisis | ✅ Pipeline completo (tras fix) |
+| Captura por foto (`CAPTURA_FOTO_ENABLED`) | ❌ Desactivado (`false`) — modo A11y activo |
+| Overlay mostrando resultado tras leer | ⚠️ Pendiente verificar tras fix |
+
+## 🔴 Bug crítico corregido (2026-05-25)
+
+**`onInterrupt()` borraba `instance` → overlay se quedaba en "LEYENDO" para siempre**
+
+- **Síntoma:** `lastFen=null` en todos los `togglePanel`. El overlay mostraba "LEYENDO" pero nunca mostraba posición ni análisis. Sin logs de A11y tras `onServiceConnected`.
+- **Causa raíz:** `ChessboardA11yService.onInterrupt()` hacía `instance = null`. Android llama `onInterrupt()` al cambiar de foco/overlay — el servicio seguía vivo pero `requestImmediateRead()` se convertía en no-op silencioso.
+- **Fix:** Quitar `instance = null` de `onInterrupt()`. Agregar log en `requestImmediateRead()` para detectar instancia nula.
+- **Archivo:** `app/src/main/java/com/chesz/floating/ChessboardA11yService.kt`
+
+---
+
 # 📋 PAPER CHESZ - KANBAN (FASE API)
 
 ## ✅ TERMINADO
