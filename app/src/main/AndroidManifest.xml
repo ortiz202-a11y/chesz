@@ -49,7 +49,7 @@
             android:name=".MainActivity"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/Theme.AppCompat.Translucent"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

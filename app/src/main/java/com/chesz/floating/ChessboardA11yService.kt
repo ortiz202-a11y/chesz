@@ -6,11 +6,9 @@ import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
-import com.chesz.engine.FenEngine
 
 class ChessboardA11yService : AccessibilityService() {
 
-    private val fenEngine by lazy { FenEngine(this) }
     private val handler = Handler(Looper.getMainLooper())
     private var pendingRead: Runnable? = null
 
@@ -39,41 +37,37 @@ class ChessboardA11yService : AccessibilityService() {
                 com.chesz.AppLog.log("A11y", "readBoardFromTree: rootInActiveWindow=null")
                 return
             }
-            val pieces = mutableMapOf<String, Char>()
-            val debugSample = mutableListOf<String>()
             try {
-                collectPieces(root, pieces)
-                if (pieces.isEmpty()) collectDescriptions(root, debugSample, max = 5)
+                dumpAllNodes(root)
             } finally {
                 root.recycle()
-            }
-            if (pieces.isEmpty()) {
-                android.util.Log.d("CheszA11y", "árbol vacío, sin piezas")
-                com.chesz.AppLog.log("A11y", "readBoardFromTree: árbol vacío, 0 piezas")
-                val sampleText = if (debugSample.isEmpty()) "NINGUNA desc" else debugSample.joinToString(" | ")
-                handler.post { Toast.makeText(this, "Árbol vacío.\n$sampleText", Toast.LENGTH_LONG).show() }
-                return
-            }
-            val fen = fenEngine.buildFenFromPieces(pieces)
-            val fenPieces = fen.substringBefore(" ")
-            com.chesz.AppLog.log("A11y", "FEN construido piezas=${pieces.size} fen=$fen")
-            if ('K' !in fenPieces || 'k' !in fenPieces) {
-                android.util.Log.w("CheszA11y", "FEN incompleto (faltan reyes): $fen")
-                com.chesz.AppLog.log("A11y", "FEN RECHAZADO faltan reyes: $fen")
-                return
-            }
-            val cb = BubbleService.a11yFenCallback
-            if (cb == null) {
-                com.chesz.AppLog.log("A11y", "a11yFenCallback=null BubbleService no está vivo")
-                handler.post { Toast.makeText(this, "FEN OK pero BubbleService MUERTO\n$fen", Toast.LENGTH_LONG).show() }
-            } else {
-                com.chesz.AppLog.log("A11y", "invocando a11yFenCallback con fen=$fen")
-                handler.post { Toast.makeText(this, "FEN enviado a Bubble\n${fen.substringBefore(" ")}", Toast.LENGTH_SHORT).show() }
-                cb.invoke(fen)
             }
         } catch (e: Throwable) {
             android.util.Log.e("CheszA11y", "error leyendo árbol: ${e.message}", e)
             com.chesz.AppLog.log("A11y", "readBoardFromTree ERROR: ${e.message}")
+        }
+    }
+
+    private fun dumpAllNodes(node: AccessibilityNodeInfo, depth: Int = 0, counter: IntArray = intArrayOf(0)) {
+        if (counter[0] >= 120) return
+        val text = node.text?.toString()?.trim()
+        val desc = node.contentDescription?.toString()?.trim()
+        val cls = node.className?.toString()?.substringAfterLast('.')
+        val id = node.viewIdResourceName?.substringAfterLast('/')
+        val hasText = !text.isNullOrBlank()
+        val hasDesc = !desc.isNullOrBlank()
+        if (hasText || hasDesc) {
+            counter[0]++
+            val indent = "  ".repeat(depth.coerceAtMost(8))
+            val t = if (hasText) "txt=\"$text\"" else ""
+            val d = if (hasDesc) "desc=\"$desc\"" else ""
+            com.chesz.AppLog.log("A11y", "${indent}[$cls id=$id] $t $d".trimEnd())
+        }
+        for (i in 0 until node.childCount) {
+            if (counter[0] >= 120) break
+            node.getChild(i)?.let { child ->
+                try { dumpAllNodes(child, depth + 1, counter) } finally { child.recycle() }
+            }
         }
     }
 
