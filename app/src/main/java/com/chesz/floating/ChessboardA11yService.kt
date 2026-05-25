@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
 import com.chesz.engine.FenEngine
 
 class ChessboardA11yService : AccessibilityService() {
@@ -24,6 +25,7 @@ class ChessboardA11yService : AccessibilityService() {
         if (event.packageName != "com.chess") return
 
         com.chesz.AppLog.log("A11y", "evento com.chess tipo=${event.eventType} debounce 300ms")
+        handler.post { Toast.makeText(this, "A11y: evento Chess tipo=${event.eventType}", Toast.LENGTH_SHORT).show() }
         // Debounce 300 ms para que el árbol se estabilice tras mover una pieza
         pendingRead?.let { handler.removeCallbacks(it) }
         val task = Runnable { readBoardFromTree() }
@@ -38,14 +40,18 @@ class ChessboardA11yService : AccessibilityService() {
                 return
             }
             val pieces = mutableMapOf<String, Char>()
+            val debugSample = mutableListOf<String>()
             try {
                 collectPieces(root, pieces)
+                if (pieces.isEmpty()) collectDescriptions(root, debugSample, max = 5)
             } finally {
                 root.recycle()
             }
             if (pieces.isEmpty()) {
                 android.util.Log.d("CheszA11y", "árbol vacío, sin piezas")
                 com.chesz.AppLog.log("A11y", "readBoardFromTree: árbol vacío, 0 piezas")
+                val sampleText = if (debugSample.isEmpty()) "NINGUNA desc" else debugSample.joinToString(" | ")
+                handler.post { Toast.makeText(this, "Árbol vacío.\n$sampleText", Toast.LENGTH_LONG).show() }
                 return
             }
             val fen = fenEngine.buildFenFromPieces(pieces)
@@ -59,8 +65,10 @@ class ChessboardA11yService : AccessibilityService() {
             val cb = BubbleService.a11yFenCallback
             if (cb == null) {
                 com.chesz.AppLog.log("A11y", "a11yFenCallback=null BubbleService no está vivo")
+                handler.post { Toast.makeText(this, "FEN OK pero BubbleService MUERTO\n$fen", Toast.LENGTH_LONG).show() }
             } else {
                 com.chesz.AppLog.log("A11y", "invocando a11yFenCallback con fen=$fen")
+                handler.post { Toast.makeText(this, "FEN enviado a Bubble\n${fen.substringBefore(" ")}", Toast.LENGTH_SHORT).show() }
                 cb.invoke(fen)
             }
         } catch (e: Throwable) {
@@ -81,6 +89,17 @@ class ChessboardA11yService : AccessibilityService() {
                 } finally {
                     child.recycle()
                 }
+            }
+        }
+    }
+
+    private fun collectDescriptions(node: AccessibilityNodeInfo, out: MutableList<String>, max: Int) {
+        if (out.size >= max) return
+        node.contentDescription?.toString()?.takeIf { it.isNotBlank() }?.let { out.add(it.take(40)) }
+        for (i in 0 until node.childCount) {
+            if (out.size >= max) break
+            node.getChild(i)?.let { child ->
+                try { collectDescriptions(child, out, max) } finally { child.recycle() }
             }
         }
     }
