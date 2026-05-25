@@ -589,3 +589,4 @@ Se detectaron dos bugs que impedían que el modo A11Y funcionara al tocar el bot
 - `a11yFenCallback` se nula en `onDestroy` (memory leak corregido)
 - `clearPanel()` + `updateDebug("LEYENDO...")` da feedback visual mientras se lee el árbol
 - Eliminado Toast de debug en `onAccessibilityEvent`
+se van a hacer pruebas varias
