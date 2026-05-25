@@ -201,6 +201,7 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         destroyed = true
+        a11yFenCallback = null
         super.onDestroy()
         runCatching { wm.removeViewImmediate(root) }
         runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
@@ -377,6 +378,8 @@ class BubbleService : Service() {
             if (CAPTURA_FOTO_ENABLED) {
                 takeScreenshotOnce()
             } else {
+                clearPanel()
+                updateDebug("LEYENDO...")
                 ChessboardA11yService.requestImmediateRead()
             }
         }
