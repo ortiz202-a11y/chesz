@@ -364,13 +364,21 @@ class BubbleService : Service() {
             bubbleIcon.setColorFilter(COLOR_FLASH_RED)
             return
         }
-        val hasPerm = (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
+        val hasPerm = if (CAPTURA_FOTO_ENABLED) {
+            (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
+        } else {
+            isA11yServiceEnabled()
+        }
         com.chesz.AppLog.log("BubbleService", "togglePanel panelShown=$panelShown hasPerm=$hasPerm CAPTURA=$CAPTURA_FOTO_ENABLED lastFen=$lastFen")
         if (!panelShown) {
             showPanelIfFits()
         }
         if (hasPerm) {
-            takeScreenshotOnce()
+            if (CAPTURA_FOTO_ENABLED) {
+                takeScreenshotOnce()
+            } else {
+                ChessboardA11yService.requestImmediateRead()
+            }
         }
     }
 
