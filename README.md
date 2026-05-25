@@ -571,3 +571,21 @@ const val CAPTURA_FOTO_ENABLED = false  // false = A11Y activo, true = screen ca
 ### Para reactivar el modo foto
 1. Cambiar `CAPTURA_FOTO_ENABLED = true` en el companion object de BubbleService
 2. Todo el código zombi (MediaProjection, upgradeToMediaProjection, CapturePermissionActivity) vuelve a correr automáticamente
+
+---
+
+## 🔧 FIX PIPELINE A11Y (mayo 2026)
+
+Se detectaron dos bugs que impedían que el modo A11Y funcionara al tocar el botón flotante:
+
+**Bug 1 — `hasPerm` siempre false** (`BubbleService.togglePanel`):
+`hasPerm` usaba `mpResultCode`/`mpData` (variables de MediaProjection, siempre null con `CAPTURA_FOTO_ENABLED=false`). Corregido: ahora usa `isA11yServiceEnabled()`.
+
+**Bug 2 — Pipeline A11Y incompleto** (`ChessboardA11yService`):
+`readBoardFromTree()` solo loggeaba el árbol de vistas. Se completó el flujo:
+`collectPieces()` → `buildFenFromPieces()` → `BubbleService.a11yFenCallback` → `analizarYRenderizarFen()` → Stockfish → render panel.
+
+**Extras:**
+- `a11yFenCallback` se nula en `onDestroy` (memory leak corregido)
+- `clearPanel()` + `updateDebug("LEYENDO...")` da feedback visual mientras se lee el árbol
+- Eliminado Toast de debug en `onAccessibilityEvent`
