@@ -1302,6 +1302,27 @@ class BubbleService : Service() {
     }
 
     private fun takeScreenshotOnce() {
+        // Intenta primero vía A11y (bypassa FLAG_SECURE, sin diálogo de permiso)
+        if (ChessboardA11yService.isConnected() &&
+            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            clearPanel()
+            updateDebug("PROCESSING...")
+            bubbleIcon.clearColorFilter()
+            isCapturing = true
+            root.postDelayed({ if (!destroyed) { isCapturing = false; bubbleIcon.clearColorFilter() } }, DELAY_CAPTURE_RESET_MS)
+            ChessboardA11yService.requestScreenshot(
+                onBitmap = { fullScreen -> cropAndProcess(fullScreen) },
+                onError = { msg ->
+                    AppLog.log("BubbleService", "A11y screenshot falló: $msg, intentando MediaProjection")
+                    takeScreenshotViaMediaProjection()
+                }
+            )
+            return
+        }
+        takeScreenshotViaMediaProjection()
+    }
+
+    private fun takeScreenshotViaMediaProjection() {
         val rc = mpResultCode ?: return
         val data = mpData ?: return
 
@@ -1476,6 +1497,35 @@ class BubbleService : Service() {
             mpResultCode = null
             updatePermUi()
         }
+    }
+
+    private fun cropAndProcess(fullScreen: android.graphics.Bitmap) {
+        Thread {
+            try {
+                val safeCropW = if (BOARD_X + BOARD_SIZE > fullScreen.width) fullScreen.width - BOARD_X else BOARD_SIZE
+                val safeCropH = if (BOARD_Y + BOARD_SIZE > fullScreen.height) fullScreen.height - BOARD_Y else BOARD_SIZE
+                val cropped = android.graphics.Bitmap.createBitmap(fullScreen, BOARD_X, BOARD_Y, safeCropW, safeCropH)
+                fullScreen.recycle()
+                // Guardar snapshot debug
+                val dir = getExternalFilesDir(null)
+                if (dir != null) {
+                    val snap = cropped.copy(cropped.config ?: android.graphics.Bitmap.Config.ARGB_8888, false)
+                    Thread {
+                        try {
+                            if (!dir.exists()) dir.mkdirs()
+                            java.io.FileOutputStream(java.io.File(dir, "chesz_last.png")).use {
+                                snap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                            }
+                        } finally { snap.recycle() }
+                    }.start()
+                }
+                procesarConFenEngine(cropped)
+            } catch (e: Exception) {
+                AppLog.log("BubbleService", "cropAndProcess error: ${e.message}")
+                fullScreen.recycle()
+                updateDebug("❌ Crop error: ${e.message}")
+            }
+        }.start()
     }
 
     private fun procesarConFenEngine(bitmap: android.graphics.Bitmap) {

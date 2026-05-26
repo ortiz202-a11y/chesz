@@ -1,10 +1,13 @@
 package com.chesz.floating
 
 import android.accessibilityservice.AccessibilityService
+import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import java.util.concurrent.Executors
 
 class ChessboardA11yService : AccessibilityService() {
 
@@ -14,6 +17,8 @@ class ChessboardA11yService : AccessibilityService() {
     companion object {
         @Volatile private var instance: ChessboardA11yService? = null
 
+        fun isConnected() = instance != null
+
         fun requestImmediateRead() {
             val svc = instance
             if (svc == null) {
@@ -21,6 +26,20 @@ class ChessboardA11yService : AccessibilityService() {
                 return
             }
             svc.readBoardFromTree()
+        }
+
+        /** Toma screenshot via A11y (bypassa FLAG_SECURE). Requiere API 30+. */
+        fun requestScreenshot(onBitmap: (Bitmap) -> Unit, onError: (String) -> Unit) {
+            val svc = instance
+            if (svc == null) {
+                onError("A11y service no conectado")
+                return
+            }
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+                onError("API <30, sin takeScreenshot")
+                return
+            }
+            svc.captureScreen(onBitmap, onError)
         }
     }
 
@@ -150,6 +169,37 @@ class ChessboardA11yService : AccessibilityService() {
             else -> return null
         }
         return Pair(square.substring(0, 2), piece)
+    }
+
+    @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.R)
+    private fun captureScreen(onBitmap: (Bitmap) -> Unit, onError: (String) -> Unit) {
+        val executor = Executors.newSingleThreadExecutor()
+        takeScreenshot(
+            Display.DEFAULT_DISPLAY,
+            executor,
+            object : TakeScreenshotCallback {
+                override fun onSuccess(result: ScreenshotResult) {
+                    val hw = result.hardwareBuffer
+                    val bmp = Bitmap.wrapHardwareBuffer(hw, null)
+                    hw.close()
+                    if (bmp == null) {
+                        com.chesz.AppLog.log("A11y", "captureScreen: wrapHardwareBuffer=null")
+                        onError("HardwareBuffer nulo")
+                        return
+                    }
+                    val soft = bmp.copy(Bitmap.Config.ARGB_8888, false)
+                    bmp.recycle()
+                    com.chesz.AppLog.log("A11y", "captureScreen OK ${soft.width}x${soft.height}")
+                    onBitmap(soft)
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    val msg = "captureScreen onFailure code=$errorCode"
+                    com.chesz.AppLog.log("A11y", msg)
+                    onError(msg)
+                }
+            }
+        )
     }
 
     override fun onInterrupt() {
