@@ -367,7 +367,9 @@ class BubbleService : Service() {
             return
         }
         val hasPerm = if (CAPTURA_FOTO_ENABLED) {
-            (mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null)
+            // A11y screenshot no necesita MediaProjection; MP es solo el fallback
+            ChessboardA11yService.isConnected() ||
+                ((mpResultCode == android.app.Activity.RESULT_OK) && (mpData != null))
         } else {
             isA11yServiceEnabled()
         }
@@ -381,9 +383,25 @@ class BubbleService : Service() {
             } else {
                 clearPanel()
                 updateDebug("LEYENDO...")
-                ChessboardA11yService.requestImmediateRead()
+                requestReadWithRetry()
             }
         }
+    }
+
+    private fun requestReadWithRetry(attemptsLeft: Int = 6) {
+        if (destroyed) return
+        if (ChessboardA11yService.isConnected()) {
+            ChessboardA11yService.requestImmediateRead()
+            return
+        }
+        if (attemptsLeft <= 0) {
+            com.chesz.AppLog.log("BubbleService", "requestReadWithRetry: A11y nunca conectó tras reintentos")
+            updateDebug("❌ A11y sin conexión\nReactiva en Ajustes > Accesibilidad")
+            return
+        }
+        com.chesz.AppLog.log("BubbleService", "requestReadWithRetry: esperando A11y (intentos=$attemptsLeft)")
+        updateDebug("⏳ Conectando A11y...")
+        root.postDelayed({ requestReadWithRetry(attemptsLeft - 1) }, 500)
     }
 
     private fun showFloatingError(msg: String) {
@@ -1039,7 +1057,9 @@ class BubbleService : Service() {
 
     private fun updatePermUi() {
         if (!this::permBar.isInitialized) return
-        val permisoOk = if (CAPTURA_FOTO_ENABLED) mpData != null else isA11yServiceEnabled()
+        val permisoOk = if (CAPTURA_FOTO_ENABLED) {
+            ChessboardA11yService.isConnected() || mpData != null
+        } else isA11yServiceEnabled()
         com.chesz.AppLog.log("BubbleService", "updatePermUi permisoOk=$permisoOk devMode=$isDeveloperMode")
         permBar.visibility = if (isDeveloperMode || permisoOk) View.GONE else View.VISIBLE
     }
@@ -2040,8 +2060,8 @@ class BubbleService : Service() {
 
         var a11yFenCallback: ((String) -> Unit)? = null
 
-        // ZOMBIE-FOTO: false = flujo a11y activo, true = flujo screen capture activo
-        const val CAPTURA_FOTO_ENABLED = false
+        // true = screenshot vía A11y (bypasa FLAG_SECURE) → FenEngine visión
+        const val CAPTURA_FOTO_ENABLED = true
     }
 
     private fun esFenValido64(fen: String): Boolean {
