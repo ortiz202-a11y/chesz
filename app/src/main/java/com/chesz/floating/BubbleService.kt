@@ -360,6 +360,7 @@ class BubbleService : Service() {
             }
         }
 
+        updatePermUi()
         wm.addView(root, rootLp)
     }
 
