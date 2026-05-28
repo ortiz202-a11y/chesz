@@ -146,6 +146,7 @@ class BubbleService : Service() {
     }
 
     override fun onCreate() {
+        isRunning = true
         super.onCreate()
         com.chesz.AppLog.init(this)
         com.chesz.AppLog.log("BubbleService", "onCreate CAPTURA_FOTO_ENABLED=$CAPTURA_FOTO_ENABLED")
@@ -201,6 +202,7 @@ class BubbleService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         destroyed = true
         a11yFenCallback = null
         super.onDestroy()
@@ -2062,6 +2064,8 @@ class BubbleService : Service() {
 
         // true = screenshot vía A11y (bypasa FLAG_SECURE) → FenEngine visión
         const val CAPTURA_FOTO_ENABLED = true
+
+        @Volatile var isRunning = false
     }
 
     private fun esFenValido64(fen: String): Boolean {

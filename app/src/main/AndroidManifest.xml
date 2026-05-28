@@ -48,7 +48,6 @@
         <activity
             android:name=".MainActivity"
             android:excludeFromRecents="true"
-            android:noHistory="true"
             android:theme="@style/Theme.AppCompat.Translucent"
             android:exported="true">
             <intent-filter>
