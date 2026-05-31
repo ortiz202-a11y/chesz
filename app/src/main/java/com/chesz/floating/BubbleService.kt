@@ -41,6 +41,7 @@ class BubbleService : Service() {
 
     private var panelShown = false
     private var lastFen: String? = null
+    private var lastMoveUci: String? = null
     private var fenAwaitingUserColor: String? = null
 
     // Drag state (sobre el ROOT)
@@ -177,6 +178,11 @@ class BubbleService : Service() {
             com.chesz.AppLog.log("BubbleService", "a11yFenCallback recibido fen=$fen")
             analizarYRenderizarFen(fen)
         }
+        a11yMoveCallback = { uci ->
+            com.chesz.AppLog.log("BubbleService", "a11yMoveCallback uci=$uci")
+            lastMoveUci = uci
+            root.post { updateLastMoveUi(uci) }
+        }
     }
 
     private fun startForegroundForMediaProjection() {
@@ -205,6 +211,7 @@ class BubbleService : Service() {
         isRunning = false
         destroyed = true
         a11yFenCallback = null
+        a11yMoveCallback = null
         super.onDestroy()
         runCatching { wm.removeViewImmediate(root) }
         runCatching { if (killShown) wm.removeViewImmediate(killRoot) }
@@ -1283,6 +1290,14 @@ class BubbleService : Service() {
         }
     }
 
+    private fun updateLastMoveUi(uci: String) {
+        if (destroyed) return
+        // Muestra el último movimiento jugado brevemente en debugText;
+        // será reemplazado cuando llegue el análisis completo del FEN.
+        if (!panelShown) showPanelIfFits()
+        updateDebug("→ $uci")
+    }
+
     private fun clearPanel() {
         root.post {
             if (destroyed) return@post
@@ -2062,6 +2077,7 @@ class BubbleService : Service() {
         private const val PREF_WR = "toggle_wr"
 
         var a11yFenCallback: ((String) -> Unit)? = null
+        var a11yMoveCallback: ((String) -> Unit)? = null
 
         // true = screenshot vía A11y (bypasa FLAG_SECURE) → FenEngine visión
         const val CAPTURA_FOTO_ENABLED = true

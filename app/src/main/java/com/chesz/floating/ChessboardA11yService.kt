@@ -13,6 +13,7 @@ class ChessboardA11yService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var pendingRead: Runnable? = null
+    private var prevFen: String? = null
 
     companion object {
         @Volatile private var instance: ChessboardA11yService? = null
@@ -73,6 +74,16 @@ class ChessboardA11yService : AccessibilityService() {
                 if (pieces.size >= 2) {
                     val fen = buildFenFromPieces(pieces)
                     com.chesz.AppLog.log("A11y", "FEN construido=$fen")
+                    val prev = prevFen
+                    if (prev != null && prev != fen) {
+                        val uci = deduceMoveUCI(prev, fen)
+                        com.chesz.AppLog.log("A11y", "deduceMoveUCI=$uci (prev→new)")
+                        if (uci != null) {
+                            val mcb = BubbleService.a11yMoveCallback
+                            if (mcb != null) Thread { mcb(uci) }.start()
+                        }
+                    }
+                    prevFen = fen
                     val cb = BubbleService.a11yFenCallback
                     if (cb != null) Thread { cb(fen) }.start()
                 } else {
@@ -205,4 +216,64 @@ class ChessboardA11yService : AccessibilityService() {
     override fun onInterrupt() {
         com.chesz.AppLog.log("A11y", "onInterrupt (servicio sigue activo, instance preservada)")
     }
+
+    // ── FEN diff → movimiento UCI ──────────────────────────────────────────────
+
+    private fun deduceMoveUCI(prevFenStr: String, nextFenStr: String): String? {
+        val prev = parseFenPos(prevFenStr)
+        val next = parseFenPos(nextFenStr)
+
+        val gone    = mutableListOf<Pair<Int, Int>>()
+        val arrived = mutableListOf<Pair<Int, Int>>()
+
+        for (r in 0..7) for (c in 0..7) {
+            val p = prev[r][c]; val n = next[r][c]
+            when {
+                p != '.' && n == '.'           -> gone.add(r to c)
+                p == '.' && n != '.'           -> arrived.add(r to c)
+                p != '.' && n != '.' && p != n -> { gone.add(r to c); arrived.add(r to c) }
+            }
+        }
+
+        // Movimiento normal / captura / promoción (1 origen, 1 destino)
+        if (gone.size == 1 && arrived.size == 1) {
+            val from = sqName(gone[0]); val to = sqName(arrived[0])
+            val piece = next[arrived[0].first][arrived[0].second]
+            val promo = if ((arrived[0].first == 0 || arrived[0].first == 7) &&
+                            piece.lowercaseChar() != 'p') piece.lowercaseChar().toString() else ""
+            return "$from$to$promo"
+        }
+
+        // Enroque: rey + torre se mueven (2 desaparecidos, 2 llegados)
+        if (gone.size == 2 && arrived.size == 2) {
+            val kingFrom = gone.find    { prev[it.first][it.second].uppercaseChar() == 'K' }
+            val kingTo   = arrived.find { next[it.first][it.second].uppercaseChar() == 'K' }
+            if (kingFrom != null && kingTo != null)
+                return "${sqName(kingFrom)}${sqName(kingTo)}"
+        }
+
+        // En passant: peón captura al paso (2 desaparecidos, 1 llegado)
+        if (gone.size == 2 && arrived.size == 1) {
+            val movedFrom = gone.find { prev[it.first][it.second].lowercaseChar() == 'p' &&
+                                        it.second != arrived[0].second }
+            if (movedFrom != null) return "${sqName(movedFrom)}${sqName(arrived[0])}"
+        }
+
+        return null
+    }
+
+    private fun parseFenPos(fenStr: String): Array<CharArray> {
+        val pos = fenStr.substringBefore(" ")
+        val board = Array(8) { CharArray(8) { '.' } }
+        var r = 0; var c = 0
+        for (ch in pos) when {
+            ch == '/'    -> { r++; c = 0 }
+            ch.isDigit() -> c += ch.digitToInt()
+            else         -> { if (r < 8 && c < 8) board[r][c] = ch; c++ }
+        }
+        return board
+    }
+
+    private fun sqName(rc: Pair<Int, Int>): String =
+        "${'a' + rc.second}${'8' - rc.first}"
 }
